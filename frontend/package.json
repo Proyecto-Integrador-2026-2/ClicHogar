@@ -21,9 +21,16 @@
     "astro": "^7.3.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "eslint": "^10.10.0"
+    "eslint": "^10.11.0"
   },
   "allowScripts": {
     "esbuild": true
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^17.12.0",
+    "jiti": "^2.7.0",
+    "typescript-eslint": "^8.70.1"
   }
 }
