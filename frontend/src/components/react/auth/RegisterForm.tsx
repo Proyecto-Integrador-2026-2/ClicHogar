@@ -1,6 +1,41 @@
 import React, { useState } from 'react';
 import { useSignUp } from '@clerk/clerk-react';
 
+type Role = 'Usuario' | 'Afiliado' | '';
+
+type ClerkError = {
+  code?: string;
+  message?: string;
+};
+
+function getFirstClerkError(error: unknown): ClerkError | undefined {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+
+  const errors = (error as { errors?: unknown }).errors;
+
+  if (!Array.isArray(errors)) {
+    return undefined;
+  }
+
+  const firstError = errors[0];
+
+  if (typeof firstError !== 'object' || firstError === null) {
+    return undefined;
+  }
+
+  const { code, message } = firstError as {
+    code?: unknown;
+    message?: unknown;
+  };
+
+  return {
+    code: typeof code === 'string' ? code : undefined,
+    message: typeof message === 'string' ? message : undefined,
+  };
+}
+
 export default function RegisterForm() {
   const { isLoaded, signUp, setActive } = useSignUp();
 
@@ -9,7 +44,7 @@ export default function RegisterForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'Usuario' | 'Afiliado' | ''>('');
+  const [role, setRole] = useState<Role>('');
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Estados para manejar errores (Caja Negra)
@@ -83,15 +118,16 @@ export default function RegisterForm() {
       // Enviamos el código de verificación al correo
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setPendingVerification(true);
-    } catch (err: any) {
-      // Escenario 3: Intento de registro con un correo ya existente
-      if (err.errors?.[0]?.code === 'form_identifier_exists') {
+    } catch (err: unknown) {
+      const clerkError = getFirstClerkError(err);
+
+      if (clerkError?.code === 'form_identifier_exists') {
         setGlobalError(
           'Este correo ya está asociado a una cuenta. ¿Deseas iniciar sesión?'
         );
       } else {
         setGlobalError(
-          err.errors?.[0]?.message || 'Ocurrió un error en el registro.'
+          clerkError?.message || 'Ocurrió un error en el registro.'
         );
       }
     }
@@ -113,9 +149,11 @@ export default function RegisterForm() {
         window.location.href =
           role === 'Afiliado' ? '/perfil/configurar' : '/dashboard';
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const clerkError = getFirstClerkError(err);
+
       setGlobalError(
-        err.errors?.[0]?.message || 'Código de verificación incorrecto.'
+        clerkError?.message || 'Código de verificación incorrecto.'
       );
     }
   };
@@ -189,7 +227,13 @@ export default function RegisterForm() {
           <select
             id="role"
             value={role}
-            onChange={(e) => setRole(e.target.value as any)}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (value === '' || value === 'Usuario' || value === 'Afiliado') {
+                setRole(value);
+              }
+            }}
             className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 ${errors.role ? 'border-red-500' : ''}`}
           >
             <option value="">Selecciona tu rol...</option>
