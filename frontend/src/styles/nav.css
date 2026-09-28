@@ -27,6 +27,13 @@
   padding: 8px 16px;
 }
 
+/* Las ranuras `hidden` deben imponerse: los `display` de autor
+   (p. ej. `.ch-nav__link`, `.ch-btn`) pisan el `display:none` del
+   atributo en la hoja UA. Sin esto, ambas variantes quedan visibles. */
+[data-nav-auth][hidden] {
+  display: none !important;
+}
+
 .ch-brand {
   display: inline-flex;
   align-items: center;
