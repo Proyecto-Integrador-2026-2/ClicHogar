@@ -1,0 +1,532 @@
+/**
+ * Design tokens "Pro Max" de autenticación (US-001 registro, US-002 login).
+ * Hoja compartida por ambos formularios: todas las clases usan el prefijo
+ * `ch-`. Alcance global controlado (sin Tailwind en el proyecto).
+ * Ritmo de espaciado 4/8. Tema CLARO por defecto; el bloque
+ * `html[data-theme='dark']` lo lleva al tema oscuro. Degradado de
+ * marca #0088d5/#3da1a8/#3ce5ff idéntico en ambos temas.
+ */
+.ch-auth {
+  --ch-space-1: 4px;
+  --ch-space-2: 8px;
+  --ch-space-3: 12px;
+  --ch-space-4: 16px;
+  --ch-space-6: 24px;
+  --ch-space-8: 32px;
+
+  --ch-radius-sm: 6px;
+  --ch-radius-md: 10px;
+  --ch-radius-lg: 16px;
+
+  --ch-color-bg: #eef3f8;
+  --ch-color-surface: rgb(15 23 42 / 0.06);
+  --ch-color-text: #0f172a;
+  --ch-color-text-soft: #475569;
+  --ch-color-border: transparent;
+  --ch-color-border-strong: transparent;
+  --ch-color-primary: #0088d5;
+  --ch-color-primary-hover: #0088d5;
+  --ch-color-primary-active: #0088d5;
+  --ch-color-on-primary: #ffffff;
+  --ch-color-error: #b91c1c;
+  --ch-color-error-bg: rgb(185 28 28 / 0.08);
+  --ch-color-error-border: rgb(185 28 28 / 0.25);
+  --ch-color-focus: #0088d5;
+  --ch-color-disabled-bg: #e2e8f0;
+  --ch-color-disabled-text: #94a3b8;
+
+  --ch-card-bg:
+    linear-gradient(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0) 32%),
+    rgb(255 255 255 / 0.45);
+  --ch-card-border: rgb(255 255 255 / 0.85);
+  --ch-card-shadow:
+    0 16px 48px rgb(15 40 80 / 0.14),
+    0 2px 6px rgb(17 24 39 / 0.08),
+    inset 0 1px 0 #ffffff;
+  --ch-card-solid: #ffffff;
+
+  --ch-field-bg: rgb(241 245 249 / 0.65);
+  --ch-field-bg-hover: rgb(226 232 240 / 0.75);
+  --ch-field-bg-focus: #ffffff;
+  --ch-field-bg-error: rgb(254 226 226 / 0.75);
+  --ch-field-bg-error-hover: rgb(254 226 226 / 0.85);
+  --ch-field-bg-error-focus: #ffffff;
+
+  --ch-motion-fast: 120ms;
+  --ch-motion-base: 180ms;
+
+  color: var(--ch-color-text);
+  font-family:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* Tema oscuro: mismos componentes, tokens invertidos. El degradado de
+   marca NO cambia (petición explícita: idéntico en ambos temas). */
+html[data-theme='dark'] .ch-auth {
+  --ch-color-bg: #0d1526;
+  --ch-color-surface: rgb(255 255 255 / 0.08);
+  --ch-color-text: #f1f5f9;
+  --ch-color-text-soft: #cbd5e1;
+  --ch-color-primary: #3da1a8;
+  --ch-color-primary-hover: #3da1a8;
+  --ch-color-primary-active: #3da1a8;
+  --ch-color-error: #fca5a5;
+  --ch-color-error-bg: rgb(248 113 113 / 0.14);
+  --ch-color-error-border: rgb(248 113 113 / 0.35);
+  --ch-color-focus: #3ce5ff;
+  --ch-color-disabled-bg: rgb(255 255 255 / 0.06);
+  --ch-color-disabled-text: #64748b;
+
+  --ch-card-bg:
+    linear-gradient(rgb(255 255 255 / 0.09), rgb(255 255 255 / 0) 30%),
+    rgb(13 20 36 / 0.32);
+  --ch-card-border: rgb(255 255 255 / 0.22);
+  --ch-card-shadow:
+    0 24px 64px rgb(0 0 0 / 0.5),
+    0 2px 8px rgb(0 0 0 / 0.3),
+    inset 0 1px 0 rgb(255 255 255 / 0.28);
+  --ch-card-solid: #101a2e;
+
+  --ch-field-bg: rgb(255 255 255 / 0.08);
+  --ch-field-bg-hover: rgb(255 255 255 / 0.13);
+  --ch-field-bg-focus: rgb(255 255 255 / 0.14);
+  --ch-field-bg-error: rgb(248 113 113 / 0.16);
+  --ch-field-bg-error-hover: rgb(248 113 113 / 0.22);
+  --ch-field-bg-error-focus: rgb(248 113 113 / 0.2);
+}
+
+/*
+ * Causa raíz del desborde: el `box-sizing` global de la página vive en el
+ * `.astro` y Astro lo limita a su propio ámbito, así que nunca llega al
+ * interior de la isla hidratada. Sin esto los inputs (content-box por
+ * defecto) suman padding + borde al 100% y se salen de la tarjeta.
+ */
+.ch-auth *,
+.ch-auth *::before,
+.ch-auth *::after {
+  box-sizing: border-box;
+}
+
+/* ---------- Tarjeta ---------- */
+.ch-card {
+  width: min(100%, 28rem);
+  margin-inline: auto;
+  /* Cristal (claro y oscuro): el fondo/borde/sombra salen de tokens. */
+  background: var(--ch-card-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid var(--ch-card-border);
+  border-radius: var(--ch-radius-lg);
+  box-shadow: var(--ch-card-shadow);
+  padding: var(--ch-space-6);
+}
+
+/* Sin soporte de backdrop-filter: tarjeta sólida del tema activo. */
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .ch-card {
+    background: var(--ch-card-solid);
+  }
+}
+
+.ch-card__title {
+  margin: 0 0 var(--ch-space-2);
+  font-size: 1.5rem;
+  line-height: 1.25;
+  font-weight: 800;
+  text-align: center;
+  /* Degradado de marca (arte del favicon). --gx lo mueve el cursor
+     (ver script en register.astro); por defecto centrado. */
+  background: linear-gradient(
+    100deg,
+    #0088d5 0%,
+    #3da1a8 38%,
+    #3ce5ff 55%,
+    #3da1a8 72%,
+    #0088d5 100%
+  );
+  background-size: 220% auto;
+  background-position: calc(var(--gx, 0.5) * 100%) center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  transition: background-position 0.35s ease-out;
+}
+
+.ch-card__subtitle {
+  margin: 0 0 var(--ch-space-6);
+  color: var(--ch-color-text-soft);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.ch-form {
+  display: grid;
+  gap: var(--ch-space-4);
+}
+
+/* El fieldset por defecto trae min-width: min-content y puede empujar
+   los campos fuera de la tarjeta; se neutraliza aquí. */
+.ch-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+/* ---------- Campos ---------- */
+.ch-field {
+  display: grid;
+  gap: var(--ch-space-2);
+}
+
+.ch-field__label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  /* Mismo degradado reactivo de marca que los títulos (--gx lo mueve
+     el cursor). Sobre cristal oscuro el contraste sobra (≥ 7:1). */
+  background: linear-gradient(
+    100deg,
+    #0088d5 0%,
+    #3da1a8 38%,
+    #3ce5ff 55%,
+    #3da1a8 72%,
+    #0088d5 100%
+  );
+  background-size: 220% auto;
+  background-position: calc(var(--gx, 0.5) * 100%) center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  transition: background-position 0.35s ease-out;
+}
+
+.ch-field__required {
+  color: var(--ch-color-error);
+  -webkit-text-fill-color: var(--ch-color-error);
+}
+
+.ch-field__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ch-color-text-soft);
+}
+
+.ch-field__input {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--ch-space-2) var(--ch-space-3);
+  font: inherit;
+  color: var(--ch-color-text);
+  /* Sin líneas: borde transparente permanente (evita saltos de layout) y
+     la affordance la da el fondo. Foco y error siguen siendo distinguibles
+     por fondo + anillo + texto, nunca solo por color. */
+  background: var(--ch-field-bg);
+  border: 1px solid transparent;
+  border-radius: var(--ch-radius-md);
+  transition:
+    background-color var(--ch-motion-fast) ease,
+    box-shadow var(--ch-motion-fast) ease;
+}
+
+/* Hover: solo cambia el fondo, nunca el layout (sin saltos visuales). */
+.ch-field__input:hover {
+  background: var(--ch-field-bg-hover);
+}
+
+.ch-field__input:focus {
+  outline: none;
+}
+
+.ch-field__input:focus-visible {
+  background: var(--ch-field-bg-focus);
+  outline: 3px solid var(--ch-color-focus);
+  outline-offset: 1px;
+}
+
+.ch-field__input--error {
+  background: var(--ch-field-bg-error);
+}
+
+.ch-field__input--error:hover {
+  background: var(--ch-field-bg-error-hover);
+}
+
+.ch-field__input--error:focus-visible {
+  background: var(--ch-field-bg-error-focus);
+}
+
+.ch-field__input:disabled {
+  background: var(--ch-color-disabled-bg);
+  color: var(--ch-color-disabled-text);
+  cursor: not-allowed;
+}
+
+.ch-field__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ch-color-error);
+}
+
+/* Input con acción interna (mostrar/ocultar contraseña). */
+.ch-input-wrap {
+  position: relative;
+}
+
+.ch-input-wrap .ch-field__input {
+  padding-right: 52px;
+}
+
+.ch-icon-btn {
+  position: absolute;
+  top: 50%;
+  right: var(--ch-space-1);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: var(--ch-color-text-soft);
+  background: transparent;
+  border: none;
+  border-radius: var(--ch-radius-sm);
+  cursor: pointer;
+  transition:
+    color var(--ch-motion-fast) ease,
+    background-color var(--ch-motion-fast) ease;
+}
+
+.ch-icon-btn:hover {
+  color: var(--ch-color-text);
+  background: var(--ch-color-surface);
+}
+
+.ch-icon-btn:focus-visible {
+  outline: 3px solid var(--ch-color-focus);
+  outline-offset: 1px;
+}
+
+.ch-icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Select con indicador propio (sin depender del nativo inconsistente). */
+.ch-select-wrap {
+  position: relative;
+}
+
+.ch-select-wrap .ch-field__input {
+  appearance: none;
+  padding-right: 44px;
+}
+
+.ch-select-wrap > svg {
+  position: absolute;
+  top: 50%;
+  right: var(--ch-space-3);
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: var(--ch-color-text-soft);
+  pointer-events: none;
+}
+
+/* Checkbox: fila de 44px, input nativo (accesible) con accent tokenizado. */
+.ch-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ch-space-2);
+  min-height: 44px;
+  padding-block: var(--ch-space-2);
+}
+
+.ch-check__input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  flex: none;
+  accent-color: var(--ch-color-primary);
+  cursor: pointer;
+}
+
+.ch-check__input:focus-visible {
+  outline: 3px solid var(--ch-color-focus);
+  outline-offset: 2px;
+}
+
+.ch-check__label {
+  font-size: 0.875rem;
+  color: var(--ch-color-text-soft);
+  cursor: pointer;
+}
+
+/* ---------- Resumen de errores (foco + enlaces, skill ux Result 1) ---------- */
+.ch-alert {
+  border-radius: var(--ch-radius-md);
+  padding: var(--ch-space-3) var(--ch-space-4);
+  font-size: 0.875rem;
+}
+
+.ch-alert:focus {
+  outline: none;
+}
+
+.ch-alert:focus-visible {
+  outline: 3px solid var(--ch-color-focus);
+  outline-offset: 1px;
+}
+
+.ch-alert--error {
+  color: var(--ch-color-error);
+  background: var(--ch-color-error-bg);
+  border: 1px solid var(--ch-color-error-border);
+}
+
+.ch-alert__title {
+  margin: 0 0 var(--ch-space-2);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.ch-alert__list {
+  margin: 0;
+  padding-left: var(--ch-space-4);
+  display: grid;
+  gap: var(--ch-space-1);
+}
+
+.ch-alert__list a {
+  color: inherit;
+  font-weight: 600;
+}
+
+/* ---------- Botones ---------- */
+.ch-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ch-space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--ch-space-2) var(--ch-space-4);
+  font: inherit;
+  font-weight: 700;
+  border-radius: var(--ch-radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--ch-motion-base) ease,
+    border-color var(--ch-motion-fast) ease,
+    box-shadow var(--ch-motion-fast) ease;
+}
+
+.ch-btn--primary {
+  color: #ffffff;
+  /* Degradado de marca reactivo (--gx del cursor) con velo oscuro para
+     sostener el contraste del texto blanco. */
+  background:
+    linear-gradient(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.3)),
+    linear-gradient(
+      100deg,
+      #0088d5 0%,
+      #3da1a8 45%,
+      #3ce5ff 100%
+    );
+  background-size:
+    auto,
+    220% auto;
+  background-position:
+    center,
+    calc(var(--gx, 0.5) * 100%) center;
+  box-shadow: 0 8px 24px rgb(0 136 213 / 0.45);
+  transition:
+    filter var(--ch-motion-base) ease,
+    box-shadow var(--ch-motion-fast) ease,
+    background-position 0.35s ease-out;
+}
+
+.ch-btn--primary:hover {
+  filter: brightness(1.08);
+}
+
+.ch-btn--primary:active {
+  filter: brightness(0.95);
+}
+
+.ch-btn--primary:focus-visible {
+  outline: 3px solid var(--ch-color-focus);
+  outline-offset: 2px;
+}
+
+.ch-btn--primary:disabled {
+  background: var(--ch-color-disabled-bg);
+  color: var(--ch-color-disabled-text);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.ch-spinner {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 50%;
+  border: 3px solid rgb(255 255 255 / 0.4);
+  border-top-color: currentcolor;
+  animation: ch-spin 0.8s linear infinite;
+}
+
+@keyframes ch-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Utilidades ---------- */
+.ch-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ch-status {
+  min-height: 1.5em;
+  font-size: 0.8125rem;
+  color: var(--ch-color-text-soft);
+}
+
+/* ---------- Responsive + movimiento reducido ---------- */
+@media (max-width: 480px) {
+  .ch-card {
+    border-radius: var(--ch-radius-md);
+    padding: var(--ch-space-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-field__input,
+  .ch-icon-btn,
+  .ch-btn {
+    transition: none;
+  }
+
+  .ch-spinner {
+    animation: none;
+    border-top-color: rgb(255 255 255 / 0.4);
+  }
+}

@@ -1,0 +1,89 @@
+---
+// Biblioteca de glifos de herramientas (oficios ClicHogar) + capa animada.
+// Decorativos y fuera del árbol de accesibilidad (`aria-hidden`, sin
+// eventos). El motor vive en `scripts/tools-background.ts` y lee las
+// custom properties `--x/--y/--size/--depth/--dur/--op/--orb` de cada pieza.
+---
+<!-- Biblioteca de glifos de herramientas (oficios ClicHogar). El fondo las
+  reutiliza con <use>; decorativas, fuera del árbol de accesibilidad. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="t-hammer" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m15 12-8.5 8.5a2.12 2.12 0 1 1-3-3L12 9" />
+        <path d="M17.6 15 22 10.6" />
+        <path d="m20.9 11.7-1.2-1.2a2 2 0 0 1-.9-2.3v-.9l-2.3-2.2a5.5 5.5 0 0 0-3.9-1.6H9l.9.8a6.2 6.2 0 0 1 2.1 4.6V10l2 2h1.2a2.1 2.1 0 0 1 1.5.6Z" />
+      </g>
+    </symbol>
+    <symbol id="t-wrench" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-8 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 8-7.9l-3.8 3.8Z" />
+      </g>
+    </symbol>
+    <symbol id="t-ruler" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z" />
+        <path d="m14.5 12.5 2-2" />
+        <path d="m11.5 9.5 2-2" />
+        <path d="m8.5 6.5 2-2" />
+        <path d="m17.5 15.5 2-2" />
+      </g>
+    </symbol>
+    <symbol id="t-roller" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="16" height="6" x="2" y="2" rx="2" />
+        <path d="M10 16v-2a2 2 0 0 1 2-2h8a2 2 0 0 0-2-2H7a4 4 0 0 1-4-4" />
+        <rect width="4" height="6" x="8" y="16" rx="1" />
+      </g>
+    </symbol>
+    <symbol id="t-plug" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22v-5" />
+        <path d="M9 8V2" />
+        <path d="M15 8V2" />
+        <path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z" />
+      </g>
+    </symbol>
+    <symbol id="t-zap" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+      </g>
+    </symbol>
+    <symbol id="t-droplet" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" />
+      </g>
+    </symbol>
+    <symbol id="t-bulb" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+        <path d="M9 18h6" />
+        <path d="M10 22h4" />
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- Fondo animado: capa fija, sin eventos ni semántica (ver
+  scripts/tools-background.ts). -->
+<div class="ch-bg" aria-hidden="true">
+  <span class="ch-bg__orb" style="--x:2%;--y:-14%;--size:520px;--op:.55;--orb:#0088d559;"></span>
+  <span class="ch-bg__orb" style="--x:70%;--y:6%;--size:460px;--op:.5;--orb:#3da1a840;"></span>
+  <span class="ch-bg__orb" style="--x:50%;--y:70%;--size:500px;--op:.45;--orb:#3ce5ff33;"></span>
+  <span class="ch-bg__tool" style="--x:6%;--y:10%;--size:64px;--depth:22px;--dur:9s;--op:.55;"><svg><use href="#t-hammer" /></svg></span>
+  <span class="ch-bg__tool" style="--x:88%;--y:8%;--size:56px;--depth:16px;--dur:11s;--op:.5;"><svg><use href="#t-wrench" /></svg></span>
+  <span class="ch-bg__tool" style="--x:12%;--y:78%;--size:72px;--depth:24px;--dur:10s;--op:.45;"><svg><use href="#t-roller" /></svg></span>
+  <span class="ch-bg__tool" style="--x:85%;--y:82%;--size:60px;--depth:18px;--dur:12s;--op:.5;"><svg><use href="#t-plug" /></svg></span>
+  <span class="ch-bg__tool ch-bg__tool--extra" style="--x:45%;--y:5%;--size:48px;--depth:10px;--dur:8s;--op:.4;"><svg><use href="#t-ruler" /></svg></span>
+  <span class="ch-bg__tool ch-bg__tool--accent" style="--x:70%;--y:30%;--size:40px;--depth:26px;--dur:7s;--op:.6;"><svg><use href="#t-zap" /></svg></span>
+  <span class="ch-bg__tool" style="--x:25%;--y:35%;--size:44px;--depth:14px;--dur:10s;--op:.45;"><svg><use href="#t-droplet" /></svg></span>
+  <span class="ch-bg__tool" style="--x:55%;--y:70%;--size:52px;--depth:20px;--dur:11s;--op:.5;"><svg><use href="#t-bulb" /></svg></span>
+  <span class="ch-bg__tool" style="--x:30%;--y:88%;--size:44px;--depth:12px;--dur:9s;--op:.4;"><svg><use href="#t-wrench" /></svg></span>
+  <span class="ch-bg__tool ch-bg__tool--extra" style="--x:78%;--y:55%;--size:68px;--depth:24px;--dur:13s;--op:.45;"><svg><use href="#t-hammer" /></svg></span>
+  <span class="ch-bg__tool" style="--x:8%;--y:45%;--size:48px;--depth:16px;--dur:8s;--op:.5;"><svg><use href="#t-plug" /></svg></span>
+  <span class="ch-bg__tool ch-bg__tool--extra" style="--x:60%;--y:12%;--size:40px;--depth:10px;--dur:12s;--op:.4;"><svg><use href="#t-roller" /></svg></span>
+  <span class="ch-bg__tool" style="--x:90%;--y:45%;--size:52px;--depth:20px;--dur:9s;--op:.55;"><svg><use href="#t-droplet" /></svg></span>
+  <span class="ch-bg__tool" style="--x:18%;--y:60%;--size:44px;--depth:14px;--dur:11s;--op:.45;"><svg><use href="#t-bulb" /></svg></span>
+  <span class="ch-bg__tool ch-bg__tool--accent ch-bg__tool--extra" style="--x:38%;--y:22%;--size:36px;--depth:22px;--dur:8s;--op:.5;"><svg><use href="#t-zap" /></svg></span>
+  <span class="ch-bg__tool" style="--x:68%;--y:88%;--size:56px;--depth:16px;--dur:10s;--op:.4;"><svg><use href="#t-ruler" /></svg></span>
+</div>

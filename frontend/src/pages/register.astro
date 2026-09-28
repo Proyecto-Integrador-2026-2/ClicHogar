@@ -1,0 +1,57 @@
+---
+import RegisterIsla from '../components/react/auth/RegisterIsla';
+import Background from '../components/astro/Background.astro';
+import ThemeToggle from '../components/astro/ThemeToggle.astro';
+import '../styles/register-page.css';
+
+// Página de registro (US-001): pura composición. Los estilos viven en
+// `styles/register-page.css`, el fondo en `components/astro/Background`,
+// el toggle en `components/astro/ThemeToggle` (+ `scripts/`).
+// La isla se hidrata solo en el cliente: ClerkJS necesita `window` y el
+// provider de `@clerk/clerk-react` debe envolver el formulario en el mismo
+// root de React (ver RegisterIsla.tsx).
+const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
+---
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Crear cuenta · ClicHogar</title>
+    <link rel="icon" href="/favicon.ico?v=6" sizes="any" />
+    <script is:inline>
+      // Tema inicial antes del primer pintado (evita flash): guardado >
+      // sistema > claro. Debe quedarse inline en el <head>.
+      try {
+        var t = localStorage.getItem('ch-theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
+  </head>
+  <body>
+    <ThemeToggle />
+    <Background />
+
+    <main class="ch-page">
+      <div class="ch-page__head">
+        <h1>Bienvenido a Clic Hogar</h1>
+        <p>La red de servicios y microtrabajos más confiable</p>
+      </div>
+      <RegisterIsla client:only="react" publishableKey={publishableKey} />
+    </main>
+
+    <script>
+      import { initToolsBackground } from '../scripts/tools-background';
+      import { initThemeToggle } from '../scripts/theme-toggle';
+      initToolsBackground();
+      initThemeToggle();
+    </script>
+  </body>
+</html>

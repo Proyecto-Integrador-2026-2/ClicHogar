@@ -17,6 +17,11 @@ export const env = {
   NODE_ENV: process.env.NODE_ENV ?? 'development',
   PORT: Number(process.env.PORT ?? 3000),
   DATABASE_URL: requireEnv('DATABASE_URL'),
+  CLERK_SECRET_KEY: requireEnv('CLERK_SECRET_KEY'),
+  CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY ?? '',
+  // Origen permitido en producción (p. ej. https://clichogar.vercel.app).
+  // En desarrollo se acepta cualquier http://localhost:<puerto>.
+  CORS_ORIGIN: process.env.CORS_ORIGIN ?? '',
   SESSION_COOKIE_NAME: process.env.SESSION_COOKIE_NAME ?? 'clichogar_session',
   // Duración de la sesión en segundos (por defecto 7 días).
   SESSION_TTL_SECONDS: Number(

@@ -9,9 +9,10 @@ export type RolUsuario = 'cliente' | 'afiliado';
 
 export type Usuario = {
   id: string;
+  clerkId: string | null;
   nombre: string;
   email: string;
-  passwordHash: string;
+  passwordHash: string | null;
   rol: RolUsuario;
   activo: boolean;
   creadoEn: Date;
@@ -20,8 +21,9 @@ export type Usuario = {
 
 /** Campos necesarios para insertar un usuario nuevo. */
 export type NuevoUsuario = {
+  clerkId?: string | null;
   nombre: string;
   email: string;
-  passwordHash: string;
+  passwordHash?: string | null;
   rol: RolUsuario;
 };

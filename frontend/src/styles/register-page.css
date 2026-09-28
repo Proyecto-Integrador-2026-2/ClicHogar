@@ -1,0 +1,246 @@
+/**
+ * Marco de la página de registro (antes <style> en `register.astro`).
+ *
+ * Hoja GLOBAL (no usa el scoping de Astro): todas las clases llevan el
+ * prefijo `ch-` para no colisionar. El reset `*` y los estilos de `body`
+ * aplican a todo el documento (Tailwind no instalado: este es el base).
+ * Los tokens del formulario viven en `components/react/auth/RegisterForm.css`.
+ */
+
+/* Marco de página con los mismos tokens del componente (Tailwind no instalado). */
+:root {
+  color-scheme: light;
+  --gx: 0.5; /* posición del degradado de títulos (la mueve el cursor) */
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  color: #0f172a;
+  background: #eef3f8;
+}
+
+/* Fondo claro: resplandores suaves + herramientas en deriva. */
+.ch-bg {
+  --px: 0;
+  --py: 0;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(46rem 32rem at 8% -10%, rgb(0 136 213 / 0.08), transparent 60%),
+    radial-gradient(40rem 30rem at 105% 110%, rgb(61 161 168 / 0.08), transparent 60%),
+    #eef3f8;
+}
+
+/* Orbes luminosos (referencia): viajan con el mismo motor que las
+   herramientas; el blur pesado los vuelve resplandor. */
+.ch-bg__orb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--size, 460px);
+  height: var(--size, 460px);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 38% 35%,
+    var(--orb, #0088d5) 0%,
+    transparent 65%
+  );
+  filter: blur(60px);
+  opacity: var(--op, 0.75);
+  will-change: transform;
+}
+
+.ch-bg__tool {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #93a5bd;
+  opacity: var(--op, 0.5);
+  /* Sin transición: el bucle JS escribe el transform cada frame. */
+  will-change: transform;
+}
+
+.ch-bg__tool--accent {
+  color: #0088d5;
+}
+
+.ch-bg__tool svg {
+  display: block;
+  width: var(--size, 48px);
+  height: var(--size, 48px);
+  animation: ch-float var(--dur, 10s) ease-in-out infinite alternate;
+}
+
+@keyframes ch-float {
+  from {
+    transform: translateY(-10px) rotate(-5deg);
+  }
+  to {
+    transform: translateY(10px) rotate(5deg);
+  }
+}
+
+.ch-page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 32px 16px;
+}
+
+.ch-page__head {
+  max-width: 28rem;
+  text-align: center;
+}
+
+.ch-page__head h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  line-height: 1.15;
+  font-weight: 800;
+  background: linear-gradient(
+    100deg,
+    #0088d5 0%,
+    #3da1a8 38%,
+    #3ce5ff 55%,
+    #3da1a8 72%,
+    #0088d5 100%
+  );
+  background-size: 220% auto;
+  background-position: calc(var(--gx, 0.5) * 100%) center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  transition: background-position 0.35s ease-out;
+}
+
+.ch-page__head p {
+  margin: 0;
+  color: #475569;
+}
+
+.ch-page astro-island {
+  display: block;
+  width: min(100%, 28rem);
+}
+
+@media (max-width: 640px) {
+  .ch-bg__tool--extra {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-bg__tool svg {
+    animation: none;
+  }
+}
+
+/* ---------- Tema oscuro (tu diseño actual) ---------- */
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-theme='dark'] body {
+  color: #f1f5f9;
+  background: #0b1220;
+}
+
+html[data-theme='dark'] .ch-bg {
+  background:
+    radial-gradient(46rem 32rem at 8% -10%, rgb(0 136 213 / 0.22), transparent 60%),
+    radial-gradient(40rem 30rem at 105% 110%, rgb(60 229 255 / 0.12), transparent 60%),
+    radial-gradient(60rem 44rem at 50% 55%, rgb(21 32 56 / 0.6), transparent 75%),
+    #0b1220;
+}
+
+html[data-theme='dark'] .ch-bg__tool {
+  color: #d7dee8;
+}
+
+html[data-theme='dark'] .ch-bg__tool--accent {
+  color: #3ce5ff;
+}
+
+html[data-theme='dark'] .ch-page__head p {
+  color: #cbd5e1;
+}
+
+/* ---------- Botón de tema ---------- */
+.ch-theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: #0f172a;
+  background: rgb(255 255 255 / 0.7);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgb(15 23 42 / 0.1);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgb(15 40 80 / 0.12);
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.ch-theme-toggle:hover {
+  transform: scale(1.06);
+}
+
+.ch-theme-toggle:focus-visible {
+  outline: 3px solid #0088d5;
+  outline-offset: 2px;
+}
+
+.ch-theme-toggle__icon {
+  width: 22px;
+  height: 22px;
+}
+
+.ch-theme-toggle__sun {
+  display: none;
+}
+
+html[data-theme='dark'] .ch-theme-toggle {
+  color: #f1f5f9;
+  background: rgb(13 20 36 / 0.6);
+  border-color: rgb(255 255 255 / 0.16);
+}
+
+html[data-theme='dark'] .ch-theme-toggle:focus-visible {
+  outline-color: #3ce5ff;
+}
+
+html[data-theme='dark'] .ch-theme-toggle__sun {
+  display: block;
+}
+
+html[data-theme='dark'] .ch-theme-toggle__moon {
+  display: none;
+}
