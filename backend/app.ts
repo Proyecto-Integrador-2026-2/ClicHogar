@@ -16,7 +16,12 @@ export function buildApp() {
   // CORS: sin esto el navegador bloquea al frontend (origen distinto).
   // Producción = allowlist exacta; desarrollo = cualquier localhost.
   app.use(
-    cors({ origin: isProduction && env.CORS_ORIGIN ? env.CORS_ORIGIN : /http:\/\/localhost:\d+$/ })
+    cors({
+      origin:
+        isProduction && env.CORS_ORIGIN
+          ? env.CORS_ORIGIN
+          : /http:\/\/localhost:\d+$/,
+    })
   );
 
   app.get('/health', () => ({ status: 'ok' })).use(usuariosController);

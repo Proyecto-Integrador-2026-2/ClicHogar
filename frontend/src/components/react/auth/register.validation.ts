@@ -20,12 +20,7 @@ export type Valores = {
 
 /** Claves con error visible (el código de verificación vive aparte). */
 export type ClaveError =
-  | 'name'
-  | 'email'
-  | 'password'
-  | 'confirmPassword'
-  | 'role'
-  | 'terms';
+  'name' | 'email' | 'password' | 'confirmPassword' | 'role' | 'terms';
 
 /** Ids de ancla del formulario (prefijo ch- para no colisionar). */
 export const IDS = {
@@ -82,7 +77,8 @@ export function validarCampo(
       }
       return undefined;
     case 'role':
-      if (!v.role) return 'Por favor, selecciona cómo deseas usar la plataforma';
+      if (!v.role)
+        return 'Por favor, selecciona cómo deseas usar la plataforma';
       return undefined;
     case 'terms':
       if (!v.termsAccepted) {

@@ -21,12 +21,12 @@ describe('validarCampoLogin', () => {
   });
 
   test('campos vacíos son obligatorios (Esc 5)', () => {
-    expect(
-      validarCampoLogin('email', { ...VALIDOS, email: '' })
-    ).toBe('Este campo es obligatorio');
-    expect(
-      validarCampoLogin('password', { ...VALIDOS, password: '' })
-    ).toBe('Este campo es obligatorio');
+    expect(validarCampoLogin('email', { ...VALIDOS, email: '' })).toBe(
+      'Este campo es obligatorio'
+    );
+    expect(validarCampoLogin('password', { ...VALIDOS, password: '' })).toBe(
+      'Este campo es obligatorio'
+    );
   });
 
   test('email con formato inválido se rechaza (Esc 6)', () => {

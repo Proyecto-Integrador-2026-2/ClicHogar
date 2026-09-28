@@ -1,0 +1,13 @@
+# Generado por herramientas (no se formatea a mano)
+frontend/.astro/
+frontend/dist/
+backend/dist/
+backend/drizzle/
+coverage/
+*.tsbuildinfo
+
+# Skills de agente vendored (código de terceros, no del proyecto)
+.opencode/
+
+# Sin parser de Prettier
+*.properties

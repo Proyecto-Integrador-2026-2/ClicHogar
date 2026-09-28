@@ -23,9 +23,7 @@ export const registroService = {
     sesion: SesionClerk,
     input: SincronizarUsuarioInput
   ): Promise<{ usuario: UsuarioPublico; creado: boolean }> {
-    const existente = await usuariosRepository.buscarPorClerkId(
-      sesion.clerkId
-    );
+    const existente = await usuariosRepository.buscarPorClerkId(sesion.clerkId);
     if (existente) {
       return { usuario: toUsuarioPublico(existente), creado: false };
     }

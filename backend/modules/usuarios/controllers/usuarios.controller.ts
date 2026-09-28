@@ -1,5 +1,8 @@
 import { Elysia } from 'elysia';
-import { verificarSesionClerk, type SesionClerk } from '../../../shared/auth/clerk';
+import {
+  verificarSesionClerk,
+  type SesionClerk,
+} from '../../../shared/auth/clerk';
 import { NotFoundError } from '../../../shared/errors/app-error';
 import { RegistrarUsuarioDto } from '../dto/registrar-usuario.dto';
 import { SincronizarUsuarioDto } from '../dto/sincronizar-usuario.dto';

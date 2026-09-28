@@ -10,9 +10,7 @@ import {
   normalizarRolParaBackend,
   sincronizarUsuarioConBackend,
 } from '../../../lib/usuarios-api';
-import {
-  getFirstClerkError,
-} from '../../../lib/clerk-errors';
+import { getFirstClerkError } from '../../../lib/clerk-errors';
 import './auth.css';
 import {
   CheckField,
@@ -212,9 +210,7 @@ export default function RegisterForm() {
       <div className="ch-auth">
         <div className="ch-card">
           <h2 className="ch-card__title">Verifica tu correo</h2>
-          <p className="ch-card__subtitle">
-            Hemos enviado un código a {email}
-          </p>
+          <p className="ch-card__subtitle">Hemos enviado un código a {email}</p>
           {globalError && (
             <div className="ch-alert ch-alert--error" role="alert">
               {globalError}

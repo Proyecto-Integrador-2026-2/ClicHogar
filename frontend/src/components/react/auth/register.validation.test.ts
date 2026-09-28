@@ -4,10 +4,7 @@
  * mensajes exactos que ve el usuario.
  */
 import { describe, expect, test } from 'bun:test';
-import {
-  validarCampo,
-  type Valores,
-} from './register.validation';
+import { validarCampo, type Valores } from './register.validation';
 
 const VALIDOS: Valores = {
   name: 'Ana Pérez',
@@ -75,7 +72,9 @@ describe('validarCampo', () => {
   });
 
   test('confirmación vacía no bloquea (se valida al completar ambos)', () => {
-    expect(validarCampo('confirmPassword', con({ confirmPassword: '' }))).toBeUndefined();
+    expect(
+      validarCampo('confirmPassword', con({ confirmPassword: '' }))
+    ).toBeUndefined();
   });
 
   test('sin rol se rechaza (Esc 5)', () => {

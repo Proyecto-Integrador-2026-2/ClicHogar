@@ -19,13 +19,13 @@ bun run db:migrate      # aplica drizzle/*.sql
 
 ## Comandos
 
-| Comando             | Qué hace                              |
-| ------------------- | ------------------------------------- |
-| `bun run dev`       | Servidor con recarga (`index.ts`)     |
-| `bun run start`     | Servidor sin recarga                  |
-| `bun run test`      | Suite `bun test` (pura, sin BD)       |
-| `bun run typecheck` | `tsc --noEmit` (tipos estrictos)      |
-| `bun run lint`      | ESLint (reglas TS recomendadas)       |
+| Comando               | Qué hace                              |
+| --------------------- | ------------------------------------- |
+| `bun run dev`         | Servidor con recarga (`index.ts`)     |
+| `bun run start`       | Servidor sin recarga                  |
+| `bun run test`        | Suite `bun test` (pura, sin BD)       |
+| `bun run typecheck`   | `tsc --noEmit` (tipos estrictos)      |
+| `bun run lint`        | ESLint (reglas TS recomendadas)       |
 | `bun run db:generate` | Genera migración desde `db/schema.ts` |
 | `bun run db:migrate`  | Aplica migraciones pendientes         |
 | `bun run db:studio`   | Inspector visual de Drizzle           |

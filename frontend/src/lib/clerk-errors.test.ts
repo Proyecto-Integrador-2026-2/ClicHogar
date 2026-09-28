@@ -4,10 +4,7 @@
  * bloqueo temporal tenga mensaje propio (Esc 9). Puras, sin Clerk.
  */
 import { describe, expect, test } from 'bun:test';
-import {
-  clasificarErrorSignIn,
-  mensajeErrorSignIn,
-} from './clerk-errors';
+import { clasificarErrorSignIn, mensajeErrorSignIn } from './clerk-errors';
 
 function errorClerk(code: string, message = 'x') {
   return { errors: [{ code, message }] };
@@ -15,9 +12,9 @@ function errorClerk(code: string, message = 'x') {
 
 describe('clasificarErrorSignIn', () => {
   test('password incorrecta e identificador inexistente comparten clase (Esc 3-4)', () => {
-    expect(clasificarErrorSignIn(errorClerk('form_password_incorrect'))).toEqual(
-      { kind: 'credenciales' }
-    );
+    expect(
+      clasificarErrorSignIn(errorClerk('form_password_incorrect'))
+    ).toEqual({ kind: 'credenciales' });
     expect(
       clasificarErrorSignIn(errorClerk('form_identifier_not_found'))
     ).toEqual({ kind: 'credenciales' });
