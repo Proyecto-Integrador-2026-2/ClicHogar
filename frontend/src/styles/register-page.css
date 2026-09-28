@@ -115,7 +115,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 24px;
-  padding: 32px 16px;
+  /* Compensa la barra fija (60px) para no tapar el contenido. */
+  padding: 84px 16px 32px;
 }
 
 .ch-page__head {
