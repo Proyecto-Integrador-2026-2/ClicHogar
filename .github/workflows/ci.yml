@@ -18,12 +18,12 @@ jobs:
     # 3. LOS PASOS DE LA REVISIÓN
     steps:
       - name: 1. Descargar nuestro código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0 # Esto es obligatorio para que SonarCloud lea el historial
 
       - name: 2. Instalar el motor Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
 
       - name: 3. Instalar herramientas del Frontend y Backend
         # El símbolo '|' permite escribir varios comandos de terminal en distintas líneas
