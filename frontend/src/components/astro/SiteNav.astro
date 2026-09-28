@@ -1,17 +1,16 @@
 ---
-import NavAuthIsla from '../react/auth/NavAuth';
 import ThemeToggle from './ThemeToggle.astro';
 import '../../styles/nav.css';
 
 // Barra superior del sitio (US-003, #127): marca + ranura de auth
-// (enlace público o cierre de sesión según haya sesión) + tema.
+// (enlace público o cierre de sesión según haya sesión, ver
+// `scripts/nav-auth.ts`) + tema.
 // `current` indica la página auth activa para ofrecer la contraria.
 type Props = {
   current: 'login' | 'register';
-  publishableKey: string;
 };
 
-const { current, publishableKey } = Astro.props;
+const { current } = Astro.props;
 const cta =
   current === 'login'
     ? { href: '/register', label: 'Crear cuenta' }
@@ -24,12 +23,18 @@ const cta =
       <span>ClicHogar</span>
     </a>
     <div class="ch-nav__actions">
-      <NavAuthIsla
-        client:only="react"
-        publishableKey={publishableKey}
-        signedOutHref={cta.href}
-        signedOutLabel={cta.label}
-      />
+      <a class="ch-nav__link" data-nav-auth="out" href={cta.href}>
+        {cta.label}
+      </a>
+      <button
+        type="button"
+        class="ch-btn ch-btn--primary ch-btn--sm"
+        data-nav-auth="in"
+        data-logout
+        hidden
+      >
+        Cerrar sesión
+      </button>
       <ThemeToggle />
     </div>
   </div>
