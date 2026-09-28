@@ -13,7 +13,7 @@ import {
 import {
   getFirstClerkError,
 } from '../../../lib/clerk-errors';
-import './RegisterForm.css';
+import './auth.css';
 import {
   CheckField,
   ErrorSummary,
@@ -209,7 +209,7 @@ export default function RegisterForm() {
   // --- Vista de Verificación ---
   if (pendingVerification) {
     return (
-      <div className="ch-register">
+      <div className="ch-auth">
         <div className="ch-card">
           <h2 className="ch-card__title">Verifica tu correo</h2>
           <p className="ch-card__subtitle">
@@ -253,7 +253,7 @@ export default function RegisterForm() {
 
   // --- Vista del Formulario de Registro ---
   return (
-    <div className="ch-register">
+    <div className="ch-auth">
       <div className="ch-card">
         <h2 className="ch-card__title">Únete a Clic Hogar</h2>
         <p className="ch-card__subtitle">

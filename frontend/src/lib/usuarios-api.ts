@@ -63,3 +63,28 @@ export async function sincronizarUsuarioConBackend(args: {
   }
   return (await respuesta.json()) as UsuarioPublico;
 }
+
+/**
+ * Lee el perfil local del usuario autenticado (US-002, redirección por rol).
+ * Requiere el session token de Clerk; el backend resuelve el rol desde
+ * Postgres. Lanza Error con el mensaje del backend si algo falla.
+ */
+export async function obtenerPerfil(token: string): Promise<UsuarioPublico> {
+  if (!API_URL) {
+    throw new Error(
+      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
+    );
+  }
+  const respuesta = await fetch(`${API_URL}/api/usuarios/yo`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!respuesta.ok) {
+    const detalle = await respuesta.json().catch(() => null);
+    const mensaje =
+      (detalle as { message?: string } | null)?.message ??
+      `El backend respondió ${respuesta.status}.`;
+    throw new Error(mensaje);
+  }
+  return (await respuesta.json()) as UsuarioPublico;
+}

@@ -1,19 +1,19 @@
 import React from 'react';
 import ClerkRoot from './ClerkRoot';
-import RegisterForm from './RegisterForm';
+import LoginForm from './LoginForm';
 
 /**
- * Isla de registro (US-001): provider Clerk + formulario.
+ * Isla de inicio de sesión (US-002): provider Clerk + formulario.
  * Usar con `client:only="react"` para evitar el render en servidor.
  */
-export default function RegisterIsla({
+export default function LoginIsla({
   publishableKey,
 }: {
   publishableKey: string;
 }) {
   return (
     <ClerkRoot publishableKey={publishableKey}>
-      <RegisterForm />
+      <LoginForm />
     </ClerkRoot>
   );
 }

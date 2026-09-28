@@ -1,11 +1,12 @@
 /**
- * Design tokens "Pro Max" del formulario de registro (US-001).
- * Alcance `.ch-register`: ninguna variable fuga al resto de la app.
+ * Design tokens "Pro Max" de autenticación (US-001 registro, US-002 login).
+ * Hoja compartida por ambos formularios: todas las clases usan el prefijo
+ * `ch-`. Alcance global controlado (sin Tailwind en el proyecto).
  * Ritmo de espaciado 4/8. Tema CLARO por defecto; el bloque
- * `html[data-theme='dark']` lo lleva al tema oscuro (actual). Degradado de
+ * `html[data-theme='dark']` lo lleva al tema oscuro. Degradado de
  * marca #0088d5/#3da1a8/#3ce5ff idéntico en ambos temas.
  */
-.ch-register {
+.ch-auth {
   --ch-space-1: 4px;
   --ch-space-2: 8px;
   --ch-space-3: 12px;
@@ -64,7 +65,7 @@
 
 /* Tema oscuro: mismos componentes, tokens invertidos. El degradado de
    marca NO cambia (petición explícita: idéntico en ambos temas). */
-html[data-theme='dark'] .ch-register {
+html[data-theme='dark'] .ch-auth {
   --ch-color-bg: #0d1526;
   --ch-color-surface: rgb(255 255 255 / 0.08);
   --ch-color-text: #f1f5f9;
@@ -103,9 +104,9 @@ html[data-theme='dark'] .ch-register {
  * interior de la isla hidratada. Sin esto los inputs (content-box por
  * defecto) suman padding + borde al 100% y se salen de la tarjeta.
  */
-.ch-register *,
-.ch-register *::before,
-.ch-register *::after {
+.ch-auth *,
+.ch-auth *::before,
+.ch-auth *::after {
   box-sizing: border-box;
 }
 
