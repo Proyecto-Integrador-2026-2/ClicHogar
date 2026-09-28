@@ -179,7 +179,18 @@ export default function RegisterForm() {
         } finally {
           setIsSyncing(false);
         }
+        return;
       }
+
+      // El código era correcto pero Clerk exige más datos para completar el
+      // registro (p. ej. `phone_number` requerido en el dashboard). Antes
+      // esto quedaba en silencio: ahora se informa qué falta.
+      const faltantes = (completeSignUp.missingFields ?? []).join(', ');
+      setGlobalError(
+        faltantes
+          ? `Tu correo se verificó, pero falta completar el registro: ${faltantes}.`
+          : 'Tu correo se verificó, pero el registro quedó incompleto. Inténtalo de nuevo.'
+      );
     } catch (err: unknown) {
       if (err instanceof Error && !('errors' in err)) {
         setGlobalError(
