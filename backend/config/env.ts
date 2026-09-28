@@ -17,6 +17,8 @@ export const env = {
   NODE_ENV: process.env.NODE_ENV ?? 'development',
   PORT: Number(process.env.PORT ?? 3000),
   DATABASE_URL: requireEnv('DATABASE_URL'),
+  CLERK_SECRET_KEY: requireEnv('CLERK_SECRET_KEY'),
+  CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY ?? '',
   SESSION_COOKIE_NAME: process.env.SESSION_COOKIE_NAME ?? 'clichogar_session',
   // Duración de la sesión en segundos (por defecto 7 días).
   SESSION_TTL_SECONDS: Number(

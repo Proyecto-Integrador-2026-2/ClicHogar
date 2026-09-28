@@ -15,9 +15,10 @@ import type {
 // Fila cruda tal como la devuelve Postgres (snake_case).
 type UsuarioRow = {
   id: string;
+  clerk_id: string | null;
   nombre: string;
   email: string;
-  password_hash: string;
+  password_hash: string | null;
   rol: RolUsuario;
   activo: boolean;
   creado_en: Date;
@@ -27,6 +28,7 @@ type UsuarioRow = {
 function aUsuario(fila: UsuarioRow): Usuario {
   return {
     id: fila.id,
+    clerkId: fila.clerk_id,
     nombre: fila.nombre,
     email: fila.email,
     passwordHash: fila.password_hash,
@@ -40,7 +42,7 @@ function aUsuario(fila: UsuarioRow): Usuario {
 export const usuariosRepository = {
   async buscarPorEmail(email: string): Promise<Usuario | undefined> {
     const filas = await sql<UsuarioRow[]>`
-      SELECT id, nombre, email, password_hash, rol, activo, creado_en, actualizado_en
+      SELECT id, clerk_id, nombre, email, password_hash, rol, activo, creado_en, actualizado_en
       FROM usuarios
       WHERE email = ${email}
       LIMIT 1
@@ -48,9 +50,19 @@ export const usuariosRepository = {
     return filas[0] ? aUsuario(filas[0]) : undefined;
   },
 
+  async buscarPorClerkId(clerkId: string): Promise<Usuario | undefined> {
+    const filas = await sql<UsuarioRow[]>`
+      SELECT id, clerk_id, nombre, email, password_hash, rol, activo, creado_en, actualizado_en
+      FROM usuarios
+      WHERE clerk_id = ${clerkId}
+      LIMIT 1
+    `;
+    return filas[0] ? aUsuario(filas[0]) : undefined;
+  },
+
   async buscarPorId(id: string): Promise<Usuario | undefined> {
     const filas = await sql<UsuarioRow[]>`
-      SELECT id, nombre, email, password_hash, rol, activo, creado_en, actualizado_en
+      SELECT id, clerk_id, nombre, email, password_hash, rol, activo, creado_en, actualizado_en
       FROM usuarios
       WHERE id = ${id}
       LIMIT 1
@@ -60,9 +72,9 @@ export const usuariosRepository = {
 
   async crear(datos: NuevoUsuario): Promise<Usuario> {
     const filas = await sql<UsuarioRow[]>`
-      INSERT INTO usuarios (nombre, email, password_hash, rol)
-      VALUES (${datos.nombre}, ${datos.email}, ${datos.passwordHash}, ${datos.rol})
-      RETURNING id, nombre, email, password_hash, rol, activo, creado_en, actualizado_en
+      INSERT INTO usuarios (clerk_id, nombre, email, password_hash, rol)
+      VALUES (${datos.clerkId ?? null}, ${datos.nombre}, ${datos.email}, ${datos.passwordHash ?? null}, ${datos.rol})
+      RETURNING id, clerk_id, nombre, email, password_hash, rol, activo, creado_en, actualizado_en
     `;
     const usuario = filas[0];
     if (!usuario) {

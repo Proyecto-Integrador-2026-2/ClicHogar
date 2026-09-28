@@ -4,6 +4,9 @@
   "exclude": ["dist"],
   "compilerOptions": {
     "jsx": "react-jsx",
-    "jsxImportSource": "react"
+    "jsxImportSource": "react",
+    // Incluye los tipos del runner `bun test` (`bun:test`); el resto de
+    // @types se resuelve por importación o triple-slash (p. ej. astro/client).
+    "types": ["bun"]
   }
 }
