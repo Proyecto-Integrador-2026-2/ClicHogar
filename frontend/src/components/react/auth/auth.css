@@ -31,6 +31,9 @@
   --ch-color-error: #b91c1c;
   --ch-color-error-bg: rgb(185 28 28 / 0.08);
   --ch-color-error-border: rgb(185 28 28 / 0.25);
+  --ch-color-exito: #15803d;
+  --ch-color-exito-bg: rgb(21 128 61 / 0.08);
+  --ch-color-exito-border: rgb(21 128 61 / 0.3);
   --ch-color-focus: #0088d5;
   --ch-color-disabled-bg: #e2e8f0;
   --ch-color-disabled-text: #94a3b8;
@@ -80,6 +83,9 @@ html[data-theme='dark'] .ch-auth {
   --ch-color-error: #fca5a5;
   --ch-color-error-bg: rgb(248 113 113 / 0.14);
   --ch-color-error-border: rgb(248 113 113 / 0.35);
+  --ch-color-exito: #86efac;
+  --ch-color-exito-bg: rgb(134 239 172 / 0.1);
+  --ch-color-exito-border: rgb(134 239 172 / 0.35);
   --ch-color-focus: #3ce5ff;
   --ch-color-disabled-bg: rgb(255 255 255 / 0.06);
   --ch-color-disabled-text: #64748b;
@@ -271,6 +277,47 @@ html[data-theme='dark'] .ch-auth {
   cursor: not-allowed;
 }
 
+/* Textarea del perfil: misma base, alto propio y redimensión vertical. */
+textarea.ch-field__input {
+  min-height: 96px;
+  resize: vertical;
+}
+
+/* Input de archivo nativo (accesible) con botón al tono de marca. */
+.ch-field__input[type='file'] {
+  cursor: pointer;
+}
+
+.ch-field__input[type='file']::file-selector-button {
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ch-color-text);
+  background: var(--ch-color-surface);
+  border: none;
+  border-radius: var(--ch-radius-sm);
+  padding: var(--ch-space-2) var(--ch-space-3);
+  margin-right: var(--ch-space-3);
+  cursor: pointer;
+}
+
+/* Vista previa circular de la foto (96px, recorte centrado). */
+.ch-foto-preview {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Contador de caracteres: texto tenue, nunca la única validación. */
+.ch-contador {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ch-color-text-soft);
+  text-align: right;
+}
+
 .ch-field__error {
   margin: 0;
   font-size: 0.8125rem;
@@ -393,6 +440,12 @@ html[data-theme='dark'] .ch-auth {
   color: var(--ch-color-error);
   background: var(--ch-color-error-bg);
   border: 1px solid var(--ch-color-error-border);
+}
+
+.ch-alert--exito {
+  color: var(--ch-color-exito);
+  background: var(--ch-color-exito-bg);
+  border: 1px solid var(--ch-color-exito-border);
 }
 
 .ch-alert__title {

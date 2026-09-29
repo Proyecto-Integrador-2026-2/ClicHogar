@@ -4,8 +4,10 @@ import {
   type SesionClerk,
 } from '../../../shared/auth/clerk';
 import { NotFoundError } from '../../../shared/errors/app-error';
+import { ActualizarPerfilDto } from '../dto/actualizar-perfil.dto';
 import { RegistrarUsuarioDto } from '../dto/registrar-usuario.dto';
 import { SincronizarUsuarioDto } from '../dto/sincronizar-usuario.dto';
+import { perfilService } from '../services/perfil.service';
 import { registroService } from '../services/registro.service';
 import { usuariosRepository } from '../repositories/usuarios.repository';
 import { toUsuarioPublico } from '../mappers/usuario.mapper';
@@ -26,6 +28,8 @@ async function sesionDesdeHeaders(
  *   session token de Clerk (flujo principal US-001). La identidad se extrae
  *   del token verificado, nunca del body.
  * - GET /api/usuarios/yo: devuelve el perfil local del usuario autenticado.
+ * - PATCH /api/usuarios/yo: actualización parcial del perfil (US-004:
+ *   foto, descripción, ubicación; solo los campos enviados).
  * - POST /api/usuarios/: flujo legacy con password (pre-Clerk). Se mantiene
  *   por compatibilidad pero está deprecado: los clientes nuevos deben usar
  *   Clerk + /sync.
@@ -56,6 +60,25 @@ export const usuariosController = new Elysia({ prefix: '/api/usuarios' })
     }
     return toUsuarioPublico(usuario);
   })
+  .patch(
+    '/yo',
+    async ({ body, headers }) => {
+      const sesionClerk = await sesionDesdeHeaders(headers);
+      return perfilService.actualizarPerfil({
+        clerkId: sesionClerk.clerkId,
+        descripcion: body.descripcion,
+        ubicacion: body.ubicacion,
+        foto: body.foto
+          ? {
+              datos: new Uint8Array(await body.foto.arrayBuffer()),
+              mimeDeclarado: body.foto.type,
+              tamano: body.foto.size,
+            }
+          : undefined,
+      });
+    },
+    { body: ActualizarPerfilDto }
+  )
   .post(
     '/',
     async ({ body, set }) => {

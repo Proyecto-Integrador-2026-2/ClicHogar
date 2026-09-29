@@ -21,11 +21,14 @@ export const rolUsuarioEnum = pgEnum('rol_usuario', ['cliente', 'afiliado']);
 
 export const usuarios = pgTable('usuarios', {
   id: uuid('id').primaryKey().defaultRandom(),
-  clerkId: varchar('clerk_id', { length: 64 }).notNull().unique(),
+  clerkId: varchar('clerk_id', { length: 64 }).unique(),
   nombre: varchar('nombre', { length: 120 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   passwordHash: varchar('password_hash', { length: 255 }),
   rol: rolUsuarioEnum('rol').notNull().default('cliente'),
+  fotoUrl: varchar('foto_url', { length: 500 }),
+  descripcion: varchar('descripcion', { length: 500 }),
+  ubicacion: varchar('ubicacion', { length: 120 }),
   activo: boolean('activo').notNull().default(true),
   creadoEn: timestamp('creado_en', { withTimezone: true })
     .notNull()

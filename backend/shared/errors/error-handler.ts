@@ -23,6 +23,17 @@ export function registerErrorHandler(app: Elysia) {
       };
     }
 
+    // Elysia rechaza archivos con tipo/extensión inválidos (p. ej. un
+    // script renombrado a .jpg) con estos códigos: también son 400,
+    // nunca 500. El mensaje sigue genérico para no filtrar detalles.
+    if (code === 'INVALID_FILE_TYPE' || code === 'PARSE') {
+      set.status = 400;
+      return {
+        error: 'ValidationError',
+        message: 'Los datos enviados no son válidos.',
+      };
+    }
+
     if (code === 'NOT_FOUND') {
       set.status = 404;
       return { error: 'NotFoundError', message: 'Recurso no encontrado.' };

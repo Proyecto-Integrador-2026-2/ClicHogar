@@ -9,6 +9,9 @@ export type UsuarioPublico = {
   nombre: string;
   email: string;
   rol: Usuario['rol'];
+  fotoUrl: string | null;
+  descripcion: string | null;
+  ubicacion: string | null;
   creadoEn: Date;
 };
 
@@ -18,6 +21,9 @@ export function toUsuarioPublico(usuario: Usuario): UsuarioPublico {
     nombre: usuario.nombre,
     email: usuario.email,
     rol: usuario.rol,
+    fotoUrl: usuario.fotoUrl,
+    descripcion: usuario.descripcion,
+    ubicacion: usuario.ubicacion,
     creadoEn: usuario.creadoEn,
   };
 }
