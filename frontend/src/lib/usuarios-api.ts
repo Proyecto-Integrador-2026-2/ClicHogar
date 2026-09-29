@@ -134,3 +134,72 @@ export function urlPublica(rutaRelativa: string): string {
   if (!API_URL) return rutaRelativa;
   return `${API_URL}${rutaRelativa}`;
 }
+
+export type SlotApi = {
+  diaSemana: number;
+  franjaHoraria: string;
+};
+
+/**
+ * Lee la matriz de disponibilidad (US-005, prefill y vista).
+ * Lanza Error con el mensaje del backend si algo falla.
+ */
+export async function obtenerDisponibilidad(token: string): Promise<SlotApi[]> {
+  if (!API_URL) {
+    throw new Error(
+      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
+    );
+  }
+  const respuesta = await fetch(`${API_URL}/api/usuarios/disponibilidad`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }).catch(() => {
+    throw new Error(
+      'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.'
+    );
+  });
+
+  if (!respuesta.ok) {
+    const detalle = await respuesta.json().catch(() => null);
+    const mensaje =
+      (detalle as { message?: string } | null)?.message ??
+      `El backend respondió ${respuesta.status}.`;
+    throw new Error(mensaje);
+  }
+  return (await respuesta.json()) as SlotApi[];
+}
+
+/**
+ * Reemplaza la matriz completa (US-005, Esc 2-3): el arreglo viaja tal
+ * cual, incluso vacío para limpiar todo.
+ */
+export async function guardarDisponibilidad(args: {
+  token: string;
+  slots: Array<{ dia: number; franja: string }>;
+}): Promise<SlotApi[]> {
+  if (!API_URL) {
+    throw new Error(
+      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
+    );
+  }
+  const respuesta = await fetch(`${API_URL}/api/usuarios/disponibilidad`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${args.token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ slots: args.slots }),
+  }).catch(() => {
+    throw new Error(
+      'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.'
+    );
+  });
+
+  if (!respuesta.ok) {
+    const detalle = await respuesta.json().catch(() => null);
+    const mensaje =
+      (detalle as { message?: string } | null)?.message ??
+      `El backend respondió ${respuesta.status}.`;
+    throw new Error(mensaje);
+  }
+  return (await respuesta.json()) as SlotApi[];
+}

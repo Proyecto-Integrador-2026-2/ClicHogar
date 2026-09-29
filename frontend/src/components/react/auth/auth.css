@@ -318,6 +318,77 @@ textarea.ch-field__input {
   text-align: right;
 }
 
+/* ---------- Matriz de disponibilidad (US-005) ---------- */
+.ch-matriz {
+  display: grid;
+  gap: var(--ch-space-2);
+}
+
+.ch-matriz__fila {
+  display: grid;
+  grid-template-columns: 52px repeat(3, 1fr);
+  gap: var(--ch-space-2);
+  align-items: center;
+}
+
+.ch-matriz__cabecera,
+.ch-matriz__dia {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ch-color-text-soft);
+}
+
+.ch-matriz__cabecera span:not(:first-child) {
+  text-align: center;
+}
+
+/* Toggle de franja: 44px, estado por fondo + aria-pressed (nunca por
+   color solo: el icono y el texto accesible lo acompañan). */
+.ch-slot {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ch-space-2);
+  font: inherit;
+  color: var(--ch-color-text-soft);
+  background: var(--ch-field-bg);
+  border: 1px solid transparent;
+  border-radius: var(--ch-radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--ch-motion-fast) ease,
+    color var(--ch-motion-fast) ease,
+    box-shadow var(--ch-motion-fast) ease;
+}
+
+.ch-slot:hover {
+  background: var(--ch-field-bg-hover);
+}
+
+.ch-slot:focus-visible {
+  outline: 3px solid var(--ch-color-focus);
+  outline-offset: 1px;
+}
+
+.ch-slot--activo {
+  color: #ffffff;
+  background:
+    linear-gradient(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.3)),
+    linear-gradient(100deg, #0088df 0%, #34a2a9 50%, #00e8ff 100%);
+  box-shadow: 0 4px 14px rgb(0 136 213 / 0.35);
+}
+
+.ch-slot svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ch-slot:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .ch-field__error {
   margin: 0;
   font-size: 0.8125rem;

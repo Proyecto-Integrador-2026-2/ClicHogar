@@ -5,8 +5,10 @@ import {
 } from '../../../shared/auth/clerk';
 import { NotFoundError } from '../../../shared/errors/app-error';
 import { ActualizarPerfilDto } from '../dto/actualizar-perfil.dto';
+import { DisponibilidadDto } from '../dto/disponibilidad.dto';
 import { RegistrarUsuarioDto } from '../dto/registrar-usuario.dto';
 import { SincronizarUsuarioDto } from '../dto/sincronizar-usuario.dto';
+import { disponibilidadService } from '../services/disponibilidad.service';
 import { perfilService } from '../services/perfil.service';
 import { registroService } from '../services/registro.service';
 import { usuariosRepository } from '../repositories/usuarios.repository';
@@ -30,6 +32,10 @@ async function sesionDesdeHeaders(
  * - GET /api/usuarios/yo: devuelve el perfil local del usuario autenticado.
  * - PATCH /api/usuarios/yo: actualización parcial del perfil (US-004:
  *   foto, descripción, ubicación; solo los campos enviados).
+ * - PUT /api/usuarios/disponibilidad: reemplazo total de la matriz
+ *   semanal del afiliado (US-005; arreglo vacío = limpiar). Solo rol
+ *   afiliado (403 en otro caso).
+ * - GET /api/usuarios/disponibilidad: matriz actual (prefill y vista).
  * - POST /api/usuarios/: flujo legacy con password (pre-Clerk). Se mantiene
  *   por compatibilidad pero está deprecado: los clientes nuevos deben usar
  *   Clerk + /sync.
@@ -79,6 +85,18 @@ export const usuariosController = new Elysia({ prefix: '/api/usuarios' })
     },
     { body: ActualizarPerfilDto }
   )
+  .put(
+    '/disponibilidad',
+    async ({ body, headers }) => {
+      const sesionClerk = await sesionDesdeHeaders(headers);
+      return disponibilidadService.guardar(sesionClerk.clerkId, body.slots);
+    },
+    { body: DisponibilidadDto }
+  )
+  .get('/disponibilidad', async ({ headers }) => {
+    const sesionClerk = await sesionDesdeHeaders(headers);
+    return disponibilidadService.obtener(sesionClerk.clerkId);
+  })
   .post(
     '/',
     async ({ body, set }) => {

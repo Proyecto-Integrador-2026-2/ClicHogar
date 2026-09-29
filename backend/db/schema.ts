@@ -5,3 +5,4 @@
  */
 
 export * from './schema/usuarios.schema';
+export * from './schema/disponibilidad.schema';
