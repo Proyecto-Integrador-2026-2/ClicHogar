@@ -2,12 +2,11 @@
 import ThemeToggle from './ThemeToggle.astro';
 import '../../styles/nav.css';
 
-// Barra superior del sitio (US-003, #127): marca + ranura de auth
-// (enlace público o cierre de sesión según haya sesión, ver
-// `scripts/nav-auth.ts`) + tema.
-// `current` indica la página auth activa para ofrecer la contraria.
+// Barra superior del sitio (US-003, #127): marca + acción contextual +
+// tema. En páginas auth se ofrece la contraria; en `perfil` solo el
+// botón de cierre (visible con sesión, ver `scripts/nav-auth.ts`).
 type Props = {
-  current: 'login' | 'register';
+  current: 'login' | 'register' | 'perfil';
 };
 
 const { current } = Astro.props;
@@ -23,18 +22,21 @@ const cta =
       <span>ClicHogar</span>
     </a>
     <div class="ch-nav__actions">
-      <a class="ch-nav__link" data-nav-auth="out" href={cta.href}>
-        {cta.label}
-      </a>
-      <button
-        type="button"
-        class="ch-btn ch-btn--primary ch-btn--sm"
-        data-nav-auth="in"
-        data-logout
-        hidden
-      >
-        Cerrar sesión
-      </button>
+      {current === 'perfil' ? (
+        <button
+          type="button"
+          class="ch-nav__logout"
+          data-nav-auth="in"
+          data-logout
+          hidden
+        >
+          Cerrar sesión
+        </button>
+      ) : (
+        <a class="ch-nav__link" href={cta.href}>
+          {cta.label}
+        </a>
+      )}
       <ThemeToggle />
     </div>
   </div>

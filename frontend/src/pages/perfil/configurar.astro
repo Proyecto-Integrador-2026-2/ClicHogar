@@ -35,10 +35,10 @@ const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
   </head>
   <body>
     {/*
-      current="register": si la sesión expiró, la ranura ofrece
-      "Iniciar sesión", que es lo correcto en esta página privada.
+      current="perfil": la ranura solo trae el botón de cierre (visible
+      con sesión). Si la sesión expiró, el middleware ya redirigió a /login.
     */}
-    <SiteNav current="register" />
+    <SiteNav current="perfil" />
     <Background />
 
     <main class="ch-page">
