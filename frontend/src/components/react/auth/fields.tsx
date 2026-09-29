@@ -296,12 +296,7 @@ export function FileField(
         onBlur={props.onBlur}
         disabled={props.disabled}
         aria-invalid={props.error ? true : undefined}
-        aria-describedby={describedBy(
-          hintId,
-          errorId,
-          props.error,
-          props.hint
-        )}
+        aria-describedby={describedBy(hintId, errorId, props.error, props.hint)}
       />
       {props.error && (
         <p className="ch-field__error" id={errorId}>

@@ -15,12 +15,7 @@ import {
   type UsuarioPublico,
 } from '../../../lib/usuarios-api';
 import './auth.css';
-import {
-  ErrorSummary,
-  FileField,
-  TextField,
-  type FieldError,
-} from './fields';
+import { ErrorSummary, FileField, TextField, type FieldError } from './fields';
 import {
   CAMPOS_PERFIL,
   ETIQUETAS_PERFIL,
@@ -251,10 +246,7 @@ export default function PerfilForm() {
         )}
 
         {exito && (
-          <div
-            className="ch-alert ch-alert--exito"
-            role="status"
-          >
+          <div className="ch-alert ch-alert--exito" role="status">
             {exito}
           </div>
         )}
@@ -343,9 +335,7 @@ export default function PerfilForm() {
                 {guardando ? 'Guardando...' : 'Guardar perfil'}
               </button>
               <p className="ch-status" role="status">
-                {sucio && !guardando
-                  ? 'Tienes cambios sin guardar.'
-                  : ''}
+                {sucio && !guardando ? 'Tienes cambios sin guardar.' : ''}
               </p>
             </div>
           </fieldset>

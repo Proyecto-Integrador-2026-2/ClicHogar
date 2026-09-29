@@ -3,10 +3,7 @@
  * Puras y sin BD ni red: número mágico, límites y patch parcial.
  */
 import { describe, expect, test } from 'bun:test';
-import {
-  MAX_FOTO_BYTES,
-  detectarMimeFoto,
-} from './almacenamiento';
+import { MAX_FOTO_BYTES, detectarMimeFoto } from './almacenamiento';
 import { normalizarPatch } from '../services/perfil.service';
 
 describe('detectarMimeFoto', () => {

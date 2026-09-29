@@ -91,9 +91,7 @@ async function guardarFoto(
   }
   const mimeReal = detectarMimeFoto(foto.datos);
   if (!mimeReal) {
-    throw new ValidationError(
-      'El archivo no es una imagen JPG o PNG válida.'
-    );
+    throw new ValidationError('El archivo no es una imagen JPG o PNG válida.');
   }
   const guardada = await almacenamiento.guardar(foto.datos, mimeReal);
   return guardada.url;

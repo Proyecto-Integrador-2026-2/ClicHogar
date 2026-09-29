@@ -11,11 +11,7 @@ import {
   type ValoresPerfil,
 } from './perfil.validation';
 
-function archivo(
-  nombre: string,
-  tipo: string,
-  tamano: number
-): File {
+function archivo(nombre: string, tipo: string, tamano: number): File {
   const datos = new Uint8Array(Math.min(tamano, 1024));
   return new File([datos], nombre, { type: tipo });
 }
@@ -31,9 +27,7 @@ describe('validarFoto', () => {
     expect(
       validarFoto(archivo('foto.jpg', 'image/jpeg', 1024))
     ).toBeUndefined();
-    expect(
-      validarFoto(archivo('foto.png', 'image/png', 1024))
-    ).toBeUndefined();
+    expect(validarFoto(archivo('foto.png', 'image/png', 1024))).toBeUndefined();
   });
 
   test('rechaza otros formatos (Esc 3)', () => {
@@ -57,10 +51,10 @@ describe('validarFoto', () => {
 describe('validarCampoPerfil', () => {
   test('textos siempre pasan (opcionales; el servidor acota)', () => {
     expect(
-      validarCampoPerfil(
-        'descripcion',
-        { ...VACIO, descripcion: 'x'.repeat(MAX_DESCRIPCION + 100) }
-      )
+      validarCampoPerfil('descripcion', {
+        ...VACIO,
+        descripcion: 'x'.repeat(MAX_DESCRIPCION + 100),
+      })
     ).toBeUndefined();
     expect(
       validarCampoPerfil('ubicacion', { ...VACIO, ubicacion: 'Medellín' })
