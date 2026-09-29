@@ -4,7 +4,7 @@
  * `ch-`. Alcance global controlado (sin Tailwind en el proyecto).
  * Ritmo de espaciado 4/8. Tema CLARO por defecto; el bloque
  * `html[data-theme='dark']` lo lleva al tema oscuro. Degradado de
- * marca #0088d5/#3da1a8/#3ce5ff idéntico en ambos temas.
+ * marca #0088df/#34a2a9/#00e8ff idéntico en ambos temas.
  */
 .ch-auth {
   --ch-space-1: 4px;
@@ -152,11 +152,11 @@ html[data-theme='dark'] .ch-auth {
      (ver script en register.astro); por defecto centrado. */
   background: linear-gradient(
     100deg,
-    #0088d5 0%,
-    #3da1a8 38%,
-    #3ce5ff 55%,
-    #3da1a8 72%,
-    #0088d5 100%
+    #0088df 0%,
+    #34a2a9 38%,
+    #00e8ff 55%,
+    #34a2a9 72%,
+    #0088df 100%
   );
   background-size: 220% auto;
   background-position: calc(var(--gx, 0.5) * 100%) center;
@@ -201,11 +201,11 @@ html[data-theme='dark'] .ch-auth {
      el cursor). Sobre cristal oscuro el contraste sobra (≥ 7:1). */
   background: linear-gradient(
     100deg,
-    #0088d5 0%,
-    #3da1a8 38%,
-    #3ce5ff 55%,
-    #3da1a8 72%,
-    #0088d5 100%
+    #0088df 0%,
+    #34a2a9 38%,
+    #00e8ff 55%,
+    #34a2a9 72%,
+    #0088df 100%
   );
   background-size: 220% auto;
   background-position: calc(var(--gx, 0.5) * 100%) center;
@@ -492,7 +492,7 @@ textarea.ch-field__input {
      sostener el contraste del texto blanco. */
   background:
     linear-gradient(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.3)),
-    linear-gradient(100deg, #0088d5 0%, #3da1a8 45%, #3ce5ff 100%);
+    linear-gradient(100deg, #0088df 0%, #34a2a9 45%, #00e8ff 100%);
   background-size:
     auto,
     220% auto;
