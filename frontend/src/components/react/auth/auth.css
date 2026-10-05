@@ -310,6 +310,76 @@ textarea.ch-field__input {
   display: block;
 }
 
+/* ---------- Tablero de tareas (US-008) ---------- */
+.ch-tareas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--ch-space-3);
+}
+
+.ch-tarea {
+  background: var(--ch-field-bg);
+  border: 1px solid transparent;
+  border-radius: var(--ch-radius-md);
+  padding: var(--ch-space-3) var(--ch-space-4);
+  display: grid;
+  gap: var(--ch-space-2);
+}
+
+.ch-tarea__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ch-space-2);
+}
+
+.ch-tarea__titulo {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.ch-chip {
+  flex: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ch-color-text);
+  background: var(--ch-color-surface);
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.ch-tarea__meta {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ch-color-text-soft);
+}
+
+.ch-tarea__descripcion {
+  margin: 0;
+  font-size: 0.875rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ch-badge {
+  justify-self: start;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #ffffff;
+  background:
+    linear-gradient(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.3)),
+    linear-gradient(100deg, #0088df 0%, #34a2a9 50%, #00e8ff 100%);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+
 /* Contador de caracteres: texto tenue, nunca la única validación. */
 .ch-contador {
   margin: 0;

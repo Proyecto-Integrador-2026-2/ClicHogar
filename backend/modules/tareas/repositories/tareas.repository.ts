@@ -51,4 +51,26 @@ export const tareasRepository = {
     }
     return aTarea(tarea);
   },
+
+  /**
+   * Tablero de afiliados (US-008): solicitudes abiertas con el nombre
+   * del autor, recientes primero, tope 50. Solo `abierta`: los demás
+   * estados los gobernarán US futuras.
+   */
+  async listarAbiertas(): Promise<
+    Array<{ tarea: Tarea; autorNombre: string }>
+  > {
+    const filas = await sql<(TareaRow & { autor_nombre: string })[]>`
+      SELECT t.id, t.usuario_id, t.titulo, t.descripcion, t.categoria, t.estado, t.ubicacion, t.latitud, t.longitud, t.creado_en, t.actualizado_en, u.nombre AS autor_nombre
+      FROM tareas t
+      JOIN usuarios u ON u.id = t.usuario_id
+      WHERE t.estado = 'abierta'
+      ORDER BY t.creado_en DESC
+      LIMIT 50
+    `;
+    return filas.map((fila) => ({
+      tarea: aTarea(fila),
+      autorNombre: fila.autor_nombre,
+    }));
+  },
 };

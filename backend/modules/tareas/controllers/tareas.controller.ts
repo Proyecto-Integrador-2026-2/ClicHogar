@@ -9,13 +9,18 @@ import { tareasService } from '../services/tareas.service';
  *   la sesión). Requiere Bearer válido: sin token o expirado responde
  *   401 para el Escenario 7 del frontend (#119).
  */
-export const tareasController = new Elysia({ prefix: '/api/tareas' }).post(
-  '/',
-  async ({ body, headers, set }) => {
-    const sesion = await sesionDesdeHeaders(headers);
-    const tarea = await tareasService.crearTarea(sesion.clerkId, body);
-    set.status = 201;
-    return tarea;
-  },
-  { body: CrearTareaDto }
-);
+export const tareasController = new Elysia({ prefix: '/api/tareas' })
+  .post(
+    '/',
+    async ({ body, headers, set }) => {
+      const sesion = await sesionDesdeHeaders(headers);
+      const tarea = await tareasService.crearTarea(sesion.clerkId, body);
+      set.status = 201;
+      return tarea;
+    },
+    { body: CrearTareaDto }
+  )
+  .get('/', async ({ headers }) => {
+    await sesionDesdeHeaders(headers);
+    return tareasService.listarAbiertas();
+  });
