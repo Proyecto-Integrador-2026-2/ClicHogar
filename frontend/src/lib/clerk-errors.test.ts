@@ -4,7 +4,11 @@
  * bloqueo temporal tenga mensaje propio (Esc 9). Puras, sin Clerk.
  */
 import { describe, expect, test } from 'bun:test';
-import { clasificarErrorSignIn, mensajeErrorSignIn } from './clerk-errors';
+import {
+  clasificarErrorSignIn,
+  getFirstClerkError,
+  mensajeErrorSignIn,
+} from './clerk-errors';
 
 function errorClerk(code: string, message = 'x') {
   return { errors: [{ code, message }] };
@@ -44,6 +48,19 @@ describe('clasificarErrorSignIn', () => {
       kind: 'otro',
       message: 'Ocurrió un error al iniciar sesión.',
     });
+  });
+});
+
+describe('getFirstClerkError', () => {
+  test('primer error no-objeto se descarta', () => {
+    expect(getFirstClerkError({ errors: [null] })).toBeUndefined();
+    expect(getFirstClerkError({ errors: ['texto'] })).toBeUndefined();
+  });
+
+  test('extrae código y mensaje del primer error', () => {
+    expect(
+      getFirstClerkError(errorClerk('form_password_incorrect', 'Mal'))
+    ).toEqual({ code: 'form_password_incorrect', message: 'Mal' });
   });
 });
 

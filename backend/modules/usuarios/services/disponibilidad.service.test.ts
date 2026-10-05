@@ -60,6 +60,15 @@ describe('normalizarSlots', () => {
     expect(() => normalizarSlots('manana')).toThrow(ValidationError);
     expect(() => normalizarSlots(null)).toThrow(ValidationError);
   });
+
+  test('rechaza items sin forma de horario', () => {
+    expect(() => normalizarSlots([null])).toThrow(
+      'Cada horario debe tener día y franja.'
+    );
+    expect(() => normalizarSlots(['tarde'])).toThrow(
+      'Cada horario debe tener día y franja.'
+    );
+  });
 });
 
 describe('verificarRolAfiliado', () => {
