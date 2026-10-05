@@ -1,0 +1,103 @@
+/**
+ * Barra de navegación del sitio (US-003, #127). Fija arriba, cristal
+ * coherente con las tarjetas. La ranura de auth (`NavAuthIsla`) decide
+ * entre enlace público y botón de cierre según la sesión.
+ */
+
+.ch-site-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: rgb(255 255 255 / 0.6);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgb(15 23 42 / 0.08);
+}
+
+.ch-site-nav__inner {
+  max-width: 72rem;
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 60px;
+  padding: 8px 16px;
+}
+
+/* Las ranuras `hidden` deben imponerse: los `display` de autor
+   (p. ej. `.ch-nav__link`, `.ch-btn`) pisan el `display:none` del
+   atributo en la hoja UA. Sin esto, ambas variantes quedan visibles. */
+[data-nav-auth][hidden] {
+  display: none !important;
+}
+
+.ch-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 1.125rem;
+  background: linear-gradient(100deg, #0088d5 0%, #3da1a8 50%, #0088d5 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.ch-brand img {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.ch-nav__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* El toggle vive dentro de la barra: pierde su posición fija propia. */
+.ch-site-nav .ch-theme-toggle {
+  position: static;
+  width: 40px;
+  height: 40px;
+}
+
+.ch-nav__link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  text-decoration: none;
+  padding: 10px 4px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ch-nav__link:hover {
+  color: #0f172a;
+  text-decoration: underline;
+}
+
+html[data-theme='dark'] .ch-site-nav {
+  background: rgb(13 20 36 / 0.55);
+  border-bottom-color: rgb(255 255 255 / 0.1);
+}
+
+html[data-theme='dark'] .ch-nav__link {
+  color: #cbd5e1;
+}
+
+html[data-theme='dark'] .ch-nav__link:hover {
+  color: #f1f5f9;
+}
+
+@media (max-width: 480px) {
+  .ch-brand span {
+    display: none;
+  }
+}

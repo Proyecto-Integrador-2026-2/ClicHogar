@@ -473,6 +473,14 @@ html[data-theme='dark'] .ch-auth {
   cursor: not-allowed;
 }
 
+/* Variante compacta (p. ej. botón de la barra de navegación). */
+.ch-btn--sm {
+  width: auto;
+  min-height: 40px;
+  padding: var(--ch-space-2) var(--ch-space-4);
+  font-size: 0.875rem;
+}
+
 .ch-spinner {
   width: 18px;
   height: 18px;

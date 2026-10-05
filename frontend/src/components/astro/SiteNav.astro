@@ -1,0 +1,41 @@
+---
+import ThemeToggle from './ThemeToggle.astro';
+import '../../styles/nav.css';
+
+// Barra superior del sitio (US-003, #127): marca + ranura de auth
+// (enlace público o cierre de sesión según haya sesión, ver
+// `scripts/nav-auth.ts`) + tema.
+// `current` indica la página auth activa para ofrecer la contraria.
+type Props = {
+  current: 'login' | 'register';
+};
+
+const { current } = Astro.props;
+const cta =
+  current === 'login'
+    ? { href: '/register', label: 'Crear cuenta' }
+    : { href: '/login', label: 'Iniciar sesión' };
+---
+<header class="ch-site-nav">
+  <div class="ch-site-nav__inner">
+    <a class="ch-brand" href="/" aria-label="ClicHogar inicio">
+      <img src="/favicon.ico" alt="" width="28" height="28" />
+      <span>ClicHogar</span>
+    </a>
+    <div class="ch-nav__actions">
+      <a class="ch-nav__link" data-nav-auth="out" href={cta.href}>
+        {cta.label}
+      </a>
+      <button
+        type="button"
+        class="ch-btn ch-btn--primary ch-btn--sm"
+        data-nav-auth="in"
+        data-logout
+        hidden
+      >
+        Cerrar sesión
+      </button>
+      <ThemeToggle />
+    </div>
+  </div>
+</header>

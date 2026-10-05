@@ -1,7 +1,7 @@
 ---
 import LoginIsla from '../components/react/auth/LoginIsla';
+import SiteNav from '../components/astro/SiteNav.astro';
 import Background from '../components/astro/Background.astro';
-import ThemeToggle from '../components/astro/ThemeToggle.astro';
 import '../styles/register-page.css';
 
 // Página de inicio de sesión (US-002): misma composición y sistema visual
@@ -33,7 +33,7 @@ const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
     </script>
   </head>
   <body>
-    <ThemeToggle />
+    <SiteNav current="login" />
     <Background />
 
     <main class="ch-page">
@@ -47,8 +47,10 @@ const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
     <script>
       import { initToolsBackground } from '../scripts/tools-background';
       import { initThemeToggle } from '../scripts/theme-toggle';
+      import { initNavAuth } from '../scripts/nav-auth';
       initToolsBackground();
       initThemeToggle();
+      initNavAuth();
     </script>
   </body>
 </html>
