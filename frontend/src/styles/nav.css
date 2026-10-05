@@ -133,6 +133,41 @@
   text-decoration: underline;
 }
 
+/* CTA principal de la landing: píldora con degradado de marca. */
+.ch-nav__link--cta {
+  color: #ffffff;
+  background: linear-gradient(100deg, #0088df 0%, #34a2a9 60%, #00b8dd 100%);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 9px 18px;
+  min-height: 40px;
+  box-shadow: 0 8px 20px rgb(0 136 213 / 0.35);
+}
+
+.ch-nav__link--cta:hover {
+  color: #ffffff;
+  text-decoration: none;
+  filter: brightness(1.08);
+}
+
+/* Secundario de la landing: píldora cristal (ghost) para Iniciar sesión. */
+.ch-nav__link--ghost {
+  color: #0f172a;
+  background: rgb(255 255 255 / 0.55);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgb(15 23 42 / 0.14);
+  border-radius: 999px;
+  padding: 9px 18px;
+  min-height: 40px;
+}
+
+.ch-nav__link--ghost:hover {
+  color: #0f172a;
+  text-decoration: none;
+  border-color: #0088d5;
+}
+
 html[data-theme='dark'] .ch-site-nav {
   background: rgb(13 20 36 / 0.55);
   border-bottom-color: rgb(255 255 255 / 0.1);
@@ -146,8 +181,30 @@ html[data-theme='dark'] .ch-nav__link:hover {
   color: #f1f5f9;
 }
 
+html[data-theme='dark'] .ch-nav__link--ghost {
+  color: #f1f5f9;
+  background: rgb(13 20 36 / 0.55);
+  border-color: rgb(255 255 255 / 0.18);
+}
+
+html[data-theme='dark'] .ch-nav__link--ghost:hover {
+  color: #ffffff;
+  border-color: #3ce5ff;
+}
+
 @media (max-width: 480px) {
   .ch-brand span {
     display: none;
+  }
+
+  /* En la landing caben los dos botones + toggle en 360px. */
+  .ch-nav__actions {
+    gap: 8px;
+  }
+
+  .ch-nav__link--cta,
+  .ch-nav__link--ghost {
+    padding: 8px 14px;
+    font-size: 0.8rem;
   }
 }
