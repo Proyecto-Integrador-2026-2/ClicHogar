@@ -135,10 +135,84 @@ export function urlPublica(rutaRelativa: string): string {
   return `${API_URL}${rutaRelativa}`;
 }
 
+/**
+ * Sesión expirada o ausente (US-006, Escenario 7): el backend respondió
+ * 401. El formulario la traduce a redirect a `/login?expirada=1`.
+ */
+export class ErrorSesionExpirada extends Error {
+  constructor() {
+    super('Tu sesión ha expirado. Inicia sesión de nuevo.');
+    this.name = 'ErrorSesionExpirada';
+  }
+}
+
 export type SlotApi = {
   diaSemana: number;
   franjaHoraria: string;
 };
+
+export type TareaPublicaApi = {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  categoria: string;
+  estado: string;
+  ubicacion: string;
+  latitud: number | null;
+  longitud: number | null;
+  creadoEn: string;
+};
+
+/**
+ * Publica una solicitud de tarea (US-006, Escenario 1).
+ * 401 del backend = sesión expirada → ErrorSesionExpirada para que el
+ * formulario redirija al login con aviso (Escenario 7).
+ */
+export async function crearTarea(args: {
+  token: string;
+  titulo: string;
+  descripcion: string;
+  categoria: string;
+  ubicacion: string;
+}): Promise<TareaPublicaApi> {
+  if (!API_URL) {
+    throw new Error(
+      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
+    );
+  }
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(`${API_URL}/api/tareas`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${args.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        titulo: args.titulo,
+        descripcion: args.descripcion,
+        categoria: args.categoria,
+        ubicacion: args.ubicacion,
+      }),
+    });
+  } catch {
+    throw new Error(
+      'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.'
+    );
+  }
+
+  if (respuesta.status === 401) {
+    throw new ErrorSesionExpirada();
+  }
+  if (!respuesta.ok) {
+    const detalle = await respuesta.json().catch(() => null);
+    const mensaje =
+      (detalle as { message?: string } | null)?.message ??
+      `El backend respondió ${respuesta.status}.`;
+    throw new Error(mensaje);
+  }
+  return (await respuesta.json()) as TareaPublicaApi;
+}
 
 /**
  * Lee la matriz de disponibilidad (US-005, prefill y vista).

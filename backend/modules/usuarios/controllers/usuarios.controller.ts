@@ -1,8 +1,5 @@
 import { Elysia } from 'elysia';
-import {
-  verificarSesionClerk,
-  type SesionClerk,
-} from '../../../shared/auth/clerk';
+import { sesionDesdeHeaders } from '../../../shared/auth/clerk';
 import { NotFoundError } from '../../../shared/errors/app-error';
 import { ActualizarPerfilDto } from '../dto/actualizar-perfil.dto';
 import { DisponibilidadDto } from '../dto/disponibilidad.dto';
@@ -13,16 +10,6 @@ import { perfilService } from '../services/perfil.service';
 import { registroService } from '../services/registro.service';
 import { usuariosRepository } from '../repositories/usuarios.repository';
 import { toUsuarioPublico } from '../mappers/usuario.mapper';
-
-/**
- * Extrae y verifica la sesión Clerk del header `Authorization`.
- * Centraliza el 401: ningún handler toca tokens sin verificar.
- */
-async function sesionDesdeHeaders(
-  headers: Record<string, string | undefined>
-): Promise<SesionClerk> {
-  return verificarSesionClerk(headers['authorization']);
-}
 
 /**
  * Módulo `usuarios` (US-001 con Clerk).
