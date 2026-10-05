@@ -31,16 +31,28 @@ jobs:
           cd frontend && bun install
           cd ../backend && bun install
 
-      - name: 4. Revisar que el formato sea idéntico (Prettier)
+      - name: 4. Generar cobertura LCOV para SonarCloud
+        # `bun test --coverage` deja `coverage/lcov.info` en cada paquete.
+        # Las rutas se declaran en `sonar-project.properties`
+        # (`sonar.javascript.lcov.reportPaths`). El `sed` prefija el
+        # paquete porque Bun escribe `SF:` relativo al cwd y Sonar lo
+        # resuelve desde la raíz (CI = ubuntu, GNU sed).
+        run: |
+          cd frontend && bun test --coverage --coverage-reporter=lcov
+          sed -i 's|^SF:|SF:frontend/|' coverage/lcov.info
+          cd ../backend && bun test --coverage --coverage-reporter=lcov
+          sed -i 's|^SF:|SF:backend/|' coverage/lcov.info
+
+      - name: 5. Revisar que el formato sea idéntico (Prettier)
         run: |
           bunx prettier --check .
 
-      - name: 5. Buscar errores lógicos (ESLint)
+      - name: 6. Buscar errores lógicos (ESLint)
         run: |
           cd frontend && bun run lint
           cd ../backend && bun run lint
 
-      - name: 6. Analizar seguridad con SonarCloud
+      - name: 7. Analizar seguridad con SonarCloud
         # Esta es una acción prefabricada por SonarCloud
         uses: SonarSource/sonarcloud-github-action@master
         env:
