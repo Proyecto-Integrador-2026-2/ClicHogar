@@ -7,8 +7,9 @@ import '../../styles/nav.css';
 // botón de cierre (visible con sesión, ver `scripts/nav-auth.ts`).
 // En `home` (landing pública) siempre se muestran Iniciar sesión +
 // Registrarse, sin ranuras de sesión ni botón de cierre.
+// En `dashboard` hay enlaces a los módulos + botón de cierre.
 type Props = {
-  current: 'login' | 'register' | 'perfil' | 'home';
+  current: 'login' | 'register' | 'perfil' | 'home' | 'dashboard';
 };
 
 const { current } = Astro.props;
@@ -42,6 +43,27 @@ const cta =
           <a class="ch-nav__link ch-nav__link--cta" href="/register">
             Registrarse
           </a>
+        </>
+      ) : current === 'dashboard' ? (
+        <>
+          <a class="ch-nav__link" href="/dashboard" aria-current="page">
+            Panel
+          </a>
+          <a class="ch-nav__link" href="/tareas">
+            Explorar
+          </a>
+          <a class="ch-nav__link" href="/tareas/nueva">
+            Publicar
+          </a>
+          <button
+            type="button"
+            class="ch-nav__logout"
+            data-nav-auth="in"
+            data-logout
+            hidden
+          >
+            Cerrar sesión
+          </button>
         </>
       ) : (
         <a class="ch-nav__link" href={cta.href}>
