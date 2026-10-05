@@ -267,6 +267,46 @@ export function SelectField(
   );
 }
 
+export function FileField(
+  props: BaseProps & {
+    accept: string;
+    onChange: (archivo: File | null) => void;
+    onBlur: () => void;
+    disabled?: boolean;
+  }
+) {
+  const hintId = useId();
+  const errorId = useId();
+  return (
+    <div className="ch-field">
+      <label className="ch-field__label" htmlFor={props.id}>
+        {props.label}
+      </label>
+      {props.hint && (
+        <p className="ch-field__hint" id={hintId}>
+          {props.hint}
+        </p>
+      )}
+      <input
+        id={props.id}
+        className={`ch-field__input${props.error ? ' ch-field__input--error' : ''}`}
+        type="file"
+        accept={props.accept}
+        onChange={(e) => props.onChange(e.target.files?.[0] ?? null)}
+        onBlur={props.onBlur}
+        disabled={props.disabled}
+        aria-invalid={props.error ? true : undefined}
+        aria-describedby={describedBy(hintId, errorId, props.error, props.hint)}
+      />
+      {props.error && (
+        <p className="ch-field__error" id={errorId}>
+          {props.error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function CheckField(props: {
   id: string;
   label: string;

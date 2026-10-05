@@ -4,7 +4,7 @@
  * `ch-`. Alcance global controlado (sin Tailwind en el proyecto).
  * Ritmo de espaciado 4/8. Tema CLARO por defecto; el bloque
  * `html[data-theme='dark']` lo lleva al tema oscuro. Degradado de
- * marca #0088d5/#3da1a8/#3ce5ff idéntico en ambos temas.
+ * marca #0088df/#34a2a9/#00e8ff idéntico en ambos temas.
  */
 .ch-auth {
   --ch-space-1: 4px;
@@ -31,6 +31,9 @@
   --ch-color-error: #b91c1c;
   --ch-color-error-bg: rgb(185 28 28 / 0.08);
   --ch-color-error-border: rgb(185 28 28 / 0.25);
+  --ch-color-exito: #15803d;
+  --ch-color-exito-bg: rgb(21 128 61 / 0.08);
+  --ch-color-exito-border: rgb(21 128 61 / 0.3);
   --ch-color-focus: #0088d5;
   --ch-color-disabled-bg: #e2e8f0;
   --ch-color-disabled-text: #94a3b8;
@@ -80,6 +83,9 @@ html[data-theme='dark'] .ch-auth {
   --ch-color-error: #fca5a5;
   --ch-color-error-bg: rgb(248 113 113 / 0.14);
   --ch-color-error-border: rgb(248 113 113 / 0.35);
+  --ch-color-exito: #86efac;
+  --ch-color-exito-bg: rgb(134 239 172 / 0.1);
+  --ch-color-exito-border: rgb(134 239 172 / 0.35);
   --ch-color-focus: #3ce5ff;
   --ch-color-disabled-bg: rgb(255 255 255 / 0.06);
   --ch-color-disabled-text: #64748b;
@@ -146,11 +152,11 @@ html[data-theme='dark'] .ch-auth {
      (ver script en register.astro); por defecto centrado. */
   background: linear-gradient(
     100deg,
-    #0088d5 0%,
-    #3da1a8 38%,
-    #3ce5ff 55%,
-    #3da1a8 72%,
-    #0088d5 100%
+    #0088df 0%,
+    #34a2a9 38%,
+    #00e8ff 55%,
+    #34a2a9 72%,
+    #0088df 100%
   );
   background-size: 220% auto;
   background-position: calc(var(--gx, 0.5) * 100%) center;
@@ -195,11 +201,11 @@ html[data-theme='dark'] .ch-auth {
      el cursor). Sobre cristal oscuro el contraste sobra (≥ 7:1). */
   background: linear-gradient(
     100deg,
-    #0088d5 0%,
-    #3da1a8 38%,
-    #3ce5ff 55%,
-    #3da1a8 72%,
-    #0088d5 100%
+    #0088df 0%,
+    #34a2a9 38%,
+    #00e8ff 55%,
+    #34a2a9 72%,
+    #0088df 100%
   );
   background-size: 220% auto;
   background-position: calc(var(--gx, 0.5) * 100%) center;
@@ -269,6 +275,47 @@ html[data-theme='dark'] .ch-auth {
   background: var(--ch-color-disabled-bg);
   color: var(--ch-color-disabled-text);
   cursor: not-allowed;
+}
+
+/* Textarea del perfil: misma base, alto propio y redimensión vertical. */
+textarea.ch-field__input {
+  min-height: 96px;
+  resize: vertical;
+}
+
+/* Input de archivo nativo (accesible) con botón al tono de marca. */
+.ch-field__input[type='file'] {
+  cursor: pointer;
+}
+
+.ch-field__input[type='file']::file-selector-button {
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ch-color-text);
+  background: var(--ch-color-surface);
+  border: none;
+  border-radius: var(--ch-radius-sm);
+  padding: var(--ch-space-2) var(--ch-space-3);
+  margin-right: var(--ch-space-3);
+  cursor: pointer;
+}
+
+/* Vista previa circular de la foto (96px, recorte centrado). */
+.ch-foto-preview {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Contador de caracteres: texto tenue, nunca la única validación. */
+.ch-contador {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ch-color-text-soft);
+  text-align: right;
 }
 
 .ch-field__error {
@@ -395,6 +442,12 @@ html[data-theme='dark'] .ch-auth {
   border: 1px solid var(--ch-color-error-border);
 }
 
+.ch-alert--exito {
+  color: var(--ch-color-exito);
+  background: var(--ch-color-exito-bg);
+  border: 1px solid var(--ch-color-exito-border);
+}
+
 .ch-alert__title {
   margin: 0 0 var(--ch-space-2);
   font-size: 0.875rem;
@@ -439,7 +492,7 @@ html[data-theme='dark'] .ch-auth {
      sostener el contraste del texto blanco. */
   background:
     linear-gradient(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.3)),
-    linear-gradient(100deg, #0088d5 0%, #3da1a8 45%, #3ce5ff 100%);
+    linear-gradient(100deg, #0088df 0%, #34a2a9 45%, #00e8ff 100%);
   background-size:
     auto,
     220% auto;
@@ -471,14 +524,6 @@ html[data-theme='dark'] .ch-auth {
   color: var(--ch-color-disabled-text);
   box-shadow: none;
   cursor: not-allowed;
-}
-
-/* Variante compacta (p. ej. botón de la barra de navegación). */
-.ch-btn--sm {
-  width: auto;
-  min-height: 40px;
-  padding: var(--ch-space-2) var(--ch-space-4);
-  font-size: 0.875rem;
 }
 
 .ch-spinner {

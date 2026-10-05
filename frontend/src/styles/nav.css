@@ -41,7 +41,7 @@
   text-decoration: none;
   font-weight: 800;
   font-size: 1.125rem;
-  background: linear-gradient(100deg, #0088d5 0%, #3da1a8 50%, #0088d5 100%);
+  background: linear-gradient(100deg, #0088df 0%, #34a2a9 50%, #0088df 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -65,6 +65,56 @@
   position: static;
   width: 40px;
   height: 40px;
+}
+
+/* Botón de cierre: autónomo (no depende del CSS de las islas React,
+   que carga después). Mismo radio y degradado que `.ch-btn--primary`,
+   con fallbacks literales por si los tokens aún no existen. */
+.ch-nav__logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  background:
+    linear-gradient(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.3)),
+    linear-gradient(100deg, #0088df 0%, #34a2a9 45%, #00e8ff 100%);
+  background-size:
+    auto,
+    220% auto;
+  background-position:
+    center,
+    calc(var(--gx, 0.5) * 100%) center;
+  border: 1px solid transparent;
+  border-radius: var(--ch-radius-md, 10px);
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgb(0 136 213 / 0.45);
+  transition:
+    filter 180ms ease,
+    box-shadow 120ms ease,
+    background-position 0.35s ease-out;
+}
+
+.ch-nav__logout:hover {
+  filter: brightness(1.08);
+}
+
+.ch-nav__logout:active {
+  filter: brightness(0.95);
+}
+
+.ch-nav__logout:focus-visible {
+  outline: 3px solid #3ce5ff;
+  outline-offset: 2px;
+}
+
+.ch-nav__logout:disabled {
+  filter: grayscale(0.6) brightness(0.8);
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .ch-nav__link {

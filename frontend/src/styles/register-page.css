@@ -131,11 +131,11 @@ body {
   font-weight: 800;
   background: linear-gradient(
     100deg,
-    #0088d5 0%,
-    #3da1a8 38%,
-    #3ce5ff 55%,
-    #3da1a8 72%,
-    #0088d5 100%
+    #0088df 0%,
+    #34a2a9 38%,
+    #00e8ff 55%,
+    #34a2a9 72%,
+    #0088df 100%
   );
   background-size: 220% auto;
   background-position: calc(var(--gx, 0.5) * 100%) center;

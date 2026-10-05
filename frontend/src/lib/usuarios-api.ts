@@ -17,6 +17,9 @@ export type UsuarioPublico = {
   nombre: string;
   email: string;
   rol: RolBackend;
+  fotoUrl: string | null;
+  descripcion: string | null;
+  ubicacion: string | null;
   creadoEn: string;
 };
 
@@ -87,4 +90,47 @@ export async function obtenerPerfil(token: string): Promise<UsuarioPublico> {
     throw new Error(mensaje);
   }
   return (await respuesta.json()) as UsuarioPublico;
+}
+
+/**
+ * Actualización parcial del perfil (US-004, Escenario 2): solo viajan los
+ * campos presentes; lo ausente no se toca en el servidor.
+ */
+export async function actualizarPerfil(args: {
+  token: string;
+  foto?: File;
+  descripcion?: string;
+  ubicacion?: string;
+}): Promise<UsuarioPublico> {
+  if (!API_URL) {
+    throw new Error(
+      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
+    );
+  }
+  const forma = new FormData();
+  if (args.foto) forma.append('foto', args.foto);
+  if (args.descripcion !== undefined)
+    forma.append('descripcion', args.descripcion);
+  if (args.ubicacion !== undefined) forma.append('ubicacion', args.ubicacion);
+
+  const respuesta = await fetch(`${API_URL}/api/usuarios/yo`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${args.token}` },
+    body: forma,
+  });
+
+  if (!respuesta.ok) {
+    const detalle = await respuesta.json().catch(() => null);
+    const mensaje =
+      (detalle as { message?: string } | null)?.message ??
+      `El backend respondió ${respuesta.status}.`;
+    throw new Error(mensaje);
+  }
+  return (await respuesta.json()) as UsuarioPublico;
+}
+
+/** Convierte una ruta pública del backend (`/uploads/...`) en URL absoluta. */
+export function urlPublica(rutaRelativa: string): string {
+  if (!API_URL) return rutaRelativa;
+  return `${API_URL}${rutaRelativa}`;
 }

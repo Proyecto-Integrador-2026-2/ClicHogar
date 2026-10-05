@@ -44,7 +44,7 @@ function conectarSalidas(): void {
         // Limpieza local: solo claves de sesión de la app. La preferencia
         // de tema (`ch-theme`) se conserva a propósito.
         sessionStorage.clear();
-        window.location.href = '/';
+        window.location.href = '/login';
       } finally {
         btn.disabled = false;
       }

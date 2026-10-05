@@ -14,6 +14,10 @@ export type Usuario = {
   email: string;
   passwordHash: string | null;
   rol: RolUsuario;
+  /** Perfil público (US-004): null hasta que el usuario lo complete. */
+  fotoUrl: string | null;
+  descripcion: string | null;
+  ubicacion: string | null;
   activo: boolean;
   creadoEn: Date;
   actualizadoEn: Date;

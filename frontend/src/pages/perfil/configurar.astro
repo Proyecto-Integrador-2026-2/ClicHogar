@@ -1,0 +1,61 @@
+---
+import PerfilIsla from '../../components/react/auth/PerfilIsla';
+import Background from '../../components/astro/Background.astro';
+import SiteNav from '../../components/astro/SiteNav.astro';
+import '../../styles/register-page.css';
+
+// Página de perfil público (US-004): misma composición y sistema visual
+// que login/register (fondo, temas, tokens `ch-`). Protegida por el
+// middleware: sin sesión redirige a `/login` (ver `src/middleware.ts`).
+// La isla se hidrata solo en el cliente por ClerkJS (ver PerfilIsla.tsx).
+const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
+---
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Completar perfil · ClicHogar</title>
+    <link rel="icon" href="/favicon.ico?v=6" sizes="any" />
+    <script is:inline>
+      // Tema inicial antes del primer pintado (evita flash): guardado >
+      // sistema > claro. Debe quedarse inline en el <head>.
+      try {
+        var t = localStorage.getItem('ch-theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
+  </head>
+  <body>
+    {/*
+      current="perfil": la ranura solo trae el botón de cierre (visible
+      con sesión). Si la sesión expiró, el middleware ya redirigió a /login.
+    */}
+    <SiteNav current="perfil" />
+    <Background />
+
+    <main class="ch-page">
+      <div class="ch-page__head">
+        <h1>Tu perfil público</h1>
+        <p>Lo que verán otros miembros de la comunidad</p>
+      </div>
+      <PerfilIsla client:only="react" publishableKey={publishableKey} />
+    </main>
+
+    <script>
+      import { initToolsBackground } from '../../scripts/tools-background';
+      import { initThemeToggle } from '../../scripts/theme-toggle';
+      import { initNavAuth } from '../../scripts/nav-auth';
+      initToolsBackground();
+      initThemeToggle();
+      initNavAuth();
+    </script>
+  </body>
+</html>

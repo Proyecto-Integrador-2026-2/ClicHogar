@@ -14,18 +14,24 @@ const USUARIO_BASE: Usuario = {
   email: 'ana@ejemplo.com',
   passwordHash: 'argon2id$hash_super_secreto',
   rol: 'afiliado',
+  fotoUrl: '/uploads/perfiles/abc.jpg',
+  descripcion: 'Plomera con 5 años de experiencia.',
+  ubicacion: 'Medellín, Belén',
   activo: true,
   creadoEn: new Date('2026-01-15T10:00:00.000Z'),
   actualizadoEn: new Date('2026-02-01T10:00:00.000Z'),
 };
 
 describe('toUsuarioPublico', () => {
-  test('mapea id, nombre, email, rol y fecha de creación', () => {
+  test('mapea id, nombre, email, rol, perfil y fecha de creación', () => {
     expect(toUsuarioPublico(USUARIO_BASE)).toEqual({
       id: USUARIO_BASE.id,
       nombre: 'Ana Pérez',
       email: 'ana@ejemplo.com',
       rol: 'afiliado',
+      fotoUrl: '/uploads/perfiles/abc.jpg',
+      descripcion: 'Plomera con 5 años de experiencia.',
+      ubicacion: 'Medellín, Belén',
       creadoEn: USUARIO_BASE.creadoEn,
     });
   });

@@ -1,9 +1,9 @@
 /**
  * Formulario de inicio de sesión (US-002): orquesta estado, validación en
  * tiempo real (Esc 5-6), saneamiento (Esc 7/8), autenticación Clerk y
- * redirección por rol con soporte dual (Esc: perfiles duales).
- * Errores genéricos sin revelar qué dato falló (Esc 3-4) y alerta de
- * bloqueo temporal (Esc 9). Primitivos visuales en `fields.tsx`.
+ * redirección a edición de perfil (los paneles por rol llegan en US
+ * futuras). Errores genéricos sin revelar qué dato falló (Esc 3-4) y
+ * alerta de bloqueo temporal (Esc 9). Primitivos visuales en `fields.tsx`.
  */
 import React, { useMemo, useRef, useState } from 'react';
 import { useAuth, useSignIn } from '@clerk/clerk-react';
@@ -11,10 +11,7 @@ import {
   clasificarErrorSignIn,
   mensajeErrorSignIn,
 } from '../../../lib/clerk-errors';
-import {
-  normalizarRolParaBackend,
-  obtenerPerfil,
-} from '../../../lib/usuarios-api';
+import { obtenerPerfil } from '../../../lib/usuarios-api';
 import './auth.css';
 import {
   ErrorSummary,
@@ -118,7 +115,9 @@ export default function LoginForm() {
       }
       await setActive({ session: resultado.createdSessionId });
 
-      // Redirección por rol con perfil dual (misma cuenta, ambos paneles).
+      // Redirección post-login: a edición de perfil hasta que existan
+      // los paneles por rol (US futuras). Se lee el perfil para exigir
+      // fila local sincronizada (404 → error visible, no redirect mudo).
       setIsRedirecting(true);
       try {
         const token = await getToken();
@@ -127,10 +126,8 @@ export default function LoginForm() {
             'No se pudo obtener la sesión. Recarga e inténtalo de nuevo.'
           );
         }
-        const perfil = await obtenerPerfil(token);
-        const rolBackend = normalizarRolParaBackend(perfil.rol);
-        window.location.href =
-          rolBackend === 'afiliado' ? '/perfil/configurar' : '/dashboard';
+        await obtenerPerfil(token);
+        window.location.href = '/perfil/configurar';
       } finally {
         setIsRedirecting(false);
       }
