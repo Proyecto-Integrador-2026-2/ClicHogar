@@ -702,11 +702,56 @@ textarea.ch-field__input {
   color: var(--ch-color-text-soft);
 }
 
+/* ---------- Panel principal (dashboard) ---------- */
+.ch-card--wide {
+  width: min(100%, 40rem);
+}
+
+.ch-dash-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--ch-space-3);
+  margin: var(--ch-space-4) 0 0;
+  padding: 0;
+}
+
+.ch-dash-stat {
+  background: var(--ch-color-surface);
+  border-radius: var(--ch-radius-md);
+  padding: var(--ch-space-3) var(--ch-space-4);
+  text-align: center;
+}
+
+.ch-dash-stat dt {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ch-color-text-soft);
+}
+
+.ch-dash-stat dd {
+  margin: var(--ch-space-1) 0 0;
+  font-size: 1.375rem;
+  font-weight: 800;
+}
+
+.ch-dash-stat__hint {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ch-color-text-soft);
+}
+
 /* ---------- Responsive + movimiento reducido ---------- */
 @media (max-width: 480px) {
   .ch-card {
     border-radius: var(--ch-radius-md);
     padding: var(--ch-space-4);
+  }
+
+  .ch-dash-stats {
+    grid-template-columns: 1fr;
   }
 }
 

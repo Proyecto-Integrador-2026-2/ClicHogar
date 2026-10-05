@@ -1,9 +1,9 @@
 /**
  * Formulario de inicio de sesión (US-002): orquesta estado, validación en
  * tiempo real (Esc 5-6), saneamiento (Esc 7/8), autenticación Clerk y
- * redirección a edición de perfil (los paneles por rol llegan en US
- * futuras). Errores genéricos sin revelar qué dato falló (Esc 3-4) y
- * alerta de bloqueo temporal (Esc 9). Primitivos visuales en `fields.tsx`.
+ * redirección al panel principal. Errores genéricos sin revelar qué dato
+ * falló (Esc 3-4) y alerta de bloqueo temporal (Esc 9). Primitivos
+ * visuales en `fields.tsx`.
  */
 import React, { useMemo, useRef, useState } from 'react';
 import { useAuth, useSignIn } from '@clerk/clerk-react';
@@ -128,9 +128,9 @@ export default function LoginForm() {
       }
       await setActive({ session: resultado.createdSessionId });
 
-      // Redirección post-login: a edición de perfil hasta que existan
-      // los paneles por rol (US futuras). Se lee el perfil para exigir
-      // fila local sincronizada (404 → error visible, no redirect mudo).
+      // Redirección post-login: al panel principal, que reúne todos
+      // los módulos. Se lee el perfil para exigir fila local
+      // sincronizada (404 → error visible, no redirect mudo).
       setIsRedirecting(true);
       try {
         const token = await getToken();
@@ -140,7 +140,7 @@ export default function LoginForm() {
           );
         }
         await obtenerPerfil(token);
-        window.location.href = '/perfil/configurar';
+        window.location.href = '/dashboard';
       } finally {
         setIsRedirecting(false);
       }

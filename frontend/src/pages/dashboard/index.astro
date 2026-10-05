@@ -1,0 +1,165 @@
+---
+import DashboardIsla from '../../components/react/auth/DashboardIsla';
+import Background from '../../components/astro/Background.astro';
+import SiteNav from '../../components/astro/SiteNav.astro';
+import '../../styles/register-page.css';
+import '../../styles/dashboard-page.css';
+
+// Panel principal post-login (dashboard): saludo + resumen (isla React)
+// y accesos a todos los módulos implementados hasta ahora:
+// perfil (US-004), disponibilidad (US-005), publicar (US-006) y
+// tablero (US-008). Ruta PROTEGIDA por `src/lib/routes.ts` + middleware:
+// sin sesión redirige a `/login` (ver `src/middleware.ts`).
+// Chat y calificaciones aún no existen: se anuncian como próximos.
+const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
+
+const modulos = [
+  {
+    href: '/tareas/nueva',
+    titulo: 'Publicar tarea',
+    texto: 'Describe lo que necesitas y recibe oferta cercana a ti.',
+    etiqueta: 'US-006 · Clientes',
+    icono:
+      '<circle cx="12" cy="12" r="10" /><path d="M12 8v8" /><path d="M8 12h8" />',
+  },
+  {
+    href: '/tareas',
+    titulo: 'Explorar tareas',
+    texto: 'Compara solicitudes activas y oferta en las que se ajusten a ti.',
+    etiqueta: 'US-008 · Clic-Workers',
+    icono:
+      '<circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />',
+  },
+  {
+    href: '/perfil/configurar',
+    titulo: 'Mi perfil público',
+    texto: 'Foto, descripción y ubicación: lo que ve la comunidad.',
+    etiqueta: 'US-004 · Ambos roles',
+    icono:
+      '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />',
+  },
+  {
+    href: '/perfil/disponibilidad',
+    titulo: 'Mi disponibilidad',
+    texto: 'Configura tu horario semanal como afiliado.',
+    etiqueta: 'US-005 · Clic-Workers',
+    icono:
+      '<rect width="18" height="18" x="3" y="4" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" />',
+  },
+];
+
+const proximos = [
+  {
+    titulo: 'Chat integrado',
+    texto: 'Mensajería segura para negociar antes de confirmar.',
+  },
+  {
+    titulo: 'Calificaciones',
+    texto: 'Reseñas bidireccionales que construyen confianza.',
+  },
+];
+---
+
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mi panel · ClicHogar</title>
+    <link rel="icon" href="/favicon.ico?v=6" sizes="any" />
+    <script is:inline>
+      // Tema inicial antes del primer pintado (evita flash): guardado >
+      // sistema > claro. Debe quedarse inline en el <head>.
+      try {
+        var t = localStorage.getItem('ch-theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
+  </head>
+  <body>
+    <SiteNav current="dashboard" />
+    <Background />
+
+    <main class="ch-dash-page">
+      <div class="ch-dash-page__head">
+        <h1>Mi panel</h1>
+        <p>Tu resumen y todos los módulos de ClicHogar en un solo lugar</p>
+      </div>
+
+      <DashboardIsla client:only="react" publishableKey={publishableKey} />
+
+      <ul class="ch-dash-modules" aria-label="Módulos disponibles">
+        {
+          modulos.map((m) => (
+            <li class="ch-dash-module">
+              <a href={m.href}>
+                <span class="ch-dash-module__icon" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    set:html={m.icono}
+                  />
+                </span>
+                <span>
+                  <h2>{m.titulo}</h2>
+                  <p>{m.texto}</p>
+                  <span class="ch-dash-module__tag">{m.etiqueta}</span>
+                </span>
+              </a>
+            </li>
+          ))
+        }
+        {
+          proximos.map((m) => (
+            <li
+              class="ch-dash-module ch-dash-module--soon"
+              aria-disabled="true"
+              title="Funcionalidad en camino"
+            >
+              <div>
+                <span class="ch-dash-module__icon" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+                  </svg>
+                </span>
+                <span>
+                  <h2>{m.titulo}</h2>
+                  <p>{m.texto}</p>
+                  <span class="ch-dash-module__tag">Próximamente</span>
+                </span>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </main>
+
+    <script>
+      import { initToolsBackground } from '../../scripts/tools-background';
+      import { initThemeToggle } from '../../scripts/theme-toggle';
+      import { initNavAuth } from '../../scripts/nav-auth';
+      initToolsBackground();
+      initThemeToggle();
+      initNavAuth();
+    </script>
+  </body>
+</html>
