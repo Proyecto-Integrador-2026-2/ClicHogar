@@ -12,7 +12,7 @@ const FRONTEND_DESPLEGADO = 'https://clichogar.vercel.app';
 /** Orígenes fijos permitidos (sin slash final, sin duplicados). */
 export function origenesPermitidos(): string[] {
   const extra = env.CORS_ORIGIN.split(',')
-    .map((o) => o.trim().replace(/\/+$/, ''))
+    .map((o) => (o.trim().endsWith('/') ? o.trim().slice(0, -1) : o.trim()))
     .filter(Boolean);
   return [...new Set([FRONTEND_DESPLEGADO, ...extra])];
 }
