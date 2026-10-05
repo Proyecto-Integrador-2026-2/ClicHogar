@@ -130,6 +130,18 @@ export const tareasService = {
       ...datos,
       estado: ESTADO_INICIAL_TAREA,
     });
-    return toTareaPublica(tarea);
+    return toTareaPublica(tarea, autor.nombre);
+  },
+
+  /**
+   * Tablero de solicitudes abiertas (US-008): requiere sesión (el
+   * controller ya la verificó); el rol no filtra porque el tablero es
+   * el mismo para quien explore.
+   */
+  async listarAbiertas(): Promise<TareaPublica[]> {
+    const filas = await tareasRepository.listarAbiertas();
+    return filas.map(({ tarea, autorNombre }) =>
+      toTareaPublica(tarea, autorNombre)
+    );
   },
 };

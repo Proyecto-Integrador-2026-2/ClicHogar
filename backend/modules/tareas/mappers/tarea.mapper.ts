@@ -14,10 +14,15 @@ export type TareaPublica = {
   ubicacion: string;
   latitud: number | null;
   longitud: number | null;
+  /** Nombre del autor (US-008: el tablero muestra quién publica). */
+  autorNombre: string;
   creadoEn: Date;
 };
 
-export function toTareaPublica(tarea: Tarea): TareaPublica {
+export function toTareaPublica(
+  tarea: Tarea,
+  autorNombre: string
+): TareaPublica {
   return {
     id: tarea.id,
     titulo: tarea.titulo,
@@ -27,6 +32,7 @@ export function toTareaPublica(tarea: Tarea): TareaPublica {
     ubicacion: tarea.ubicacion,
     latitud: tarea.latitud,
     longitud: tarea.longitud,
+    autorNombre,
     creadoEn: tarea.creadoEn,
   };
 }

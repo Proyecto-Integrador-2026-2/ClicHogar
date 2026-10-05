@@ -135,6 +135,51 @@ export function urlPublica(rutaRelativa: string): string {
   return `${API_URL}${rutaRelativa}`;
 }
 
+export type TareaTablero = {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  categoria: string;
+  estado: string;
+  ubicacion: string;
+  autorNombre: string;
+  creadoEn: string;
+};
+
+/**
+ * Tablero de solicitudes abiertas (US-008): requiere sesión (el
+ * middleware de página la exige; sin token el backend responde 401).
+ */
+export async function listarTareas(token: string): Promise<TareaTablero[]> {
+  if (!API_URL) {
+    throw new Error(
+      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
+    );
+  }
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(`${API_URL}/api/tareas`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new Error(
+      'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.'
+    );
+  }
+
+  if (respuesta.status === 401) {
+    throw new ErrorSesionExpirada();
+  }
+  if (!respuesta.ok) {
+    const detalle = await respuesta.json().catch(() => null);
+    const mensaje =
+      (detalle as { message?: string } | null)?.message ??
+      `El backend respondió ${respuesta.status}.`;
+    throw new Error(mensaje);
+  }
+  return (await respuesta.json()) as TareaTablero[];
+}
+
 /**
  * Sesión expirada o ausente (US-006, Escenario 7): el backend respondió
  * 401. El formulario la traduce a redirect a `/login?expirada=1`.
