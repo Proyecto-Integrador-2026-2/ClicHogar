@@ -44,6 +44,19 @@ export default function LoginForm() {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const summaryRef = useRef<HTMLDivElement>(null);
 
+  // Aviso de sesión expirada (US-006, Escenario 7): se llega aquí con
+  // `?expirada=1` tras un 401 en otra página. Se lee una vez al montar.
+  const [avisoExpirada] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return (
+        new URLSearchParams(window.location.search).get('expirada') === '1'
+      );
+    } catch {
+      return false;
+    }
+  });
+
   const valores: ValoresLogin = useMemo(
     () => ({ email, password }),
     [email, password]
@@ -157,6 +170,12 @@ export default function LoginForm() {
         {globalError && (
           <div className="ch-alert ch-alert--error" role="alert">
             {globalError}
+          </div>
+        )}
+
+        {!globalError && avisoExpirada && (
+          <div className="ch-alert ch-alert--error" role="alert">
+            Tu sesión ha expirado. Inicia sesión de nuevo.
           </div>
         )}
 

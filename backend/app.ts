@@ -2,6 +2,7 @@ import { cors } from '@elysiajs/cors';
 import { Elysia } from 'elysia';
 import { env, isProduction } from './config/env';
 import { archivosController } from './modules/usuarios/controllers/archivos.controller';
+import { tareasController } from './modules/tareas/controllers/tareas.controller';
 import { usuariosController } from './modules/usuarios/controllers/usuarios.controller';
 import { registerErrorHandler } from './shared/errors/error-handler';
 
@@ -25,7 +26,10 @@ export function buildApp() {
     })
   );
 
-  app.get('/health', () => ({ status: 'ok' })).use(usuariosController);
+  app
+    .get('/health', () => ({ status: 'ok' }))
+    .use(usuariosController)
+    .use(tareasController);
 
   // Archivos públicos (fotos de perfil US-004). Sin auth: las URLs son
   // opacas (uuid) y solo sirven imágenes.

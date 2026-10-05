@@ -15,8 +15,20 @@ export type SesionClerk = {
 };
 
 /**
+ * Extrae y verifica la sesión Clerk del header `Authorization`.
+ * Centraliza el 401: ningún handler toca tokens sin verificar.
+ * Vive en la capa compartida para reusarse entre módulos.
+ */
+export async function sesionDesdeHeaders(
+  headers: Record<string, string | undefined>
+): Promise<SesionClerk> {
+  return verificarSesionClerk(headers['authorization']);
+}
+
+/**
  * Extrae el session token (Bearer) y lo verifica contra Clerk.
- * El email/nombre/rol nunca se confía del body: sale del token verificado.
+ * El email/nombre/rol nunca se confían del body: salen del token
+ * verificado (o de la Backend API como respaldo).
  */
 export async function verificarSesionClerk(
   authorization: string | undefined

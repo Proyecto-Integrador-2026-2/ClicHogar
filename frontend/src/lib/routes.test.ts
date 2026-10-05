@@ -27,4 +27,10 @@ describe('isProtectedRoute', () => {
     expect(isProtectedRoute('/dashboardx')).toBe(false);
     expect(isProtectedRoute('/mi-dashboard')).toBe(false);
   });
+
+  test('protege la publicación (exacta) sin cerrar futuras listas', () => {
+    expect(isProtectedRoute('/tareas/nueva')).toBe(true);
+    expect(isProtectedRoute('/tareas/nueva/')).toBe(true);
+    expect(isProtectedRoute('/tareas')).toBe(false);
+  });
 });
