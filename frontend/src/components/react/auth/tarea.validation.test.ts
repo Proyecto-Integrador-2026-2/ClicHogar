@@ -63,4 +63,13 @@ describe('validarCampoTarea', () => {
       'Selecciona una categoría válida.'
     );
   });
+
+  test('título de más de 120 caracteres se rechaza', () => {
+    expect(
+      validarCampoTarea('titulo', { ...VALIDA, titulo: 'x'.repeat(121) })
+    ).toBe('El título no puede superar 120 caracteres.');
+    expect(
+      validarCampoTarea('titulo', { ...VALIDA, titulo: 'x'.repeat(120) })
+    ).toBeUndefined();
+  });
 });
