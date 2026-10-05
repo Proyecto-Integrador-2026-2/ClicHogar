@@ -1,17 +1,332 @@
 ---
+import SiteNav from '../components/astro/SiteNav.astro';
+import Background from '../components/astro/Background.astro';
+import '../styles/register-page.css';
+import '../styles/landing-page.css';
 
+// Landing principal de ClicHogar: composición 100% Astro (HTML estático,
+// carga ultrarrápida, cero JS de framework). La interactividad es CSS +
+// tres scripts vanilla: fondo vivo, toggle de tema y reveal on scroll.
+// Auth: los botones enlazan a `/login` y `/register` (Clerk).
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ClicHogar · Servicios del hogar y microtrabajos a un clic</title>
+    <meta
+      name="description"
+      content="ClicHogar conecta hogares con Clic-Workers verificados: plomería, electricidad, limpieza, carpintería, mudanzas y más. Geolocalización, chat seguro y calificaciones bidireccionales."
+    />
+    <link rel="canonical" href="https://clichogar.vercel.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_CO" />
+    <meta property="og:site_name" content="ClicHogar" />
+    <meta
+      property="og:title"
+      content="ClicHogar · Servicios del hogar y microtrabajos a un clic"
+    />
+    <meta
+      property="og:description"
+      content="Plomería, electricidad, limpieza, carpintería y microtrabajos con profesionales verificados cerca de ti."
+    />
+    <meta property="og:url" content="https://clichogar.vercel.app/" />
+    <meta name="theme-color" content="#0088df" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.ico?v=6" sizes="any" />
+    <script is:inline>
+      // Tema inicial antes del primer pintado (evita flash): guardado >
+      // sistema > claro. Debe quedarse inline en el <head>.
+      try {
+        var t = localStorage.getItem('ch-theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
+  </head>
+  <body>
+    <SiteNav current="home" />
+    <Background />
+
+    <div class="lp-wrap">
+      <!-- ============ HERO ============ -->
+      <section class="lp-hero" aria-labelledby="lp-hero-title">
+        <div>
+          <span class="lp-badge">
+            <span class="lp-badge__dot" aria-hidden="true"></span>
+            Red de servicios y microtrabajos · Colombia
+          </span>
+          <h1 id="lp-hero-title">
+            El hogar resuelto<br />
+            <span class="lp-grad">a un clic de distancia</span>
+          </h1>
+          <p class="lp-lead">
+            ClicHogar centraliza, agiliza y asegura la contratación de
+            mantenimiento residencial y microtrabajos: conecta tu necesidad
+            con <strong>Clic-Workers</strong> verificados cerca de ti, con chat
+            seguro y calificaciones de confianza.
+          </p>
+          <div class="lp-cta-row">
+            <a class="lp-btn lp-btn--primary" href="/register">
+              Crear cuenta gratis
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+            </a>
+            <a class="lp-btn lp-btn--ghost" href="/login">Iniciar sesión</a>
+          </div>
+          <ul class="lp-trust" aria-label="Garantías de la plataforma">
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+              Perfiles verificados
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-10a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+              Geolocalización cercana
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+              Chat seguro integrado
+            </li>
+          </ul>
+        </div>
+
+        <div class="lp-hero-visual" aria-hidden="true">
+          <div class="lp-glass lp-phone">
+            <div class="lp-phone__bar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+              ¿Qué necesitas hoy? · Plomero…
+            </div>
+            <div class="lp-chips">
+              <span class="lp-chip lp-chip--on">Plomería</span>
+              <span class="lp-chip">Electricidad</span>
+              <span class="lp-chip">Limpieza</span>
+              <span class="lp-chip">Mudanza</span>
+            </div>
+            <div class="lp-worker">
+              <span class="lp-avatar">MC</span>
+              <div><strong>María C. · Plomera</strong><small>A 1,2 km · 4.9 (212 reseñas)</small></div>
+              <span class="lp-stars">★ 4.9</span>
+            </div>
+            <div class="lp-worker">
+              <span class="lp-avatar">JR</span>
+              <div><strong>José R. · Electricista</strong><small>A 2,0 km · 4.8 (167 reseñas)</small></div>
+              <span class="lp-stars">★ 4.8</span>
+            </div>
+            <div class="lp-worker">
+              <span class="lp-avatar">LA</span>
+              <div><strong>Luisa A. · Limpieza</strong><small>A 0,8 km · 5.0 (98 reseñas)</small></div>
+              <span class="lp-stars">★ 5.0</span>
+            </div>
+          </div>
+          <div class="lp-glass lp-float-card lp-float--a">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            <div>Trabajo completado<small>Hace 12 min · Chapinero</small></div>
+          </div>
+          <div class="lp-glass lp-float-card lp-float--b">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+            <div>Chat en vivo<small>Negocia antes de confirmar</small></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MARQUEE ============ -->
+      <div class="lp-marquee" aria-hidden="true">
+        <div class="lp-marquee__track">
+          {
+            ['Plomería','Electricidad','Limpieza','Carpintería','Pintura','Albañilería','Techos','Mudanzas','Armar muebles','Jardinería','Paseo de mascotas','Compras urgentes'].map((s) => (
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>{s}</span>
+            ))
+          }
+          {
+            ['Plomería','Electricidad','Limpieza','Carpintería','Pintura','Albañilería','Techos','Mudanzas','Armar muebles','Jardinería','Paseo de mascotas','Compras urgentes'].map((s) => (
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>{s}</span>
+            ))
+          }
+        </div>
+      </div>
+
+      <!-- ============ SERVICIOS ============ -->
+      <section class="lp-section" aria-labelledby="lp-servicios">
+        <span class="lp-kicker" data-reveal>Alcance operativo</span>
+        <h2 id="lp-servicios" data-reveal>Todo lo que tu hogar necesita, en un solo lugar</h2>
+        <p class="lp-sub" data-reveal>
+          Resolvemos la dispersión de la oferta informal con dos grandes
+          categorías: servicios especializados del hogar y microtrabajos de
+          asistencia rápida.
+        </p>
+        <div class="lp-grid lp-grid--2">
+          <article class="lp-glass lp-card" data-reveal>
+            <div class="lp-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 12-8.5 8.5a2.12 2.12 0 1 1-3-3L12 9" /><path d="M17.6 15 22 10.6" /><path d="m20.9 11.7-1.2-1.2a2 2 0 0 1-.9-2.3v-.9l-2.3-2.2a5.5 5.5 0 0 0-3.9-1.6H9l.9.8a6.2 6.2 0 0 1 2.1 4.6V10l2 2h1.2a2.1 2.1 0 0 1 1.5.6Z" /></svg>
+            </div>
+            <h3>Servicios del hogar especializados</h3>
+            <p>Profesionales de oficios verificados para el mantenimiento de tu casa.</p>
+            <ul class="lp-list">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>Limpieza y empleadas domésticas</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>Plomería y electricidad certificada</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>Pintura, carpintería y albañilería</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>Reparación de techos</li>
+            </ul>
+          </article>
+          <article class="lp-glass lp-card" data-reveal data-delay="1">
+            <div class="lp-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+            </div>
+            <h3>Microtrabajos de asistencia rápida</h3>
+            <p>Ayuda inmediata para la logística menor y la gestión de tu tiempo.</p>
+            <ul class="lp-list">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>Ayuda en mudanzas y cargar muebles</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>Hacer filas y compras urgentes</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>Armar muebles y jardinería</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>Paseo de mascotas</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ CÓMO FUNCIONA ============ -->
+      <section class="lp-section" aria-labelledby="lp-como">
+        <span class="lp-kicker" data-reveal>Cómo funciona</span>
+        <h2 id="lp-como" data-reveal>Del problema a la solución en 3 pasos</h2>
+        <p class="lp-sub" data-reveal>Diseñado bajo el modelo de economía gig: rápido para ti, justo para quien trabaja.</p>
+        <div class="lp-grid lp-grid--3">
+          <article class="lp-glass lp-card lp-step" data-reveal>
+            <span class="lp-step__num" aria-hidden="true">01</span>
+            <div class="lp-icon lp-icon--ghost" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+            </div>
+            <h3>Publica tu necesidad</h3>
+            <p>Describe la tarea, indica tu ubicación y recibe la oferta más cercana gracias al motor de geolocalización.</p>
+          </article>
+          <article class="lp-glass lp-card lp-step" data-reveal data-delay="1">
+            <span class="lp-step__num" aria-hidden="true">02</span>
+            <div class="lp-icon lp-icon--ghost" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+            </div>
+            <h3>Conecta y negocia</h3>
+            <p>Chatea de forma segura con el Clic-Worker, acuerda condiciones y confirma la orden sin intermediarios opacos.</p>
+          </article>
+          <article class="lp-glass lp-card lp-step" data-reveal data-delay="2">
+            <span class="lp-step__num" aria-hidden="true">03</span>
+            <div class="lp-icon lp-icon--ghost" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+            </div>
+            <h3>Califica y confía</h3>
+            <p>El sistema bidireccional de reseñas construye reputación en ambos lados y mitiga la incertidumbre del mercado informal.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ FUNCIONALIDADES MVP ============ -->
+      <section class="lp-section" aria-labelledby="lp-mvp">
+        <span class="lp-kicker" data-reveal>Producto mínimo viable</span>
+        <h2 id="lp-mvp" data-reveal>Tecnología pensada para la confianza</h2>
+        <p class="lp-sub" data-reveal>Cuatro pilares que hacen de ClicHogar un ecosistema seguro y eficiente.</p>
+        <div class="lp-grid lp-grid--4">
+          <article class="lp-glass lp-card" data-reveal>
+            <div class="lp-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-10a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+            </div>
+            <h3>Motor de geolocalización</h3>
+            <p>Servicios basados en ubicación (LBS) que muestran la oferta más cercana a ti en tiempo real.</p>
+          </article>
+          <article class="lp-glass lp-card" data-reveal data-delay="1">
+            <div class="lp-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            </div>
+            <h3>Perfiles duales</h3>
+            <p>Opera como Cliente y como Afiliado prestador desde una única cuenta, sin fricción.</p>
+          </article>
+          <article class="lp-glass lp-card" data-reveal data-delay="2">
+            <div class="lp-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+            </div>
+            <h3>Calificación bidireccional</h3>
+            <p>Reseñas mutuas que establecen un ecosistema basado en la confianza verificable.</p>
+          </article>
+          <article class="lp-glass lp-card" data-reveal data-delay="3">
+            <div class="lp-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+            </div>
+            <h3>Chat interno integrado</h3>
+            <p>Mensajería segura para negociar condiciones antes de confirmar cada orden.</p>
+          </article>
+        </div>
+
+        <div class="lp-stats" data-reveal>
+          <div class="lp-glass lp-stat"><strong>14+</strong><span>categorías de servicio</span></div>
+          <div class="lp-glass lp-stat"><strong>24/7</strong><span>disponibilidad gig</span></div>
+          <div class="lp-glass lp-stat"><strong>2 en 1</strong><span>perfil cliente + worker</span></div>
+          <div class="lp-glass lp-stat"><strong>100%</strong><span>gratuita para empezar</span></div>
+        </div>
+      </section>
+
+      <!-- ============ ROLES ============ -->
+      <section class="lp-section" aria-labelledby="lp-roles">
+        <span class="lp-kicker" data-reveal>Una cuenta, dos modos</span>
+        <h2 id="lp-roles" data-reveal>¿Necesitas ayuda o quieres ofrecerla?</h2>
+        <p class="lp-sub" data-reveal>ClicHogar optimiza tu tiempo y genera oportunidades de ingresos complementarios para la comunidad.</p>
+        <div class="lp-grid lp-grid--2">
+          <article class="lp-glass lp-role" data-reveal>
+            <div class="lp-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+            </div>
+            <h3>Para hogares (Clientes)</h3>
+            <p>Publica tareas en minutos, compara perfiles con reseñas reales, negocia por chat y paga con tranquilidad. Adiós a la búsqueda informal por grupos de chat.</p>
+            <a class="lp-btn lp-btn--primary" href="/register">Publicar mi primera tarea</a>
+          </article>
+          <article class="lp-glass lp-role" data-reveal data-delay="1">
+            <div class="lp-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
+            </div>
+            <h3>Para Clic-Workers (Afiliados)</h3>
+            <p>Convierte tus oficios en ingresos: configura disponibilidad, recibe solicitudes cercanas a ti y construye reputación con cada servicio calificado.</p>
+            <a class="lp-btn lp-btn--ghost" href="/register">Ofrecer mis servicios</a>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ CTA FINAL ============ -->
+      <section class="lp-final" aria-labelledby="lp-cta">
+        <div class="lp-final__box" data-reveal>
+          <h2 id="lp-cta">Tu próximo servicio está a un clic</h2>
+          <p>Únete gratis a la red de mantenimiento residencial y microtrabajos más confiable. Sin permanencias, sin complicaciones.</p>
+          <div class="lp-cta-row" style="justify-content:center">
+            <a class="lp-btn lp-btn--primary" href="/register">Registrarse gratis</a>
+            <a class="lp-btn lp-btn--ghost" href="/login">Ya tengo cuenta</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ FOOTER ============ -->
+      <footer class="lp-footer">
+        <div class="lp-footer__inner">
+          <span><strong>ClicHogar</strong> · Hecho con glassmorfismo en Astro + React</span>
+          <nav aria-label="Enlaces del sitio">
+            <a href="/login">Iniciar sesión</a>
+            <a href="/register">Registrarse</a>
+            <a href="/tareas">Tareas</a>
+          </nav>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      import { initToolsBackground } from '../scripts/tools-background';
+      import { initThemeToggle } from '../scripts/theme-toggle';
+      import { initNavAuth } from '../scripts/nav-auth';
+      import { initLandingReveal } from '../scripts/landing-reveal';
+      initToolsBackground();
+      initThemeToggle();
+      initNavAuth();
+      initLandingReveal();
+    </script>
+  </body>
 </html>

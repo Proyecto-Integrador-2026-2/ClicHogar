@@ -5,8 +5,10 @@ import '../../styles/nav.css';
 // Barra superior del sitio (US-003, #127): marca + acción contextual +
 // tema. En páginas auth se ofrece la contraria; en `perfil` solo el
 // botón de cierre (visible con sesión, ver `scripts/nav-auth.ts`).
+// En `home` (landing pública) siempre se muestran Iniciar sesión +
+// Registrarse, sin ranuras de sesión ni botón de cierre.
 type Props = {
-  current: 'login' | 'register' | 'perfil';
+  current: 'login' | 'register' | 'perfil' | 'home';
 };
 
 const { current } = Astro.props;
@@ -32,6 +34,15 @@ const cta =
         >
           Cerrar sesión
         </button>
+      ) : current === 'home' ? (
+        <>
+          <a class="ch-nav__link ch-nav__link--ghost" href="/login">
+            Iniciar sesión
+          </a>
+          <a class="ch-nav__link ch-nav__link--cta" href="/register">
+            Registrarse
+          </a>
+        </>
       ) : (
         <a class="ch-nav__link" href={cta.href}>
           {cta.label}
