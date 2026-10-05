@@ -1,0 +1,57 @@
+---
+import DisponibilidadIsla from '../../components/react/auth/DisponibilidadIsla';
+import Background from '../../components/astro/Background.astro';
+import SiteNav from '../../components/astro/SiteNav.astro';
+import '../../styles/register-page.css';
+
+// Página de disponibilidad semanal (US-005, exclusivo Afiliados): misma
+// composición y sistema visual que el resto de páginas auth. Protegida
+// por el middleware y con guardia de rol en el formulario (Escenario 4).
+// La isla se hidrata solo en el cliente por ClerkJS.
+const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
+---
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mi disponibilidad · ClicHogar</title>
+    <link rel="icon" href="/favicon.ico?v=6" sizes="any" />
+    <script is:inline>
+      // Tema inicial antes del primer pintado (evita flash): guardado >
+      // sistema > claro. Debe quedarse inline en el <head>.
+      try {
+        var t = localStorage.getItem('ch-theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
+  </head>
+  <body>
+    <SiteNav current="perfil" />
+    <Background />
+
+    <main class="ch-page">
+      <div class="ch-page__head">
+        <h1>Mi disponibilidad</h1>
+        <p>Cuándo pueden contratarte los usuarios</p>
+      </div>
+      <DisponibilidadIsla client:only="react" publishableKey={publishableKey} />
+    </main>
+
+    <script>
+      import { initToolsBackground } from '../../scripts/tools-background';
+      import { initThemeToggle } from '../../scripts/theme-toggle';
+      import { initNavAuth } from '../../scripts/nav-auth';
+      initToolsBackground();
+      initThemeToggle();
+      initNavAuth();
+    </script>
+  </body>
+</html>
