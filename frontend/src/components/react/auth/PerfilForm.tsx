@@ -53,7 +53,7 @@ export default function PerfilForm() {
   // diff parcial y la guardia de cambios sin guardar.
   useEffect(() => {
     let vivo = true;
-    (async () => {
+    void (async () => {
       try {
         const token = await getToken();
         if (!token) {

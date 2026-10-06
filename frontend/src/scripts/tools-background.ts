@@ -25,7 +25,7 @@ type Pieza = {
 
 /** Lee una custom property `--x`/`--y` (0–100) como fracción, o un fallback. */
 function fraccion(el: HTMLElement, nombre: string, fb: number): number {
-  const v = parseFloat(el.style.getPropertyValue(nombre));
+  const v = Number.parseFloat(el.style.getPropertyValue(nombre));
   return Number.isFinite(v) ? v / 100 : fb;
 }
 

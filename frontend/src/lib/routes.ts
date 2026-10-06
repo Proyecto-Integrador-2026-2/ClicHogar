@@ -17,7 +17,11 @@ const EXACTAS_PROTEGIDAS = ['/tareas/nueva'];
 
 /** True si la ruta exige sesión autenticada. */
 export function isProtectedRoute(pathname: string): boolean {
-  const ruta = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  // Sin regex: recorte lineal de `/` finales (`/` sola se conserva).
+  let ruta = pathname;
+  while (ruta.length > 1 && ruta.endsWith('/')) {
+    ruta = ruta.slice(0, -1);
+  }
   if (EXACTAS_PROTEGIDAS.includes(ruta)) return true;
   return PROTEGIDAS.some(
     (base) => ruta === base || ruta.startsWith(`${base}/`)

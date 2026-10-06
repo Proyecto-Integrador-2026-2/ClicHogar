@@ -55,7 +55,7 @@ export default function DisponibilidadForm() {
   // Sin fila local o sin rol afiliado no hay matriz que pintar.
   useEffect(() => {
     let vivo = true;
-    (async () => {
+    void (async () => {
       try {
         const token = await getToken();
         if (!token) {
