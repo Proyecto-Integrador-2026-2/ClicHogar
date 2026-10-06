@@ -1,3 +1,10 @@
 node_modules
 .env
 .git
+# No hornear datos locales ni bloat en la imagen (S6470).
+uploads/
+coverage/
+*.test.ts
+README.md
+tsconfig.json
+eslint.config.js
