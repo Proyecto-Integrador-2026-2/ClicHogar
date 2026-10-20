@@ -50,42 +50,41 @@ const EMAIL_REGEX = /^[^\s@]{1,64}@[^^\s@]{1,255}\.[^\s@]{2,63}$/;
 // Mínimo 8 caracteres, al menos una mayúscula y un número (Escenario 8).
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
 
+const OBLIGATORIO = 'Este campo es obligatorio';
+
+/** Un validador por campo: devuelve el mensaje o undefined si pasa. */
+const VALIDADORES: Record<ClaveError, (v: Valores) => string | undefined> = {
+  name: (v) => (v.name.trim() ? undefined : OBLIGATORIO),
+  email: (v) => {
+    if (!v.email.trim()) return OBLIGATORIO;
+    return EMAIL_REGEX.test(v.email)
+      ? undefined
+      : 'Por favor, ingresa un correo electrónico válido';
+  },
+  password: (v) => {
+    if (!v.password) return OBLIGATORIO;
+    return PASSWORD_REGEX.test(v.password)
+      ? undefined
+      : 'La contraseña debe tener al menos 8 caracteres, incluir números y mayúsculas';
+  },
+  confirmPassword: (v) =>
+    v.password && v.confirmPassword && v.password !== v.confirmPassword
+      ? 'Las contraseñas no coinciden'
+      : undefined,
+  role: (v) =>
+    v.role ? undefined : 'Por favor, selecciona cómo deseas usar la plataforma',
+  terms: (v) =>
+    v.termsAccepted
+      ? undefined
+      : 'Debes aceptar los Términos, Condiciones y Política de Datos',
+};
+
 /** Valida un campo y devuelve el mensaje a mostrar (o undefined si pasa). */
 export function validarCampo(
   campo: keyof Valores | 'terms',
   v: Valores
 ): string | undefined {
-  switch (campo) {
-    case 'name':
-      if (!v.name.trim()) return 'Este campo es obligatorio';
-      return undefined;
-    case 'email':
-      if (!v.email.trim()) return 'Este campo es obligatorio';
-      if (!EMAIL_REGEX.test(v.email)) {
-        return 'Por favor, ingresa un correo electrónico válido';
-      }
-      return undefined;
-    case 'password':
-      if (!v.password) return 'Este campo es obligatorio';
-      if (!PASSWORD_REGEX.test(v.password)) {
-        return 'La contraseña debe tener al menos 8 caracteres, incluir números y mayúsculas';
-      }
-      return undefined;
-    case 'confirmPassword':
-      if (v.password && v.confirmPassword && v.password !== v.confirmPassword) {
-        return 'Las contraseñas no coinciden';
-      }
-      return undefined;
-    case 'role':
-      if (!v.role)
-        return 'Por favor, selecciona cómo deseas usar la plataforma';
-      return undefined;
-    case 'terms':
-      if (!v.termsAccepted) {
-        return 'Debes aceptar los Términos, Condiciones y Política de Datos';
-      }
-      return undefined;
-  }
+  return VALIDADORES[campo as ClaveError](v);
 }
 
 /** Campos evaluados en cada validación (orden de presentación). */

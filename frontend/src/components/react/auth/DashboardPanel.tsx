@@ -30,6 +30,49 @@ async function cargarPanel(token: string): Promise<DatosPanel> {
   return { perfil, abiertas: contarAbiertas(tareas) };
 }
 
+/** Tres indicadores del panel: rol, avance del perfil y tareas abiertas. */
+function Indicadores({
+  perfil,
+  abiertas,
+}: {
+  perfil: UsuarioPublico;
+  abiertas: number;
+}) {
+  const resumen = resumenPerfil(perfil);
+  return (
+    <dl className="ch-dash-stats">
+      <div className="ch-dash-stat">
+        <dt>Mi rol</dt>
+        <dd>{etiquetaRol(perfil.rol)}</dd>
+      </div>
+      <div className="ch-dash-stat">
+        <dt>Perfil público</dt>
+        <dd>
+          {resumen.porcentaje}%
+          <span className="ch-dash-stat__hint">
+            {resumen.pendientes.length === 0 ? (
+              'Completo'
+            ) : (
+              <a href="/perfil/configurar">
+                Falta: {resumen.pendientes.join(', ')}
+              </a>
+            )}
+          </span>
+        </dd>
+      </div>
+      <div className="ch-dash-stat">
+        <dt>Tareas abiertas</dt>
+        <dd>
+          {abiertas}
+          <span className="ch-dash-stat__hint">
+            <a href="/tareas">Explorar tablero</a>
+          </span>
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
 export default function DashboardPanel() {
   const { user } = useUser();
   const { datos, error, recargar, firmado, cargando } = useCargaConSesion(
@@ -52,7 +95,6 @@ export default function DashboardPanel() {
   const abiertas = datos?.abiertas ?? 0;
   const nombre =
     user?.firstName ?? perfil?.nombre ?? user?.username ?? 'miembro';
-  const resumen = perfil ? resumenPerfil(perfil) : null;
 
   return (
     <div className="ch-auth">
@@ -71,38 +113,7 @@ export default function DashboardPanel() {
           />
         )}
 
-        {resumen && (
-          <dl className="ch-dash-stats">
-            <div className="ch-dash-stat">
-              <dt>Mi rol</dt>
-              <dd>{perfil ? etiquetaRol(perfil.rol) : '—'}</dd>
-            </div>
-            <div className="ch-dash-stat">
-              <dt>Perfil público</dt>
-              <dd>
-                {resumen.porcentaje}%
-                <span className="ch-dash-stat__hint">
-                  {resumen.pendientes.length === 0 ? (
-                    'Completo'
-                  ) : (
-                    <a href="/perfil/configurar">
-                      Falta: {resumen.pendientes.join(', ')}
-                    </a>
-                  )}
-                </span>
-              </dd>
-            </div>
-            <div className="ch-dash-stat">
-              <dt>Tareas abiertas</dt>
-              <dd>
-                {abiertas}
-                <span className="ch-dash-stat__hint">
-                  <a href="/tareas">Explorar tablero</a>
-                </span>
-              </dd>
-            </div>
-          </dl>
-        )}
+        {perfil && <Indicadores perfil={perfil} abiertas={abiertas} />}
       </div>
     </div>
   );
