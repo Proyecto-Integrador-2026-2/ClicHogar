@@ -6,9 +6,13 @@
  * La URL se configura con `PUBLIC_API_URL` (ver `frontend/.env.example`).
  */
 
-const API_URL =
-  import.meta.env.PUBLIC_API_URL ??
-  (import.meta.env.DEV ? 'http://localhost:3000' : '');
+/** Se lee en cada llamada (no al importar) para poder cambiarla en pruebas. */
+function apiUrl(): string {
+  return (
+    import.meta.env.PUBLIC_API_URL ??
+    (import.meta.env.DEV ? 'http://localhost:3000' : '')
+  );
+}
 
 export type RolBackend = 'cliente' | 'afiliado';
 
@@ -40,12 +44,12 @@ export async function sincronizarUsuarioConBackend(args: {
   nombre: string;
   rol: 'Usuario' | 'Afiliado' | string;
 }): Promise<UsuarioPublico> {
-  if (!API_URL) {
+  if (!apiUrl()) {
     throw new Error(
       'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
     );
   }
-  const respuesta = await fetch(`${API_URL}/api/usuarios/sync`, {
+  const respuesta = await fetch(`${apiUrl()}/api/usuarios/sync`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -73,12 +77,12 @@ export async function sincronizarUsuarioConBackend(args: {
  * Postgres. Lanza Error con el mensaje del backend si algo falla.
  */
 export async function obtenerPerfil(token: string): Promise<UsuarioPublico> {
-  if (!API_URL) {
+  if (!apiUrl()) {
     throw new Error(
       'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
     );
   }
-  const respuesta = await fetch(`${API_URL}/api/usuarios/yo`, {
+  const respuesta = await fetch(`${apiUrl()}/api/usuarios/yo`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -102,7 +106,7 @@ export async function actualizarPerfil(args: {
   descripcion?: string;
   ubicacion?: string;
 }): Promise<UsuarioPublico> {
-  if (!API_URL) {
+  if (!apiUrl()) {
     throw new Error(
       'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
     );
@@ -113,7 +117,7 @@ export async function actualizarPerfil(args: {
     forma.append('descripcion', args.descripcion);
   if (args.ubicacion !== undefined) forma.append('ubicacion', args.ubicacion);
 
-  const respuesta = await fetch(`${API_URL}/api/usuarios/yo`, {
+  const respuesta = await fetch(`${apiUrl()}/api/usuarios/yo`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${args.token}` },
     body: forma,
@@ -131,8 +135,8 @@ export async function actualizarPerfil(args: {
 
 /** Convierte una ruta pública del backend (`/uploads/...`) en URL absoluta. */
 export function urlPublica(rutaRelativa: string): string {
-  if (!API_URL) return rutaRelativa;
-  return `${API_URL}${rutaRelativa}`;
+  if (!apiUrl()) return rutaRelativa;
+  return `${apiUrl()}${rutaRelativa}`;
 }
 
 export type TareaTablero = {
@@ -151,14 +155,14 @@ export type TareaTablero = {
  * middleware de página la exige; sin token el backend responde 401).
  */
 export async function listarTareas(token: string): Promise<TareaTablero[]> {
-  if (!API_URL) {
+  if (!apiUrl()) {
     throw new Error(
       'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
     );
   }
   let respuesta: Response;
   try {
-    respuesta = await fetch(`${API_URL}/api/tareas`, {
+    respuesta = await fetch(`${apiUrl()}/api/tareas`, {
       headers: { Authorization: `Bearer ${token}` },
     });
   } catch {
@@ -220,14 +224,14 @@ export async function crearTarea(args: {
   categoria: string;
   ubicacion: string;
 }): Promise<TareaPublicaApi> {
-  if (!API_URL) {
+  if (!apiUrl()) {
     throw new Error(
       'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
     );
   }
   let respuesta: Response;
   try {
-    respuesta = await fetch(`${API_URL}/api/tareas`, {
+    respuesta = await fetch(`${apiUrl()}/api/tareas`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${args.token}`,
@@ -264,12 +268,12 @@ export async function crearTarea(args: {
  * Lanza Error con el mensaje del backend si algo falla.
  */
 export async function obtenerDisponibilidad(token: string): Promise<SlotApi[]> {
-  if (!API_URL) {
+  if (!apiUrl()) {
     throw new Error(
       'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
     );
   }
-  const respuesta = await fetch(`${API_URL}/api/usuarios/disponibilidad`, {
+  const respuesta = await fetch(`${apiUrl()}/api/usuarios/disponibilidad`, {
     headers: { Authorization: `Bearer ${token}` },
   }).catch(() => {
     throw new Error(
@@ -295,12 +299,12 @@ export async function guardarDisponibilidad(args: {
   token: string;
   slots: Array<{ dia: number; franja: string }>;
 }): Promise<SlotApi[]> {
-  if (!API_URL) {
+  if (!apiUrl()) {
     throw new Error(
       'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
     );
   }
-  const respuesta = await fetch(`${API_URL}/api/usuarios/disponibilidad`, {
+  const respuesta = await fetch(`${apiUrl()}/api/usuarios/disponibilidad`, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${args.token}`,
