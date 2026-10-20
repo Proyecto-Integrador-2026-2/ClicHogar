@@ -14,6 +14,82 @@ function apiUrl(): string {
   );
 }
 
+const MENSAJE_SIN_URL =
+  'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.';
+const MENSAJE_SIN_RED =
+  'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.';
+
+/**
+ * Sesión expirada o ausente (US-006, Escenario 7): el backend respondió
+ * 401. El formulario la traduce a redirect a `/login?expirada=1`.
+ */
+export class ErrorSesionExpirada extends Error {
+  constructor() {
+    super('Tu sesión ha expirado. Inicia sesión de nuevo.');
+    this.name = 'ErrorSesionExpirada';
+  }
+}
+
+type OpcionesPedir = {
+  /** Convierte un fallo de `fetch` (sin red) en un mensaje amigable. */
+  mensajeSinRed?: boolean;
+  /** Traduce un 401 a `ErrorSesionExpirada`. */
+  detectarSesionExpirada?: boolean;
+};
+
+/** Tareas: sin red con mensaje amigable y 401 como sesión expirada. */
+const OPCIONES_TAREAS: OpcionesPedir = {
+  mensajeSinRed: true,
+  detectarSesionExpirada: true,
+};
+
+/**
+ * Única puerta de salida al backend: comprueba la URL, añade el token,
+ * y unifica el manejo de errores (sin red, 401 y mensaje del backend).
+ * Lanza Error con el mensaje del backend si la respuesta no es 2xx.
+ */
+async function pedir<T>(
+  ruta: string,
+  token: string,
+  init: RequestInit = {},
+  { mensajeSinRed = false, detectarSesionExpirada = false }: OpcionesPedir = {}
+): Promise<T> {
+  const base = apiUrl();
+  if (!base) {
+    throw new Error(MENSAJE_SIN_URL);
+  }
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(`${base}${ruta}`, {
+      ...init,
+      headers: { ...init.headers, Authorization: `Bearer ${token}` },
+    });
+  } catch (err: unknown) {
+    throw mensajeSinRed ? new Error(MENSAJE_SIN_RED) : err;
+  }
+
+  if (detectarSesionExpirada && respuesta.status === 401) {
+    throw new ErrorSesionExpirada();
+  }
+  if (!respuesta.ok) {
+    const detalle = await respuesta.json().catch(() => null);
+    const mensaje =
+      (detalle as { message?: string } | null)?.message ??
+      `El backend respondió ${respuesta.status}.`;
+    throw new Error(mensaje);
+  }
+  return (await respuesta.json()) as T;
+}
+
+/** Cabeceras y cuerpo JSON de una petición con payload. */
+function conJson(metodo: string, cuerpo: unknown): RequestInit {
+  return {
+    method: metodo,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cuerpo),
+  };
+}
+
 export type RolBackend = 'cliente' | 'afiliado';
 
 export type UsuarioPublico = {
@@ -39,36 +115,19 @@ export function normalizarRolParaBackend(
  * la sesión de Clerk. Debe llamarse con el session token recién obtenido.
  * Lanza Error con el mensaje del backend si algo falla.
  */
-export async function sincronizarUsuarioConBackend(args: {
+export function sincronizarUsuarioConBackend(args: {
   token: string;
   nombre: string;
   rol: 'Usuario' | 'Afiliado' | string;
 }): Promise<UsuarioPublico> {
-  if (!apiUrl()) {
-    throw new Error(
-      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
-    );
-  }
-  const respuesta = await fetch(`${apiUrl()}/api/usuarios/sync`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${args.token}`,
-    },
-    body: JSON.stringify({
+  return pedir(
+    '/api/usuarios/sync',
+    args.token,
+    conJson('POST', {
       nombre: args.nombre,
       rol: normalizarRolParaBackend(args.rol),
-    }),
-  });
-
-  if (!respuesta.ok) {
-    const detalle = await respuesta.json().catch(() => null);
-    const mensaje =
-      (detalle as { message?: string } | null)?.message ??
-      `El backend respondió ${respuesta.status}.`;
-    throw new Error(mensaje);
-  }
-  return (await respuesta.json()) as UsuarioPublico;
+    })
+  );
 }
 
 /**
@@ -76,67 +135,36 @@ export async function sincronizarUsuarioConBackend(args: {
  * Requiere el session token de Clerk; el backend resuelve el rol desde
  * Postgres. Lanza Error con el mensaje del backend si algo falla.
  */
-export async function obtenerPerfil(token: string): Promise<UsuarioPublico> {
-  if (!apiUrl()) {
-    throw new Error(
-      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
-    );
-  }
-  const respuesta = await fetch(`${apiUrl()}/api/usuarios/yo`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!respuesta.ok) {
-    const detalle = await respuesta.json().catch(() => null);
-    const mensaje =
-      (detalle as { message?: string } | null)?.message ??
-      `El backend respondió ${respuesta.status}.`;
-    throw new Error(mensaje);
-  }
-  return (await respuesta.json()) as UsuarioPublico;
+export function obtenerPerfil(token: string): Promise<UsuarioPublico> {
+  return pedir('/api/usuarios/yo', token);
 }
 
 /**
  * Actualización parcial del perfil (US-004, Escenario 2): solo viajan los
  * campos presentes; lo ausente no se toca en el servidor.
  */
-export async function actualizarPerfil(args: {
+export function actualizarPerfil(args: {
   token: string;
   foto?: File;
   descripcion?: string;
   ubicacion?: string;
 }): Promise<UsuarioPublico> {
-  if (!apiUrl()) {
-    throw new Error(
-      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
-    );
-  }
   const forma = new FormData();
   if (args.foto) forma.append('foto', args.foto);
   if (args.descripcion !== undefined)
     forma.append('descripcion', args.descripcion);
   if (args.ubicacion !== undefined) forma.append('ubicacion', args.ubicacion);
-
-  const respuesta = await fetch(`${apiUrl()}/api/usuarios/yo`, {
+  return pedir('/api/usuarios/yo', args.token, {
     method: 'PATCH',
-    headers: { Authorization: `Bearer ${args.token}` },
     body: forma,
   });
-
-  if (!respuesta.ok) {
-    const detalle = await respuesta.json().catch(() => null);
-    const mensaje =
-      (detalle as { message?: string } | null)?.message ??
-      `El backend respondió ${respuesta.status}.`;
-    throw new Error(mensaje);
-  }
-  return (await respuesta.json()) as UsuarioPublico;
 }
 
 /** Convierte una ruta pública del backend (`/uploads/...`) en URL absoluta. */
 export function urlPublica(rutaRelativa: string): string {
-  if (!apiUrl()) return rutaRelativa;
-  return `${apiUrl()}${rutaRelativa}`;
+  const base = apiUrl();
+  if (!base) return rutaRelativa;
+  return `${base}${rutaRelativa}`;
 }
 
 export type TareaTablero = {
@@ -154,45 +182,8 @@ export type TareaTablero = {
  * Tablero de solicitudes abiertas (US-008): requiere sesión (el
  * middleware de página la exige; sin token el backend responde 401).
  */
-export async function listarTareas(token: string): Promise<TareaTablero[]> {
-  if (!apiUrl()) {
-    throw new Error(
-      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
-    );
-  }
-  let respuesta: Response;
-  try {
-    respuesta = await fetch(`${apiUrl()}/api/tareas`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  } catch {
-    throw new Error(
-      'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.'
-    );
-  }
-
-  if (respuesta.status === 401) {
-    throw new ErrorSesionExpirada();
-  }
-  if (!respuesta.ok) {
-    const detalle = await respuesta.json().catch(() => null);
-    const mensaje =
-      (detalle as { message?: string } | null)?.message ??
-      `El backend respondió ${respuesta.status}.`;
-    throw new Error(mensaje);
-  }
-  return (await respuesta.json()) as TareaTablero[];
-}
-
-/**
- * Sesión expirada o ausente (US-006, Escenario 7): el backend respondió
- * 401. El formulario la traduce a redirect a `/login?expirada=1`.
- */
-export class ErrorSesionExpirada extends Error {
-  constructor() {
-    super('Tu sesión ha expirado. Inicia sesión de nuevo.');
-    this.name = 'ErrorSesionExpirada';
-  }
+export function listarTareas(token: string): Promise<TareaTablero[]> {
+  return pedir('/api/tareas', token, {}, OPCIONES_TAREAS);
 }
 
 export type SlotApi = {
@@ -217,112 +208,51 @@ export type TareaPublicaApi = {
  * 401 del backend = sesión expirada → ErrorSesionExpirada para que el
  * formulario redirija al login con aviso (Escenario 7).
  */
-export async function crearTarea(args: {
+export function crearTarea(args: {
   token: string;
   titulo: string;
   descripcion: string;
   categoria: string;
   ubicacion: string;
 }): Promise<TareaPublicaApi> {
-  if (!apiUrl()) {
-    throw new Error(
-      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
-    );
-  }
-  let respuesta: Response;
-  try {
-    respuesta = await fetch(`${apiUrl()}/api/tareas`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${args.token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        titulo: args.titulo,
-        descripcion: args.descripcion,
-        categoria: args.categoria,
-        ubicacion: args.ubicacion,
-      }),
-    });
-  } catch {
-    throw new Error(
-      'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.'
-    );
-  }
-
-  if (respuesta.status === 401) {
-    throw new ErrorSesionExpirada();
-  }
-  if (!respuesta.ok) {
-    const detalle = await respuesta.json().catch(() => null);
-    const mensaje =
-      (detalle as { message?: string } | null)?.message ??
-      `El backend respondió ${respuesta.status}.`;
-    throw new Error(mensaje);
-  }
-  return (await respuesta.json()) as TareaPublicaApi;
+  return pedir(
+    '/api/tareas',
+    args.token,
+    conJson('POST', {
+      titulo: args.titulo,
+      descripcion: args.descripcion,
+      categoria: args.categoria,
+      ubicacion: args.ubicacion,
+    }),
+    OPCIONES_TAREAS
+  );
 }
 
 /**
  * Lee la matriz de disponibilidad (US-005, prefill y vista).
  * Lanza Error con el mensaje del backend si algo falla.
  */
-export async function obtenerDisponibilidad(token: string): Promise<SlotApi[]> {
-  if (!apiUrl()) {
-    throw new Error(
-      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
-    );
-  }
-  const respuesta = await fetch(`${apiUrl()}/api/usuarios/disponibilidad`, {
-    headers: { Authorization: `Bearer ${token}` },
-  }).catch(() => {
-    throw new Error(
-      'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.'
-    );
-  });
-
-  if (!respuesta.ok) {
-    const detalle = await respuesta.json().catch(() => null);
-    const mensaje =
-      (detalle as { message?: string } | null)?.message ??
-      `El backend respondió ${respuesta.status}.`;
-    throw new Error(mensaje);
-  }
-  return (await respuesta.json()) as SlotApi[];
+export function obtenerDisponibilidad(token: string): Promise<SlotApi[]> {
+  return pedir(
+    '/api/usuarios/disponibilidad',
+    token,
+    {},
+    { mensajeSinRed: true }
+  );
 }
 
 /**
  * Reemplaza la matriz completa (US-005, Esc 2-3): el arreglo viaja tal
  * cual, incluso vacío para limpiar todo.
  */
-export async function guardarDisponibilidad(args: {
+export function guardarDisponibilidad(args: {
   token: string;
   slots: Array<{ dia: number; franja: string }>;
 }): Promise<SlotApi[]> {
-  if (!apiUrl()) {
-    throw new Error(
-      'Falta PUBLIC_API_URL. Crea frontend/.env desde .env.example.'
-    );
-  }
-  const respuesta = await fetch(`${apiUrl()}/api/usuarios/disponibilidad`, {
-    method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${args.token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ slots: args.slots }),
-  }).catch(() => {
-    throw new Error(
-      'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.'
-    );
-  });
-
-  if (!respuesta.ok) {
-    const detalle = await respuesta.json().catch(() => null);
-    const mensaje =
-      (detalle as { message?: string } | null)?.message ??
-      `El backend respondió ${respuesta.status}.`;
-    throw new Error(mensaje);
-  }
-  return (await respuesta.json()) as SlotApi[];
+  return pedir(
+    '/api/usuarios/disponibilidad',
+    args.token,
+    conJson('PUT', { slots: args.slots }),
+    { mensajeSinRed: true }
+  );
 }
