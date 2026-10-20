@@ -3,7 +3,7 @@
  * Bun carga automáticamente el archivo .env, no se necesita dotenv.
  */
 
-function requireEnv(name: string): string {
+export function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value || value.trim() === '') {
     throw new Error(
