@@ -89,6 +89,11 @@ describe('sincronizarUsuarioConBackend', () => {
     );
   });
 
+  test('un fallo de red sin mensaje amigable se propaga tal cual', async () => {
+    simular(new Error('offline'));
+    await expect(sincronizarUsuarioConBackend(args)).rejects.toThrow('offline');
+  });
+
   test('falla sin PUBLIC_API_URL', async () => {
     process.env.PUBLIC_API_URL = '';
     await expect(sincronizarUsuarioConBackend(args)).rejects.toThrow(SIN_URL);
