@@ -1,4 +1,6 @@
 # Clic Hogar 🛠️
+[![Integracion Continua Clic Hogar](https://github.com/Proyecto-Integrador-2026-2/ClicHogar/actions/workflows/ci.yml/badge.svg)](https://github.com/Proyecto-Integrador-2026-2/ClicHogar/actions/workflows/ci.yml)
+
 
 ## Descripción del Proyecto
 
