@@ -48,39 +48,40 @@ export const CATEGORIAS_TAREA = [
 export const MIN_DESCRIPCION = 20;
 export const MAX_DESCRIPCION = 1000;
 
+const OBLIGATORIO = 'Este campo es obligatorio';
+
+/** Un validador por campo: devuelve el mensaje o undefined si pasa. */
+const VALIDADORES: Record<
+  ClaveErrorTarea,
+  (v: ValoresTarea) => string | undefined
+> = {
+  titulo: (v) => {
+    const limpio = v.titulo.trim();
+    if (!limpio) return OBLIGATORIO;
+    return limpio.length > 120
+      ? 'El título no puede superar 120 caracteres.'
+      : undefined;
+  },
+  descripcion: (v) => {
+    const limpia = v.descripcion.trim();
+    if (!limpia) return OBLIGATORIO;
+    return limpia.length < MIN_DESCRIPCION
+      ? 'Por favor, proporciona más detalles (mínimo 20 caracteres)...'
+      : undefined;
+  },
+  categoria: (v) =>
+    CATEGORIAS_TAREA.includes(v.categoria as (typeof CATEGORIAS_TAREA)[number])
+      ? undefined
+      : 'Selecciona una categoría válida.',
+  ubicacion: (v) => (v.ubicacion.trim() ? undefined : OBLIGATORIO),
+};
+
 /** Valida un campo y devuelve el mensaje a mostrar (o undefined si pasa). */
 export function validarCampoTarea(
   campo: ClaveErrorTarea,
   v: ValoresTarea
 ): string | undefined {
-  switch (campo) {
-    case 'titulo':
-      if (!v.titulo.trim()) return 'Este campo es obligatorio';
-      if (v.titulo.trim().length > 120) {
-        return 'El título no puede superar 120 caracteres.';
-      }
-      return undefined;
-    case 'descripcion': {
-      const limpia = v.descripcion.trim();
-      if (!limpia) return 'Este campo es obligatorio';
-      if (limpia.length < MIN_DESCRIPCION) {
-        return 'Por favor, proporciona más detalles (mínimo 20 caracteres)...';
-      }
-      return undefined;
-    }
-    case 'categoria':
-      if (
-        !CATEGORIAS_TAREA.includes(
-          v.categoria as (typeof CATEGORIAS_TAREA)[number]
-        )
-      ) {
-        return 'Selecciona una categoría válida.';
-      }
-      return undefined;
-    case 'ubicacion':
-      if (!v.ubicacion.trim()) return 'Este campo es obligatorio';
-      return undefined;
-  }
+  return VALIDADORES[campo](v);
 }
 
 /** Campos evaluados en cada validación (orden de presentación). */
