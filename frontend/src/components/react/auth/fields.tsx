@@ -5,6 +5,7 @@
  * decorativos (`aria-hidden`). Estilos en `RegisterForm.css`.
  */
 import React, { useId, useState } from 'react';
+import type { ReactNode } from 'react';
 
 /** Error visible del resumen superior: enlaza al campo por su id. */
 export type FieldError = {
@@ -87,6 +88,64 @@ function describedBy(
   return ids || undefined;
 }
 
+/**
+ * Envoltorio común de un campo: etiqueta (con marca de obligatorio), pista,
+ * el control y el error inline. Los ids de pista y error los generan los
+ * campos para conectarlos con `aria-describedby`.
+ */
+function Campo(props: {
+  id: string;
+  label: string;
+  obligatorio?: boolean;
+  hint?: string;
+  hintId: string;
+  error?: string;
+  errorId: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="ch-field">
+      <label className="ch-field__label" htmlFor={props.id}>
+        {props.label}{' '}
+        {props.obligatorio && (
+          <span className="ch-field__required" aria-hidden="true">
+            *
+          </span>
+        )}
+        {props.obligatorio && <span className="ch-sr-only">(obligatorio)</span>}
+      </label>
+      {props.hint && (
+        <p className="ch-field__hint" id={props.hintId}>
+          {props.hint}
+        </p>
+      )}
+      {props.children}
+      {props.error && (
+        <p className="ch-field__error" id={props.errorId}>
+          {props.error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Atributos de accesibilidad y estilo que comparten todos los controles. */
+function atributosControl(
+  props: BaseProps,
+  hintId: string,
+  errorId: string
+): {
+  className: string;
+  'aria-invalid': true | undefined;
+  'aria-describedby': string | undefined;
+} {
+  return {
+    className: `ch-field__input${props.error ? ' ch-field__input--error' : ''}`,
+    'aria-invalid': props.error ? true : undefined,
+    'aria-describedby': describedBy(hintId, errorId, props.error, props.hint),
+  };
+}
+
 export function TextField(
   props: BaseProps & {
     type: 'text' | 'email';
@@ -101,24 +160,15 @@ export function TextField(
   const hintId = useId();
   const errorId = useId();
   return (
-    <div className="ch-field">
-      <label className="ch-field__label" htmlFor={props.id}>
-        {props.label}{' '}
-        {props.required && (
-          <span className="ch-field__required" aria-hidden="true">
-            *
-          </span>
-        )}
-        {props.required && <span className="ch-sr-only">(obligatorio)</span>}
-      </label>
-      {props.hint && (
-        <p className="ch-field__hint" id={hintId}>
-          {props.hint}
-        </p>
-      )}
+    <Campo
+      {...props}
+      obligatorio={props.required}
+      hintId={hintId}
+      errorId={errorId}
+    >
       <input
+        {...atributosControl(props, hintId, errorId)}
         id={props.id}
-        className={`ch-field__input${props.error ? ' ch-field__input--error' : ''}`}
         type={props.type}
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
@@ -127,15 +177,8 @@ export function TextField(
         required={props.required}
         autoComplete={props.autoComplete}
         inputMode={props.inputMode}
-        aria-invalid={props.error ? true : undefined}
-        aria-describedby={describedBy(hintId, errorId, props.error, props.hint)}
       />
-      {props.error && (
-        <p className="ch-field__error" id={errorId}>
-          {props.error}
-        </p>
-      )}
-    </div>
+    </Campo>
   );
 }
 
@@ -152,23 +195,11 @@ export function PasswordField(
   const hintId = useId();
   const errorId = useId();
   return (
-    <div className="ch-field">
-      <label className="ch-field__label" htmlFor={props.id}>
-        {props.label}{' '}
-        <span className="ch-field__required" aria-hidden="true">
-          *
-        </span>
-        <span className="ch-sr-only">(obligatorio)</span>
-      </label>
-      {props.hint && (
-        <p className="ch-field__hint" id={hintId}>
-          {props.hint}
-        </p>
-      )}
+    <Campo {...props} obligatorio hintId={hintId} errorId={errorId}>
       <div className="ch-input-wrap">
         <input
+          {...atributosControl(props, hintId, errorId)}
           id={props.id}
-          className={`ch-field__input${props.error ? ' ch-field__input--error' : ''}`}
           type={visible ? 'text' : 'password'}
           value={props.value}
           onChange={(e) => props.onChange(e.target.value)}
@@ -176,13 +207,6 @@ export function PasswordField(
           disabled={props.disabled}
           required
           autoComplete={props.autoComplete ?? 'new-password'}
-          aria-invalid={props.error ? true : undefined}
-          aria-describedby={describedBy(
-            hintId,
-            errorId,
-            props.error,
-            props.hint
-          )}
         />
         <button
           type="button"
@@ -195,12 +219,7 @@ export function PasswordField(
           {visible ? <EyeOffIcon /> : <EyeIcon />}
         </button>
       </div>
-      {props.error && (
-        <p className="ch-field__error" id={errorId}>
-          {props.error}
-        </p>
-      )}
-    </div>
+    </Campo>
   );
 }
 
@@ -217,37 +236,21 @@ export function SelectField(
   const hintId = useId();
   const errorId = useId();
   return (
-    <div className="ch-field">
-      <label className="ch-field__label" htmlFor={props.id}>
-        {props.label}{' '}
-        {props.required && (
-          <span className="ch-field__required" aria-hidden="true">
-            *
-          </span>
-        )}
-        {props.required && <span className="ch-sr-only">(obligatorio)</span>}
-      </label>
-      {props.hint && (
-        <p className="ch-field__hint" id={hintId}>
-          {props.hint}
-        </p>
-      )}
+    <Campo
+      {...props}
+      obligatorio={props.required}
+      hintId={hintId}
+      errorId={errorId}
+    >
       <div className="ch-select-wrap">
         <select
+          {...atributosControl(props, hintId, errorId)}
           id={props.id}
-          className={`ch-field__input${props.error ? ' ch-field__input--error' : ''}`}
           value={props.value}
           onChange={(e) => props.onChange(e.target.value)}
           onBlur={props.onBlur}
           disabled={props.disabled}
           required={props.required}
-          aria-invalid={props.error ? true : undefined}
-          aria-describedby={describedBy(
-            hintId,
-            errorId,
-            props.error,
-            props.hint
-          )}
         >
           <option value="">{props.placeholder}</option>
           {props.options.map((o) => (
@@ -258,12 +261,7 @@ export function SelectField(
         </select>
         <ChevronIcon />
       </div>
-      {props.error && (
-        <p className="ch-field__error" id={errorId}>
-          {props.error}
-        </p>
-      )}
-    </div>
+    </Campo>
   );
 }
 
@@ -278,32 +276,17 @@ export function FileField(
   const hintId = useId();
   const errorId = useId();
   return (
-    <div className="ch-field">
-      <label className="ch-field__label" htmlFor={props.id}>
-        {props.label}
-      </label>
-      {props.hint && (
-        <p className="ch-field__hint" id={hintId}>
-          {props.hint}
-        </p>
-      )}
+    <Campo {...props} hintId={hintId} errorId={errorId}>
       <input
+        {...atributosControl(props, hintId, errorId)}
         id={props.id}
-        className={`ch-field__input${props.error ? ' ch-field__input--error' : ''}`}
         type="file"
         accept={props.accept}
         onChange={(e) => props.onChange(e.target.files?.[0] ?? null)}
         onBlur={props.onBlur}
         disabled={props.disabled}
-        aria-invalid={props.error ? true : undefined}
-        aria-describedby={describedBy(hintId, errorId, props.error, props.hint)}
       />
-      {props.error && (
-        <p className="ch-field__error" id={errorId}>
-          {props.error}
-        </p>
-      )}
-    </div>
+    </Campo>
   );
 }
 

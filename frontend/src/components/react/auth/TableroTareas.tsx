@@ -4,14 +4,15 @@
  * con sesión trae el tablero (vacío con estado explícito si no hay).
  * Sin red: alerta + reintento sin perder la página.
  */
-import React, { useCallback, useEffect, useState } from 'react';
-import { useUser, useAuth } from '@clerk/clerk-react';
-import {
-  ErrorSesionExpirada,
-  listarTareas,
-  type TareaTablero,
-} from '../../../lib/usuarios-api';
+import React from 'react';
+import { listarTareas } from '../../../lib/usuarios-api';
 import './auth.css';
+import {
+  AlertaConReintento,
+  PantallaCargando,
+  PantallaSinSesion,
+  useCargaConSesion,
+} from './carga-sesion';
 
 function fechaCorta(iso: string): string {
   const fecha = new Date(iso);
@@ -22,72 +23,27 @@ function fechaCorta(iso: string): string {
   });
 }
 
+const cargarTablero = (token: string) => listarTareas(token);
+
 export default function TableroTareas() {
-  const { isLoaded, isSignedIn } = useUser();
-  const { getToken } = useAuth();
+  const {
+    datos: tareas,
+    error,
+    recargar,
+    firmado,
+    cargando,
+  } = useCargaConSesion(cargarTablero, 'No se pudo cargar el tablero.');
 
-  const [tareas, setTareas] = useState<TareaTablero[] | null>(null);
-  const [cargando, setCargando] = useState(true);
-  const [globalError, setGlobalError] = useState('');
-
-  const cargar = useCallback(async () => {
-    setCargando(true);
-    setGlobalError('');
-    try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error(
-          'No se pudo obtener la sesión. Recarga e inténtalo de nuevo.'
-        );
-      }
-      setTareas(await listarTareas(token));
-    } catch (err: unknown) {
-      if (err instanceof ErrorSesionExpirada) {
-        window.location.href = '/login?expirada=1';
-        return;
-      }
-      setGlobalError(
-        err instanceof Error ? err.message : 'No se pudo cargar el tablero.'
-      );
-    } finally {
-      setCargando(false);
-    }
-  }, [getToken]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (!isSignedIn) {
-      setCargando(false);
-      return;
-    }
-    void cargar();
-  }, [isLoaded, isSignedIn, cargar]);
-
-  if (!isLoaded || cargando) {
-    return (
-      <div className="ch-auth">
-        <div className="ch-card">
-          <p className="ch-status" role="status">
-            Cargando tareas disponibles…
-          </p>
-        </div>
-      </div>
-    );
+  if (cargando) {
+    return <PantallaCargando texto="Cargando tareas disponibles…" />;
   }
 
-  if (!isSignedIn) {
+  if (!firmado) {
     return (
-      <div className="ch-auth">
-        <div className="ch-card">
-          <h2 className="ch-card__title">Explora tareas</h2>
-          <p className="ch-card__subtitle">
-            Inicia sesión para ver las solicitudes activas y ofertar.
-          </p>
-          <a className="ch-btn ch-btn--primary" href="/login">
-            Iniciar sesión
-          </a>
-        </div>
-      </div>
+      <PantallaSinSesion
+        titulo="Explora tareas"
+        subtitulo="Inicia sesión para ver las solicitudes activas y ofertar."
+      />
     );
   }
 
@@ -103,20 +59,14 @@ export default function TableroTareas() {
               : `${tareas.length} ${tareas.length === 1 ? 'solicitud activa' : 'solicitudes activas'}`}
         </p>
 
-        {globalError && (
-          <div className="ch-alert ch-alert--error" role="alert">
-            <p style={{ margin: '0 0 8px' }}>{globalError}</p>
-            <button
-              type="button"
-              className="ch-btn ch-btn--primary"
-              onClick={() => void cargar()}
-            >
-              Reintentar
-            </button>
-          </div>
+        {error && (
+          <AlertaConReintento
+            mensaje={error}
+            onReintentar={() => void recargar()}
+          />
         )}
 
-        {tareas !== null && tareas.length === 0 && !globalError && (
+        {tareas !== null && tareas.length === 0 && !error && (
           <p className="ch-field__hint">
             No hay tareas abiertas por ahora. Vuelve más tarde.
           </p>
