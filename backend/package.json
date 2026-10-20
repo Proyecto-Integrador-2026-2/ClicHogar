@@ -7,6 +7,8 @@
     "dev": "bun --watch index.ts",
     "start": "bun index.ts",
     "test": "bun test",
+    "coverage": "bun test --coverage --coverage-reporter=lcov --coverage-reporter=text",
+    "coverage:html": "bun run coverage && bun ../scripts/coverage-html.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
@@ -26,6 +28,10 @@
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
     "eslint": "^10.10.0",
+    "istanbul-lib-coverage": "^3.2.2",
+    "istanbul-lib-report": "^3.0.1",
+    "istanbul-reports": "^3.2.0",
+    "lcov-parse": "^1.0.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.70.0"
   }

@@ -3,7 +3,12 @@
  * Puras y sin BD ni red: número mágico, límites y patch parcial.
  */
 import { describe, expect, test } from 'bun:test';
-import { MAX_FOTO_BYTES, detectarMimeFoto } from './almacenamiento';
+import { rm } from 'node:fs/promises';
+import {
+  MAX_FOTO_BYTES,
+  almacenamientoLocal,
+  detectarMimeFoto,
+} from './almacenamiento';
 import { normalizarPatch } from '../services/perfil.service';
 
 describe('detectarMimeFoto', () => {
@@ -32,6 +37,19 @@ describe('detectarMimeFoto', () => {
 
   test('el límite es 5MB exactos', () => {
     expect(MAX_FOTO_BYTES).toBe(5 * 1024 * 1024);
+  });
+});
+
+describe('almacenamientoLocal', () => {
+  test('guarda el archivo con nombre uuid y devuelve su URL pública', async () => {
+    const foto = await almacenamientoLocal.guardar(
+      new Uint8Array([0xff, 0xd8, 0xff]),
+      'image/jpeg'
+    );
+    expect(foto.url).toMatch(/^\/uploads\/perfiles\/[0-9a-f-]{36}\.jpg$/);
+    const ruta = foto.url.slice(1);
+    expect(await Bun.file(ruta).exists()).toBe(true);
+    await rm(ruta, { force: true });
   });
 });
 

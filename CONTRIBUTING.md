@@ -26,6 +26,15 @@ Para que una Historia de Usuario se considere "Terminada" (Done) y el código pu
 3.  **Análisis de Seguridad y Calidad:** Todo código enviado a `main` será analizado automáticamente por **SonarCloud**. No se aceptarán ramas que introduzcan "code smells", duplicidad o vulnerabilidades de seguridad[cite: 4, 5].
 4.  **Pruebas Unitarias:** La lógica crítica del backend (Node.js) debe contar con pruebas utilizando **Jest** y **Supertest** para garantizar la resiliencia de los endpoints (ej. registro, inicio de sesión)[cite: 4, 5].
 
+## Ver la cobertura en local
+
+Bun solo genera `lcov.info`; para verla como reporte HTML (estilo Istanbul) ejecuta en cada paquete:
+
+    cd frontend && bun run coverage:html
+    cd backend && bun run coverage:html
+
+y abre `frontend/coverage/html/index.html` o `backend/coverage/html/index.html`. La carpeta `coverage/` está en `.gitignore`.
+
 ## Flujo Automatizado de Integración Continua (CI/CD)
 
 Contamos con un robot de **GitHub Actions** (`ci.yml`) que automatiza las revisiones[cite: 3, 4].
