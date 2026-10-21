@@ -1,7 +1,4 @@
-import {
-  NotFoundError,
-  ValidationError,
-} from '../../../shared/errors/app-error';
+import { ValidationError } from '../../../shared/errors/app-error';
 import type { Usuario } from '../entities/usuario.entity';
 import {
   toUsuarioPublico,
@@ -14,6 +11,7 @@ import {
   detectarMimeFoto,
   type AlmacenamientoFotos,
 } from '../storage/almacenamiento';
+import { exigirUsuario } from './usuario-actual';
 
 export type FotoRecibida = {
   datos: Uint8Array;
@@ -57,12 +55,7 @@ export const perfilService = {
     foto?: FotoRecibida;
     almacenamiento?: AlmacenamientoFotos;
   }): Promise<UsuarioPublico> {
-    const existente = await usuariosRepository.buscarPorClerkId(args.clerkId);
-    if (!existente) {
-      throw new NotFoundError(
-        'Aún no tienes perfil local. Llama a POST /api/usuarios/sync primero.'
-      );
-    }
+    const existente = await exigirUsuario(args.clerkId);
 
     const patch = normalizarPatch({
       descripcion: args.descripcion,

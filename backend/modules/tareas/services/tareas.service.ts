@@ -1,8 +1,5 @@
-import {
-  NotFoundError,
-  ValidationError,
-} from '../../../shared/errors/app-error';
-import { usuariosRepository } from '../../usuarios/repositories/usuarios.repository';
+import { ValidationError } from '../../../shared/errors/app-error';
+import { exigirUsuario } from '../../usuarios/services/usuario-actual';
 import {
   CATEGORIAS,
   ESTADO_INICIAL_TAREA,
@@ -118,12 +115,7 @@ export const tareasService = {
     clerkId: string,
     entrada: DatosTareaCrudos
   ): Promise<TareaPublica> {
-    const autor = await usuariosRepository.buscarPorClerkId(clerkId);
-    if (!autor) {
-      throw new NotFoundError(
-        'Aún no tienes perfil local. Llama a POST /api/usuarios/sync primero.'
-      );
-    }
+    const autor = await exigirUsuario(clerkId);
     const datos = normalizarTarea(entrada);
     const tarea = await tareasRepository.crear({
       usuarioId: autor.id,
