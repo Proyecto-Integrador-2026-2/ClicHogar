@@ -13,7 +13,8 @@ import type { Tarea } from '../entities/tarea.entity';
 import { usuariosRepository } from '../../usuarios/repositories/usuarios.repository';
 import type { Usuario } from '../../usuarios/entities/usuario.entity';
 import { tareasRepository } from '../repositories/tareas.repository';
-import { normalizarTarea, tareasService } from './tareas.service';
+import { normalizarTarea } from '../validators/tarea.validator';
+import { tareasService } from './tareas.service';
 
 const VALIDA = {
   titulo: 'Arreglar grifo que gotea',
