@@ -46,43 +46,44 @@ function aUsuario(fila: UsuarioRow): Usuario {
   };
 }
 
+// Lista única de columnas (constante fija, jamás viene del cliente): evita
+// repetirla en cada query y olvidar una al agregar un campo.
+const COLUMNAS =
+  'id, clerk_id, nombre, email, password_hash, rol, foto_url, descripcion, ubicacion, activo, creado_en, actualizado_en';
+
+/**
+ * Busca un usuario por una columna única. La columna es una unión cerrada
+ * (nunca texto del cliente) y el valor viaja como parámetro `$1`.
+ */
+async function buscarUno(
+  columna: 'email' | 'clerk_id' | 'id',
+  valor: string
+): Promise<Usuario | undefined> {
+  const filas = await sql.unsafe<UsuarioRow[]>(
+    `SELECT ${COLUMNAS} FROM usuarios WHERE ${columna} = $1 LIMIT 1`,
+    [valor]
+  );
+  return filas[0] ? aUsuario(filas[0]) : undefined;
+}
+
 export const usuariosRepository = {
-  async buscarPorEmail(email: string): Promise<Usuario | undefined> {
-    const filas = await sql<UsuarioRow[]>`
-      SELECT id, clerk_id, nombre, email, password_hash, rol, foto_url, descripcion, ubicacion, activo, creado_en, actualizado_en
-      FROM usuarios
-      WHERE email = ${email}
-      LIMIT 1
-    `;
-    return filas[0] ? aUsuario(filas[0]) : undefined;
-  },
+  buscarPorEmail: (email: string) => buscarUno('email', email),
 
-  async buscarPorClerkId(clerkId: string): Promise<Usuario | undefined> {
-    const filas = await sql<UsuarioRow[]>`
-      SELECT id, clerk_id, nombre, email, password_hash, rol, foto_url, descripcion, ubicacion, activo, creado_en, actualizado_en
-      FROM usuarios
-      WHERE clerk_id = ${clerkId}
-      LIMIT 1
-    `;
-    return filas[0] ? aUsuario(filas[0]) : undefined;
-  },
+  buscarPorClerkId: (clerkId: string) => buscarUno('clerk_id', clerkId),
 
-  async buscarPorId(id: string): Promise<Usuario | undefined> {
-    const filas = await sql<UsuarioRow[]>`
-      SELECT id, clerk_id, nombre, email, password_hash, rol, foto_url, descripcion, ubicacion, activo, creado_en, actualizado_en
-      FROM usuarios
-      WHERE id = ${id}
-      LIMIT 1
-    `;
-    return filas[0] ? aUsuario(filas[0]) : undefined;
-  },
+  buscarPorId: (id: string) => buscarUno('id', id),
 
   async crear(datos: NuevoUsuario): Promise<Usuario> {
-    const filas = await sql<UsuarioRow[]>`
-      INSERT INTO usuarios (clerk_id, nombre, email, password_hash, rol)
-      VALUES (${datos.clerkId ?? null}, ${datos.nombre}, ${datos.email}, ${datos.passwordHash ?? null}, ${datos.rol})
-      RETURNING id, clerk_id, nombre, email, password_hash, rol, foto_url, descripcion, ubicacion, activo, creado_en, actualizado_en
-    `;
+    const filas = await sql.unsafe<UsuarioRow[]>(
+      `INSERT INTO usuarios (clerk_id, nombre, email, password_hash, rol) VALUES ($1, $2, $3, $4, $5) RETURNING ${COLUMNAS}`,
+      [
+        datos.clerkId ?? null,
+        datos.nombre,
+        datos.email,
+        datos.passwordHash ?? null,
+        datos.rol,
+      ]
+    );
     const usuario = filas[0];
     if (!usuario) {
       throw new Error('No se pudo crear el usuario.');
@@ -119,7 +120,7 @@ export const usuariosRepository = {
     const valores = nombres.map((c) => columnas[c]);
     const filas = await sql.unsafe<UsuarioRow[]>(
       `UPDATE usuarios SET ${asignaciones}, actualizado_en = now() WHERE id = $${nombres.length + 1} ` +
-        'RETURNING id, clerk_id, nombre, email, password_hash, rol, foto_url, descripcion, ubicacion, activo, creado_en, actualizado_en',
+        `RETURNING ${COLUMNAS}`,
       [...valores, id]
     );
     const usuario = filas[0];

@@ -1,6 +1,5 @@
 import { Elysia } from 'elysia';
 import { sesionDesdeHeaders } from '../../../shared/auth/clerk';
-import { NotFoundError } from '../../../shared/errors/app-error';
 import { ActualizarPerfilDto } from '../dto/actualizar-perfil.dto';
 import { DisponibilidadDto } from '../dto/disponibilidad.dto';
 import { RegistrarUsuarioDto } from '../dto/registrar-usuario.dto';
@@ -8,7 +7,7 @@ import { SincronizarUsuarioDto } from '../dto/sincronizar-usuario.dto';
 import { disponibilidadService } from '../services/disponibilidad.service';
 import { perfilService } from '../services/perfil.service';
 import { registroService } from '../services/registro.service';
-import { usuariosRepository } from '../repositories/usuarios.repository';
+import { exigirUsuario } from '../services/usuario-actual';
 import { toUsuarioPublico } from '../mappers/usuario.mapper';
 
 /**
@@ -43,14 +42,7 @@ export const usuariosController = new Elysia({ prefix: '/api/usuarios' })
   )
   .get('/yo', async ({ headers }) => {
     const sesionClerk = await sesionDesdeHeaders(headers);
-    const usuario = await usuariosRepository.buscarPorClerkId(
-      sesionClerk.clerkId
-    );
-    if (!usuario) {
-      throw new NotFoundError(
-        'Aún no tienes perfil local. Llama a POST /api/usuarios/sync primero.'
-      );
-    }
+    const usuario = await exigirUsuario(sesionClerk.clerkId);
     return toUsuarioPublico(usuario);
   })
   .patch(

@@ -1,14 +1,13 @@
 import {
   ForbiddenError,
-  NotFoundError,
   ValidationError,
 } from '../../../shared/errors/app-error';
 import type { RolUsuario } from '../entities/usuario.entity';
-import { usuariosRepository } from '../repositories/usuarios.repository';
 import {
   disponibilidadRepository,
   type SlotDisponibilidad,
 } from '../repositories/disponibilidad.repository';
+import { exigirUsuario } from './usuario-actual';
 
 /** Franjas válidas (vocabulario fijo, ASCII para filtros futuros). */
 export const FRANJAS_VALIDAS = ['manana', 'tarde', 'noche'] as const;
@@ -86,12 +85,7 @@ export const disponibilidadService = {
     clerkId: string,
     slotsCrudos: unknown
   ): Promise<SlotDisponibilidad[]> {
-    const usuario = await usuariosRepository.buscarPorClerkId(clerkId);
-    if (!usuario) {
-      throw new NotFoundError(
-        'Aún no tienes perfil local. Llama a POST /api/usuarios/sync primero.'
-      );
-    }
+    const usuario = await exigirUsuario(clerkId);
     verificarRolAfiliado(usuario.rol);
     const slots = normalizarSlots(slotsCrudos);
     return disponibilidadRepository.reemplazar(usuario.id, slots);
@@ -99,12 +93,7 @@ export const disponibilidadService = {
 
   /** Lee la matriz actual (prefill del formulario y vista pública). */
   async obtener(clerkId: string): Promise<SlotDisponibilidad[]> {
-    const usuario = await usuariosRepository.buscarPorClerkId(clerkId);
-    if (!usuario) {
-      throw new NotFoundError(
-        'Aún no tienes perfil local. Llama a POST /api/usuarios/sync primero.'
-      );
-    }
+    const usuario = await exigirUsuario(clerkId);
     return disponibilidadRepository.listarPorUsuarioId(usuario.id);
   },
 };

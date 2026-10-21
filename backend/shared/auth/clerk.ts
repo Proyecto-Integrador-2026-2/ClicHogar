@@ -104,9 +104,6 @@ async function obtenerPerfilDesdeClerk(
   } catch {
     throw new UnauthorizedError('No se pudo confirmar la identidad.');
   }
-  if (respuesta.status === 404) {
-    throw new UnauthorizedError('No se pudo confirmar la identidad.');
-  }
   if (!respuesta.ok) {
     throw new UnauthorizedError('No se pudo confirmar la identidad.');
   }
