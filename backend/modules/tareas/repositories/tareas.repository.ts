@@ -1,6 +1,7 @@
 import { sql } from '../../../db/client';
 import type { Categoria } from '../categorias';
 import type { NuevaTarea, Tarea } from '../entities/tarea.entity';
+import type { TareasRepositorio } from '../ports';
 
 /**
  * Única capa que sabe hablar con la tabla `tareas`. Queries con tagged
@@ -73,4 +74,4 @@ export const tareasRepository = {
       autorNombre: fila.autor_nombre,
     }));
   },
-};
+} satisfies TareasRepositorio;

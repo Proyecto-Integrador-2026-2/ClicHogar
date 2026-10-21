@@ -7,10 +7,9 @@ import { sql } from '../../../db/client';
  * para pintar la matriz 7×3 de forma estable.
  */
 
-export type SlotDisponibilidad = {
-  diaSemana: number;
-  franjaHoraria: string;
-};
+import type { DisponibilidadRepositorio, SlotDisponibilidad } from '../ports';
+
+export type { SlotDisponibilidad };
 
 type SlotRow = {
   dia_semana: number;
@@ -51,4 +50,4 @@ export const disponibilidadRepository = {
     });
     return disponibilidadRepository.listarPorUsuarioId(usuarioId);
   },
-};
+} satisfies DisponibilidadRepositorio;
