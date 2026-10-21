@@ -3,11 +3,14 @@ import {
   ValidationError,
 } from '../../../shared/errors/app-error';
 import type { RolUsuario } from '../entities/usuario.entity';
-import {
-  disponibilidadRepository,
-  type SlotDisponibilidad,
-} from '../repositories/disponibilidad.repository';
-import { exigirUsuario } from './usuario-actual';
+import type {
+  DisponibilidadRepositorio,
+  SlotDisponibilidad,
+  UsuariosRepositorio,
+} from '../ports';
+import { disponibilidadRepository } from '../repositories/disponibilidad.repository';
+import { usuariosRepository } from '../repositories/usuarios.repository';
+import { crearExigirUsuario } from './usuario-actual';
 
 /** Franjas válidas (vocabulario fijo, ASCII para filtros futuros). */
 export const FRANJAS_VALIDAS = ['manana', 'tarde', 'noche'] as const;
@@ -76,24 +79,42 @@ export function verificarRolAfiliado(rol: RolUsuario): void {
   }
 }
 
-export const disponibilidadService = {
-  /**
-   * Guarda (reemplaza) la matriz del afiliado autenticado.
-   * 404 sin perfil local; 403 sin rol afiliado; 400 con slots inválidos.
-   */
-  async guardar(
-    clerkId: string,
-    slotsCrudos: unknown
-  ): Promise<SlotDisponibilidad[]> {
-    const usuario = await exigirUsuario(clerkId);
-    verificarRolAfiliado(usuario.rol);
-    const slots = normalizarSlots(slotsCrudos);
-    return disponibilidadRepository.reemplazar(usuario.id, slots);
-  },
-
-  /** Lee la matriz actual (prefill del formulario y vista pública). */
-  async obtener(clerkId: string): Promise<SlotDisponibilidad[]> {
-    const usuario = await exigirUsuario(clerkId);
-    return disponibilidadRepository.listarPorUsuarioId(usuario.id);
-  },
+type Dependencias = {
+  usuarios: Pick<UsuariosRepositorio, 'buscarPorClerkId'>;
+  disponibilidad: DisponibilidadRepositorio;
 };
+
+/** Construye el service con los repositorios recibidos (inyección). */
+export function crearDisponibilidadService({
+  usuarios,
+  disponibilidad,
+}: Dependencias) {
+  const exigirUsuario = crearExigirUsuario(usuarios);
+
+  return {
+    /**
+     * Guarda (reemplaza) la matriz del afiliado autenticado.
+     * 404 sin perfil local; 403 sin rol afiliado; 400 con slots inválidos.
+     */
+    async guardar(
+      clerkId: string,
+      slotsCrudos: unknown
+    ): Promise<SlotDisponibilidad[]> {
+      const usuario = await exigirUsuario(clerkId);
+      verificarRolAfiliado(usuario.rol);
+      const slots = normalizarSlots(slotsCrudos);
+      return disponibilidad.reemplazar(usuario.id, slots);
+    },
+
+    /** Lee la matriz actual (prefill del formulario y vista pública). */
+    async obtener(clerkId: string): Promise<SlotDisponibilidad[]> {
+      const usuario = await exigirUsuario(clerkId);
+      return disponibilidad.listarPorUsuarioId(usuario.id);
+    },
+  };
+}
+
+export const disponibilidadService = crearDisponibilidadService({
+  usuarios: usuariosRepository,
+  disponibilidad: disponibilidadRepository,
+});

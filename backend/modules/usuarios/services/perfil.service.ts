@@ -4,6 +4,7 @@ import {
   toUsuarioPublico,
   type UsuarioPublico,
 } from '../mappers/usuario.mapper';
+import type { UsuariosRepositorio } from '../ports';
 import { usuariosRepository } from '../repositories/usuarios.repository';
 import {
   MAX_FOTO_BYTES,
@@ -11,7 +12,7 @@ import {
   detectarMimeFoto,
   type AlmacenamientoFotos,
 } from '../storage/almacenamiento';
-import { exigirUsuario } from './usuario-actual';
+import { crearExigirUsuario } from './usuario-actual';
 
 export type FotoRecibida = {
   datos: Uint8Array;
@@ -42,37 +43,46 @@ export function normalizarPatch(input: {
   return patch;
 }
 
-export const perfilService = {
-  /**
-   * Actualización parcial del perfil (US-004): resuelve al usuario por
-   * clerkId (404 si aún no sincronizó), valida y guarda la foto, y
-   * persiste solo los campos recibidos. Devuelve el perfil público.
-   */
-  async actualizarPerfil(args: {
-    clerkId: string;
-    descripcion?: string;
-    ubicacion?: string;
-    foto?: FotoRecibida;
-    almacenamiento?: AlmacenamientoFotos;
-  }): Promise<UsuarioPublico> {
-    const existente = await exigirUsuario(args.clerkId);
+type Dependencias = Pick<
+  UsuariosRepositorio,
+  'buscarPorClerkId' | 'actualizarParcial'
+>;
 
-    const patch = normalizarPatch({
-      descripcion: args.descripcion,
-      ubicacion: args.ubicacion,
-    });
+/** Construye el service con el repositorio recibido (inyección). */
+export function crearPerfilService(usuarios: Dependencias) {
+  const exigirUsuario = crearExigirUsuario(usuarios);
 
-    if (args.foto) {
-      patch.fotoUrl = await guardarFoto(args.foto, args.almacenamiento);
-    }
+  return {
+    /**
+     * Actualización parcial del perfil (US-004): resuelve al usuario por
+     * clerkId (404 si aún no sincronizó), valida y guarda la foto, y
+     * persiste solo los campos recibidos. Devuelve el perfil público.
+     */
+    async actualizarPerfil(args: {
+      clerkId: string;
+      descripcion?: string;
+      ubicacion?: string;
+      foto?: FotoRecibida;
+      almacenamiento?: AlmacenamientoFotos;
+    }): Promise<UsuarioPublico> {
+      const existente = await exigirUsuario(args.clerkId);
 
-    const actualizado = await usuariosRepository.actualizarParcial(
-      existente.id,
-      patch
-    );
-    return toUsuarioPublico(actualizado);
-  },
-};
+      const patch = normalizarPatch({
+        descripcion: args.descripcion,
+        ubicacion: args.ubicacion,
+      });
+
+      if (args.foto) {
+        patch.fotoUrl = await guardarFoto(args.foto, args.almacenamiento);
+      }
+
+      const actualizado = await usuarios.actualizarParcial(existente.id, patch);
+      return toUsuarioPublico(actualizado);
+    },
+  };
+}
+
+export const perfilService = crearPerfilService(usuariosRepository);
 
 /** Valida bytes reales y guarda; devuelve la URL pública. */
 async function guardarFoto(

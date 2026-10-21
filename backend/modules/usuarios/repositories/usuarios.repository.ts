@@ -1,5 +1,6 @@
 import { sql } from '../../../db/client';
 import { NotFoundError } from '../../../shared/errors/app-error';
+import type { UsuariosRepositorio } from '../ports';
 import type {
   NuevoUsuario,
   RolUsuario,
@@ -129,4 +130,4 @@ export const usuariosRepository = {
     }
     return aUsuario(usuario);
   },
-};
+} satisfies UsuariosRepositorio;
