@@ -6,6 +6,8 @@
 import { verifyToken } from '@clerk/backend';
 import { env } from '../../config/env';
 import { UnauthorizedError } from '../errors/app-error';
+import { obtenerPerfilDesdeClerk } from './clerk-api';
+import { getClaimString, getMetadataRol } from './clerk-claims';
 
 export type SesionClerk = {
   clerkId: string;
@@ -86,84 +88,4 @@ export async function verificarSesionClerk(
     nombre: delToken.nombre ?? perfil.nombre,
     rolClerk: delToken.rolClerk ?? perfil.rolClerk,
   };
-}
-
-/**
- * Lee el usuario desde la Backend API de Clerk (autenticada con la secret
- * key): única fuente confiable de email/nombre/metadata con tokens
- * de plantilla por defecto.
- */
-async function obtenerPerfilDesdeClerk(
-  clerkId: string
-): Promise<{ email: string; nombre: string; rolClerk: string | undefined }> {
-  let respuesta: Response;
-  try {
-    respuesta = await fetch(`https://api.clerk.com/v1/users/${clerkId}`, {
-      headers: { Authorization: `Bearer ${env.CLERK_SECRET_KEY}` },
-    });
-  } catch {
-    throw new UnauthorizedError('No se pudo confirmar la identidad.');
-  }
-  if (!respuesta.ok) {
-    throw new UnauthorizedError('No se pudo confirmar la identidad.');
-  }
-  const usuario = (await respuesta.json()) as {
-    email_addresses?: Array<{
-      id: string;
-      email_address: string;
-    }>;
-    primary_email_address_id?: string | null;
-    first_name?: string | null;
-    last_name?: string | null;
-    unsafe_metadata?: Record<string, unknown> | null;
-  };
-
-  const emails = usuario.email_addresses ?? [];
-  const principal =
-    emails.find((e) => e.id === usuario.primary_email_address_id) ?? emails[0];
-  if (!principal) {
-    throw new UnauthorizedError('El token no contiene identidad válida.');
-  }
-  const nombre = [usuario.first_name, usuario.last_name]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
-  const meta = usuario.unsafe_metadata ?? {};
-  const rol =
-    typeof meta['rol'] === 'string' && meta['rol'].trim() !== ''
-      ? meta['rol']
-      : typeof meta['role'] === 'string' && meta['role'].trim() !== ''
-        ? meta['role']
-        : undefined;
-  return {
-    email: principal.email_address.toLowerCase(),
-    nombre: nombre || principal.email_address.split('@')[0] || 'Usuario',
-    rolClerk: rol,
-  };
-}
-
-/** Lee la primera clave no vacía (los claims varían según plantilla). */
-function getClaimString(
-  claims: Record<string, unknown>,
-  keys: string[]
-): string | undefined {
-  for (const key of keys) {
-    const value = claims[key];
-    if (typeof value === 'string' && value.trim() !== '') return value;
-  }
-  return undefined;
-}
-
-/** Lee `rol`/`role` dentro de una metadata de Clerk (unsafe/public). */
-function getMetadataRol(
-  claims: Record<string, unknown>,
-  metaKey: string
-): string | undefined {
-  const meta = claims[metaKey];
-  if (typeof meta !== 'object' || meta === null) return undefined;
-  for (const k of ['rol', 'role']) {
-    const v = (meta as Record<string, unknown>)[k];
-    if (typeof v === 'string' && v.trim() !== '') return v;
-  }
-  return undefined;
 }
