@@ -55,19 +55,28 @@ describe('initThemeToggle', () => {
 
   test('sigue funcionando si localStorage lanza', () => {
     document.body.innerHTML = '<button id="ch-theme-toggle"></button>';
-    // Given: un localStorage que lanza al guardar
-    const original = Storage.prototype.setItem;
-    Storage.prototype.setItem = () => {
-      throw new Error('bloqueado');
-    };
-    // When: se hace clic en el botón
-    // Then: el tema cambia igual, solo en la sesión
+    // Given: un navegador que bloquea el acceso a localStorage
+    const original = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'localStorage'
+    );
+    let intentos = 0;
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      get() {
+        intentos++;
+        throw new Error('bloqueado');
+      },
+    });
     try {
       initThemeToggle();
+      // When: se hace clic en el botón
       document.getElementById('ch-theme-toggle')!.click();
+      // Then: se intentó guardar y falló, pero el tema cambia igual en la sesión
+      expect(intentos).toBe(1);
       expect(document.documentElement.dataset.theme).toBe('dark');
     } finally {
-      Storage.prototype.setItem = original;
+      if (original) Object.defineProperty(globalThis, 'localStorage', original);
     }
   });
 });
