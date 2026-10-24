@@ -65,6 +65,7 @@ describe('tareas con repositorios inyectados', () => {
   };
 
   test('crea la tarea con el autor y estado abierta', async () => {
+    // Given: un servicio de tareas con repositorios falsos inyectados
     const guardadas: unknown[] = [];
     const service = crearTareasService({
       usuarios: usuariosFalso(usuario()),
@@ -76,13 +77,16 @@ describe('tareas con repositorios inyectados', () => {
         listarAbiertas: async () => [],
       },
     });
+    // When: se crea una tarea
     const tarea = await service.crearTarea('c1', entrada);
+    // Then: se guarda con el autor y estado abierta, y el tablero queda vacío
     expect(tarea.autorNombre).toBe('Ana');
     expect(guardadas[0]).toMatchObject({ usuarioId: 'u1', estado: 'abierta' });
     expect(await service.listarAbiertas()).toEqual([]);
   });
 
   test('404 si el usuario no tiene perfil local', async () => {
+    // Given: un repositorio de usuarios sin perfil
     const service = crearTareasService({
       usuarios: usuariosFalso(undefined),
       tareas: {
@@ -90,6 +94,8 @@ describe('tareas con repositorios inyectados', () => {
         listarAbiertas: async () => [],
       },
     });
+    // When: se crea una tarea
+    // Then: falla con NotFoundError
     await expect(service.crearTarea('c1', entrada)).rejects.toThrow(
       NotFoundError
     );
@@ -106,10 +112,13 @@ describe('disponibilidad con repositorios inyectados', () => {
   };
 
   test('un afiliado guarda y lee su matriz', async () => {
+    // Given: un afiliado con un repositorio de disponibilidad falso
     const service = crearDisponibilidadService({
       usuarios: usuariosFalso(usuario({ rol: 'afiliado' })),
       disponibilidad,
     });
+    // When: se guarda y se lee la matriz
+    // Then: ambas operaciones devuelven las franjas
     expect(await service.guardar('c1', [{ dia: 1, franja: 'tarde' }])).toEqual(
       slots
     );
@@ -117,40 +126,51 @@ describe('disponibilidad con repositorios inyectados', () => {
   });
 
   test('un cliente recibe 403', async () => {
+    // Given: un usuario con rol cliente
     const service = crearDisponibilidadService({
       usuarios: usuariosFalso(usuario()),
       disponibilidad,
     });
+    // When: se guarda la disponibilidad
+    // Then: falla con ForbiddenError (403)
     await expect(service.guardar('c1', [])).rejects.toThrow(ForbiddenError);
   });
 });
 
 describe('perfil con repositorio inyectado', () => {
   test('actualiza solo los campos recibidos', async () => {
+    // Given: un repositorio de usuarios falso
     const service = crearPerfilService(usuariosFalso(usuario()));
+    // When: se actualiza la ubicación con espacios
     const perfil = await service.actualizarPerfil({
       clerkId: 'c1',
       ubicacion: '  Envigado  ',
     });
+    // Then: queda recortada
     expect(perfil.ubicacion).toBe('Envigado');
   });
 });
 
 describe('registro con repositorio inyectado', () => {
   test('crea el usuario si no existe', async () => {
+    // Given: un repositorio sin el usuario
     const repo = usuariosFalso(undefined);
     const service = crearRegistroService(repo);
+    // When: se sincroniza desde Clerk con rol afiliado
     const { creado } = await service.sincronizarDesdeClerk(
       { clerkId: 'c9', email: 'x@y.co', nombre: 'Luis', rolClerk: 'afiliado' },
       {}
     );
+    // Then: se crea el usuario con ese clerkId y rol
     expect(creado).toBe(true);
     expect(repo.creados[0]).toMatchObject({ clerkId: 'c9', rol: 'afiliado' });
   });
 
   test('devuelve el existente sin crear otro', async () => {
+    // Given: un repositorio que ya tiene al usuario
     const repo = usuariosFalso(usuario());
     const service = crearRegistroService(repo);
+    // When: se sincroniza desde Clerk
     const { creado } = await service.sincronizarDesdeClerk(
       {
         clerkId: 'c1',
@@ -160,6 +180,7 @@ describe('registro con repositorio inyectado', () => {
       },
       {}
     );
+    // Then: devuelve el existente sin crear otro
     expect(creado).toBe(false);
     expect(repo.creados).toHaveLength(0);
   });

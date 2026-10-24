@@ -22,6 +22,9 @@ const TAREA: Tarea = {
 
 describe('toTareaPublica', () => {
   test('mapea todos los campos visibles más el autor', () => {
+    // Given: una tarea guardada y el nombre de su autor
+    // When: se mapea a su forma pública
+    // Then: trae los campos visibles más el autor
     expect(toTareaPublica(TAREA, 'Ana Pérez')).toEqual({
       id: TAREA.id,
       titulo: 'Arreglar grifo',
@@ -37,7 +40,10 @@ describe('toTareaPublica', () => {
   });
 
   test('no expone el usuarioId interno', () => {
+    // Given: una tarea que tiene el usuarioId interno
+    // When: se mapea a su forma pública
     const publica = toTareaPublica(TAREA, 'Ana Pérez');
+    // Then: el usuarioId no aparece, ni siquiera serializado
     expect(publica).not.toHaveProperty('usuarioId');
     expect(JSON.stringify(publica)).not.toContain(
       '11111111-1111-4111-8111-111111111111'

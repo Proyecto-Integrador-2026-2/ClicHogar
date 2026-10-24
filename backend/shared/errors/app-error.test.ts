@@ -16,6 +16,9 @@ import {
 
 describe('errores de dominio', () => {
   test('cada clase fija su status', () => {
+    // Given: cada clase de error de dominio
+    // When: se instancia sin mensaje
+    // Then: cada una fija su status HTTP (400, 401, 403, 404, 409, 429)
     expect(new ValidationError().status).toBe(400);
     expect(new UnauthorizedError().status).toBe(401);
     expect(new ForbiddenError().status).toBe(403);
@@ -25,6 +28,9 @@ describe('errores de dominio', () => {
   });
 
   test('mensajes por defecto orientan al usuario', () => {
+    // Given: cada clase de error sin mensaje personalizado
+    // When: se lee su mensaje
+    // Then: el mensaje orienta a la persona usuaria
     expect(new ValidationError().message).toContain('válidos');
     expect(new UnauthorizedError().message).toContain('autorizado');
     expect(new ForbiddenError().message).toContain('permisos');
@@ -34,8 +40,11 @@ describe('errores de dominio', () => {
   });
 
   test('el mensaje personalizado prevalece y el nombre identifica la clase', () => {
+    // Given: un NotFoundError con mensaje propio
     const error = new NotFoundError('Sin perfil local.');
+    // When: se leen mensaje y nombre
     expect(error.message).toBe('Sin perfil local.');
+    // Then: prevalece el mensaje, el nombre identifica la clase y hereda de AppError
     expect(error.name).toBe('NotFoundError');
     expect(error).toBeInstanceOf(AppError);
     expect(error).toBeInstanceOf(Error);

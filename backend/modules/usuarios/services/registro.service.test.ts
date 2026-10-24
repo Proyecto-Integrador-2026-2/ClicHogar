@@ -41,12 +41,15 @@ function filaUsuario(cambios: Partial<Usuario> = {}): Usuario {
 
 describe('registroService.sincronizarDesdeClerk', () => {
   test('idempotente: si existe devuelve sin crear', async () => {
+    // Given: un usuario que ya existe para esa sesión
     const existente = filaUsuario();
     spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(existente);
     const crear = spyOn(usuariosRepository, 'crear');
 
+    // When: se sincroniza desde Clerk
     const resultado = await registroService.sincronizarDesdeClerk(SESION, {});
 
+    // Then: devuelve el existente con creado=false y no crea otro
     expect(resultado).toEqual({
       usuario: expect.objectContaining({ id: 'u-1' }),
       creado: false,
@@ -55,17 +58,20 @@ describe('registroService.sincronizarDesdeClerk', () => {
   });
 
   test('crea con rol del body y nombre recortado', async () => {
+    // Given: un usuario nuevo, rol 'Afiliado' y un nombre de 200 caracteres con espacios
     spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(null);
     const crear = spyOn(usuariosRepository, 'crear');
     crear.mockImplementation(async (nuevo) =>
       filaUsuario({ ...nuevo, id: 'u-2' })
     );
 
+    // When: se sincroniza desde Clerk
     const resultado = await registroService.sincronizarDesdeClerk(SESION, {
       nombre: `  ${'n'.repeat(200)}  `,
       rol: 'Afiliado',
     });
 
+    // Then: se crea con el rol del body y el nombre recortado a 120
     expect(crear).toHaveBeenCalledWith({
       clerkId: 'clerk-1',
       nombre: 'n'.repeat(120),
@@ -78,17 +84,20 @@ describe('registroService.sincronizarDesdeClerk', () => {
   });
 
   test('sin nombres usa Usuario y rol cliente por defecto', async () => {
+    // Given: un usuario nuevo con el nombre de la sesión en blanco
     spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(null);
     const crear = spyOn(usuariosRepository, 'crear');
     crear.mockImplementation(async (nuevo) =>
       filaUsuario({ ...nuevo, id: 'u-3' })
     );
 
+    // When: se sincroniza desde Clerk sin rol
     await registroService.sincronizarDesdeClerk(
       { ...SESION, nombre: '   ' },
       {}
     );
 
+    // Then: usa el nombre 'Usuario' y el rol cliente
     expect(crear).toHaveBeenCalledWith(
       expect.objectContaining({ nombre: 'Usuario', rol: 'cliente' })
     );
@@ -96,8 +105,11 @@ describe('registroService.sincronizarDesdeClerk', () => {
 
   test('carrera con email duplicado reporta 409', async () => {
     spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(null);
+    // Given: un INSERT que falla por email duplicado (23505)
     spyOn(usuariosRepository, 'crear').mockRejectedValue({ code: '23505' });
 
+    // When: se sincroniza desde Clerk
+    // Then: falla con ConflictError (409)
     await expect(
       registroService.sincronizarDesdeClerk(SESION, {})
     ).rejects.toBeInstanceOf(ConflictError);
@@ -105,8 +117,11 @@ describe('registroService.sincronizarDesdeClerk', () => {
 
   test('otro error de BD se propaga sin traducir', async () => {
     spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(null);
+    // Given: un INSERT que falla con un error cualquiera
     spyOn(usuariosRepository, 'crear').mockRejectedValue(new Error('caída'));
 
+    // When: se sincroniza desde Clerk
+    // Then: el error se propaga sin traducir
     await expect(
       registroService.sincronizarDesdeClerk(SESION, {})
     ).rejects.toThrow('caída');
@@ -115,10 +130,13 @@ describe('registroService.sincronizarDesdeClerk', () => {
 
 describe('registroService.registrarUsuario (legacy)', () => {
   test('duplicado explícito devuelve 409 sin hashear', async () => {
+    // Given: un email que ya está registrado
     spyOn(usuariosRepository, 'buscarPorEmail').mockResolvedValue(
       filaUsuario()
     );
 
+    // When: se registra con el email en mayúsculas
+    // Then: falla con ConflictError sin hashear la clave
     await expect(
       registroService.registrarUsuario({
         nombre: 'Ana',
@@ -129,18 +147,21 @@ describe('registroService.registrarUsuario (legacy)', () => {
   });
 
   test('normaliza el email y guarda hash, no la clave', async () => {
+    // Given: un email en mayúsculas y un nombre con espacios
     spyOn(usuariosRepository, 'buscarPorEmail').mockResolvedValue(null);
     const crear = spyOn(usuariosRepository, 'crear');
     crear.mockImplementation(async (nuevo) =>
       filaUsuario({ ...nuevo, id: 'u-4' })
     );
 
+    // When: se registra el usuario
     const resultado = await registroService.registrarUsuario({
       nombre: '  Ana  ',
       email: 'ANA@Ejemplo.COM',
       password: 'Secreta123',
     });
 
+    // Then: se guarda el hash y no la clave, con email y nombre normalizados
     const guardado = crear.mock.calls[0][0] as { passwordHash: string };
     expect(guardado.passwordHash).not.toBe('Secreta123');
     expect(await Bun.password.verify('Secreta123', guardado.passwordHash)).toBe(
@@ -155,8 +176,11 @@ describe('registroService.registrarUsuario (legacy)', () => {
 
   test('carrera concurrente reporta 409', async () => {
     spyOn(usuariosRepository, 'buscarPorEmail').mockResolvedValue(null);
+    // Given: un INSERT que falla por duplicado concurrente
     spyOn(usuariosRepository, 'crear').mockRejectedValue({ code: '23505' });
 
+    // When: se registra el usuario
+    // Then: falla con ConflictError (409)
     await expect(
       registroService.registrarUsuario({
         nombre: 'Ana',
@@ -168,8 +192,11 @@ describe('registroService.registrarUsuario (legacy)', () => {
 
   test('otro error de BD se propaga sin traducir', async () => {
     spyOn(usuariosRepository, 'buscarPorEmail').mockResolvedValue(null);
+    // Given: un INSERT que falla con un error cualquiera
     spyOn(usuariosRepository, 'crear').mockRejectedValue(new Error('caída'));
 
+    // When: se registra el usuario
+    // Then: el error se propaga sin traducir
     await expect(
       registroService.registrarUsuario({
         nombre: 'Ana',

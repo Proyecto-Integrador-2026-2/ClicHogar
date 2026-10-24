@@ -24,6 +24,9 @@ const USUARIO_BASE: Usuario = {
 
 describe('toUsuarioPublico', () => {
   test('mapea id, nombre, email, rol, perfil y fecha de creación', () => {
+    // Given: un usuario completo de la base
+    // When: se mapea a su forma pública
+    // Then: trae id, nombre, email, rol, perfil y fecha de creación
     expect(toUsuarioPublico(USUARIO_BASE)).toEqual({
       id: USUARIO_BASE.id,
       nombre: 'Ana Pérez',
@@ -37,13 +40,19 @@ describe('toUsuarioPublico', () => {
   });
 
   test('nunca expone el hash de la contraseña', () => {
+    // Given: un usuario con passwordHash
+    // When: se mapea a su forma pública
     const publico = toUsuarioPublico(USUARIO_BASE);
+    // Then: el hash no aparece, ni serializado
     expect(publico).not.toHaveProperty('passwordHash');
     expect(JSON.stringify(publico)).not.toContain('hash_super_secreto');
   });
 
   test('no filtra clerkId, estado interno ni fecha de actualización', () => {
+    // Given: un usuario con clerkId, estado interno y fecha de actualización
+    // When: se mapea a su forma pública
     const publico = toUsuarioPublico(USUARIO_BASE);
+    // Then: ninguno de esos datos internos aparece
     expect(publico).not.toHaveProperty('clerkId');
     expect(publico).not.toHaveProperty('activo');
     expect(publico).not.toHaveProperty('actualizadoEn');
