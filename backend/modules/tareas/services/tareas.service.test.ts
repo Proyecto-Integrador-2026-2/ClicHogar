@@ -25,6 +25,9 @@ const VALIDA = {
 
 describe('normalizarTarea', () => {
   test('acepta una solicitud válida y recorta espacios', () => {
+    // Given: una solicitud válida con el título rodeado de espacios
+    // When: se normaliza
+    // Then: el título queda recortado y las coordenadas en null
     expect(
       normalizarTarea({ ...VALIDA, titulo: '  Arreglar grifo  ' })
     ).toEqual({
@@ -38,12 +41,18 @@ describe('normalizarTarea', () => {
   });
 
   test('rechaza título vacío (Escenario 3)', () => {
+    // Given: un título compuesto solo de espacios
+    // When: se normaliza la solicitud
+    // Then: lanza ValidationError
     expect(() => normalizarTarea({ ...VALIDA, titulo: '   ' })).toThrow(
       ValidationError
     );
   });
 
   test('rechaza descripción corta o larga (Escenario 5)', () => {
+    // Given: una descripción de 9 caracteres y otra de 1001
+    // When: se normaliza cada una
+    // Then: ambas se rechazan con ValidationError
     expect(() =>
       normalizarTarea({ ...VALIDA, descripcion: 'Muy corta' })
     ).toThrow('Por favor, proporciona más detalles (mínimo 20 caracteres)...');
@@ -53,18 +62,27 @@ describe('normalizarTarea', () => {
   });
 
   test('rechaza categoría fuera del vocabulario', () => {
+    // Given: una categoría que no existe en el vocabulario
+    // When: se normaliza la solicitud
+    // Then: lanza el mensaje de categoría no válida
     expect(() =>
       normalizarTarea({ ...VALIDA, categoria: 'Astronauta' })
     ).toThrow('La categoría no es válida.');
   });
 
   test('rechaza ubicación vacía (Escenario 3)', () => {
+    // Given: una ubicación vacía
+    // When: se normaliza la solicitud
+    // Then: lanza ValidationError
     expect(() => normalizarTarea({ ...VALIDA, ubicacion: '' })).toThrow(
       ValidationError
     );
   });
 
   test('acepta coordenadas válidas y rechaza fuera de rango', () => {
+    // Given: coordenadas válidas y otras fuera de rango
+    // When: se normaliza cada solicitud
+    // Then: las válidas se aceptan y las fuera de rango lanzan ValidationError
     expect(
       normalizarTarea({ ...VALIDA, latitud: 6.25, longitud: -75.59 })
     ).toMatchObject({ latitud: 6.25, longitud: -75.59 });
@@ -74,6 +92,9 @@ describe('normalizarTarea', () => {
   });
 
   test('el estado inicial es abierta (#118)', () => {
+    // Given: la constante del estado inicial de una tarea
+    // When: se lee su valor
+    // Then: es 'abierta'
     expect(ESTADO_INICIAL_TAREA).toBe('abierta');
   });
 });
@@ -99,13 +120,17 @@ describe('tareasService con repositorios simulados (sin Postgres)', () => {
   };
 
   test('crearTarea exige perfil local (404)', async () => {
+    // Given: un clerkId sin perfil local en la base
     spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(null);
+    // When: se intenta crear una tarea
+    // Then: falla con NotFoundError
     await expect(
       tareasService.crearTarea('clerk-x', VALIDA)
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
   test('crearTarea fija estado abierta y nombra al autor', async () => {
+    // Given: un autor existente y un repositorio que guarda lo recibido
     spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(autor);
     const crear = spyOn(tareasRepository, 'crear');
     crear.mockImplementation(async (nueva) => ({
@@ -115,8 +140,10 @@ describe('tareasService con repositorios simulados (sin Postgres)', () => {
       actualizadoEn: new Date('2026-02-01T00:00:00.000Z'),
     }));
 
+    // When: se crea la tarea
     const resultado = await tareasService.crearTarea('clerk-1', VALIDA);
 
+    // Then: se guarda con estado 'abierta' y el resultado nombra al autor
     expect(crear).toHaveBeenCalledWith({
       usuarioId: 'u-1',
       titulo: VALIDA.titulo,
@@ -132,6 +159,7 @@ describe('tareasService con repositorios simulados (sin Postgres)', () => {
   });
 
   test('listarAbiertas mapea filas a forma pública', async () => {
+    // Given: un repositorio con una tarea abierta de Luis
     const tarea: Tarea = {
       id: 't-7',
       usuarioId: 'u-2',
@@ -149,8 +177,10 @@ describe('tareasService con repositorios simulados (sin Postgres)', () => {
       { tarea, autorNombre: 'Luis' },
     ]);
 
+    // When: se listan las abiertas
     const resultado = await tareasService.listarAbiertas();
 
+    // Then: llega una tarea en forma pública con su autor
     expect(resultado).toHaveLength(1);
     expect(resultado[0]).toMatchObject({
       id: 't-7',

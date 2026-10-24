@@ -103,39 +103,54 @@ function verificar(codigo = '123456') {
 
 describe('RegisterForm: alta', () => {
   test('envío vacío muestra resumen de errores y blur marca campos', async () => {
+    // Given: un formulario de registro vacío
     configurarSignUp();
     render(<RegisterForm />);
     const nombre = screen.getByLabelText(/Nombre completo/);
+    // When: se pierde el foco del nombre
     fireEvent.blur(nombre);
     fireEvent.blur(nombre);
+    // When: se envía
     enviar();
+    // Then: muestra el resumen de errores
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Hay un problema con tu registro'
     );
   });
 
   test('un rol inválido se normaliza a vacío', () => {
+    // Given: un formulario de registro
     configurarSignUp();
     render(<RegisterForm />);
     const rol = screen.getByLabelText(
       /¿Cómo quieres usar/
     ) as HTMLSelectElement;
+    // When: se elige el rol 'Afiliado'
     fireEvent.change(rol, { target: { value: 'Afiliado' } });
+    // Then: el rol queda seleccionado
     expect(rol.value).toBe('Afiliado');
+    // When: se fuerza un valor desconocido
     fireEvent.change(rol, { target: { value: 'Otro' } });
+    // Then: vuelve a vacío
     expect(rol.value).toBe('');
   });
 
   test('con Clerk sin cargar no envía', () => {
+    // Given: un Clerk que aún no cargó
     clerkFalso.signUp = { isLoaded: false };
     render(<RegisterForm />);
     llenar();
+    // When: se llena el formulario y se envía
     enviar();
+    // Then: no se crea ninguna cuenta
     expect(llamadas.creado).toBeUndefined();
   });
 
   test('registro válido crea la cuenta y pasa a verificación', async () => {
+    // Given: un registro válido de afiliado
+    // When: se llena y se envía el formulario
     await hastaVerificacion();
+    // Then: se crea la cuenta con el rol en la metadata y se pasa a verificación
     expect(llamadas.creado).toMatchObject({
       firstName: 'Ana Pérez',
       emailAddress: 'ana@ejemplo.com',
@@ -148,6 +163,7 @@ describe('RegisterForm: alta', () => {
   });
 
   test('correo ya registrado', async () => {
+    // Given: un Clerk que rechaza con form_identifier_exists
     configurarSignUp({
       create: async () => {
         throw { errors: [{ code: 'form_identifier_exists' }] };
@@ -155,13 +171,16 @@ describe('RegisterForm: alta', () => {
     });
     render(<RegisterForm />);
     llenar();
+    // When: se llena y se envía el formulario
     enviar();
+    // Then: avisa que el correo ya existe
     expect((await screen.findByRole('alert')).textContent).toContain(
       'ya está asociado a una cuenta'
     );
   });
 
   test('otro error de Clerk usa su mensaje; uno desconocido, el genérico', async () => {
+    // Given: un Clerk que rechaza con un mensaje propio
     configurarSignUp({
       create: async () => {
         throw { errors: [{ code: 'x', message: 'Contraseña filtrada' }] };
@@ -169,12 +188,15 @@ describe('RegisterForm: alta', () => {
     });
     const { unmount } = render(<RegisterForm />);
     llenar();
+    // When: se llena y se envía el formulario
     enviar();
+    // Then: muestra el mensaje de Clerk
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Contraseña filtrada'
     );
     unmount();
 
+    // Given: ahora un Clerk que lanza un Error plano
     configurarSignUp({
       create: async () => {
         throw new Error('red');
@@ -182,7 +204,9 @@ describe('RegisterForm: alta', () => {
     });
     render(<RegisterForm />);
     llenar();
+    // When: se llena y se envía el formulario
     enviar();
+    // Then: muestra el mensaje genérico
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Ocurrió un error en el registro.'
     );
@@ -191,11 +215,14 @@ describe('RegisterForm: alta', () => {
 
 describe('RegisterForm: verificación', () => {
   test('afiliado verificado va a configurar el perfil', async () => {
+    // Given: un backend que responde con rol afiliado y un registro en la vista de verificación
     const sync = spyOn(api, 'sincronizarUsuarioConBackend').mockResolvedValue({
       rol: 'afiliado',
     } as never);
     await hastaVerificacion('Afiliado');
+    // When: se envía el código de verificación
     verificar();
+    // Then: sincroniza el perfil y redirige a configurarlo
     await waitFor(() => expect(nav.destino()).toBe('/perfil/configurar'));
     expect(sync).toHaveBeenCalledWith({
       token: 'token-falso',
@@ -205,18 +232,24 @@ describe('RegisterForm: verificación', () => {
   });
 
   test('usuario verificado va al dashboard', async () => {
+    // Given: un backend que responde con rol cliente y un registro en verificación
     spyOn(api, 'sincronizarUsuarioConBackend').mockResolvedValue({
       rol: 'cliente',
     } as never);
     await hastaVerificacion('Usuario');
+    // When: se envía el código de verificación
     verificar();
+    // Then: redirige al dashboard
     await waitFor(() => expect(nav.destino()).toBe('/dashboard'));
   });
 
   test('sin token no se puede crear el perfil', async () => {
     await hastaVerificacion();
+    // Given: una verificación correcta pero sin token de sesión
     clerkFalso.getToken = async () => null;
+    // When: se envía el código de verificación
     verificar();
+    // Then: informa que la cuenta se verificó pero no se creó el perfil
     expect((await screen.findByRole('alert')).textContent).toContain(
       'no se pudo crear tu perfil'
     );
@@ -224,19 +257,25 @@ describe('RegisterForm: verificación', () => {
 
   test('registro incompleto informa los campos faltantes o un genérico', async () => {
     await hastaVerificacion();
+    // Given: un Clerk que exige campos adicionales
     verificacionDevuelve(async () => ({
       status: 'missing_requirements',
       missingFields: ['phone_number', 'username'],
     }));
+    // When: se envía el código de verificación
     verificar();
+    // Then: informa qué campos faltan
     expect((await screen.findByRole('alert')).textContent).toContain(
       'falta completar el registro: phone_number, username'
     );
 
+    // Given: ahora uno sin lista de campos faltantes
     verificacionDevuelve(async () => ({
       status: 'missing_requirements',
     }));
+    // When: se envía de nuevo el código
     verificar();
+    // Then: muestra el mensaje genérico de registro incompleto
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toContain(
         'quedó incompleto'
@@ -246,18 +285,24 @@ describe('RegisterForm: verificación', () => {
 
   test('código incorrecto: mensaje de Clerk o genérico', async () => {
     await hastaVerificacion();
+    // Given: un Clerk que rechaza con 'Código vencido'
     verificacionDevuelve(async () => {
       throw { errors: [{ message: 'Código vencido' }] };
     });
+    // When: se envía el código de verificación
     verificar();
+    // Then: muestra el mensaje de Clerk
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Código vencido'
     );
 
+    // Given: ahora un error sin mensaje
     verificacionDevuelve(async () => {
       throw { errors: [{}] };
     });
+    // When: se envía de nuevo el código
     verificar();
+    // Then: muestra el mensaje genérico
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toContain(
         'Código de verificación incorrecto.'
@@ -267,8 +312,11 @@ describe('RegisterForm: verificación', () => {
 
   test('con Clerk sin cargar la verificación no hace nada', async () => {
     await hastaVerificacion();
+    // Given: un registro en verificación y un Clerk que deja de estar cargado
     clerkFalso.signUp = { isLoaded: false };
+    // When: se envía el código de verificación
     verificar();
+    // Then: no hace nada
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });

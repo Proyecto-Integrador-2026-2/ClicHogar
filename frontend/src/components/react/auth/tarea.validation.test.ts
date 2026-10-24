@@ -19,6 +19,9 @@ const VALIDA: ValoresTarea = {
 
 describe('validarCampoTarea', () => {
   test('acepta una solicitud válida', () => {
+    // Given: una solicitud de tarea válida
+    // When: se valida cada campo
+    // Then: todos devuelven undefined
     expect(validarCampoTarea('titulo', VALIDA)).toBeUndefined();
     expect(validarCampoTarea('descripcion', VALIDA)).toBeUndefined();
     expect(validarCampoTarea('categoria', VALIDA)).toBeUndefined();
@@ -26,6 +29,9 @@ describe('validarCampoTarea', () => {
   });
 
   test('campos vacíos son obligatorios (Escenario 3)', () => {
+    // Given: un título en blanco, una descripción vacía y una ubicación vacía
+    // When: se valida cada campo
+    // Then: los tres son obligatorios
     expect(validarCampoTarea('titulo', { ...VALIDA, titulo: '  ' })).toBe(
       'Este campo es obligatorio'
     );
@@ -38,6 +44,9 @@ describe('validarCampoTarea', () => {
   });
 
   test(`descripción corta se rechaza (mínimo ${MIN_DESCRIPCION}, Esc 5)`, () => {
+    // Given: una descripción de 9 caracteres
+    // When: se valida la descripción
+    // Then: se rechaza pidiendo mínimo 20 caracteres
     expect(
       validarCampoTarea('descripcion', {
         ...VALIDA,
@@ -47,6 +56,9 @@ describe('validarCampoTarea', () => {
   });
 
   test(`descripción acepta hasta ${MAX_DESCRIPCION} (el input la acota)`, () => {
+    // Given: una descripción del largo máximo permitido
+    // When: se valida la descripción
+    // Then: se acepta
     expect(
       validarCampoTarea('descripcion', {
         ...VALIDA,
@@ -56,6 +68,9 @@ describe('validarCampoTarea', () => {
   });
 
   test('categoría fuera del vocabulario se rechaza', () => {
+    // Given: una categoría inexistente y otra vacía
+    // When: se valida cada categoría
+    // Then: ambas se rechazan
     expect(
       validarCampoTarea('categoria', { ...VALIDA, categoria: 'Astronauta' })
     ).toBe('Selecciona una categoría válida.');
@@ -65,6 +80,9 @@ describe('validarCampoTarea', () => {
   });
 
   test('título de más de 120 caracteres se rechaza', () => {
+    // Given: un título de 121 caracteres y otro de 120
+    // When: se valida cada título
+    // Then: el de 121 se rechaza y el de 120 pasa
     expect(
       validarCampoTarea('titulo', { ...VALIDA, titulo: 'x'.repeat(121) })
     ).toBe('El título no puede superar 120 caracteres.');

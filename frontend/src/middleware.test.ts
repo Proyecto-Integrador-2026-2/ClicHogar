@@ -34,20 +34,29 @@ function ejecutar(ruta: string, userId: string | null) {
 
 describe('middleware', () => {
   test('sin sesión en ruta protegida redirige a /login', () => {
+    // Given: un usuario sin sesión que pide /dashboard
+    // When: se ejecuta el middleware
     const { resultado, redirecciones } = ejecutar('/dashboard', null);
+    // Then: redirige a /login
     expect(resultado).toBe('redirigido');
     expect(redirecciones).toEqual(['/login']);
   });
 
   test('con sesión en ruta protegida añade no-store', async () => {
+    // Given: un usuario con sesión que pide /dashboard
+    // When: se ejecuta el middleware
     const { resultado } = ejecutar('/dashboard', 'user_1');
     const respuesta = (await resultado) as Response;
+    // Then: la respuesta sale con Cache-Control: no-store
     expect(respuesta.headers.get('Cache-Control')).toBe('no-store');
   });
 
   test('ruta pública pasa sin tocar la caché', async () => {
+    // Given: un usuario sin sesión que pide /login
+    // When: se ejecuta el middleware
     const { resultado, redirecciones } = ejecutar('/login', null);
     const respuesta = (await resultado) as Response;
+    // Then: pasa sin redirigir y sin tocar la caché
     expect(redirecciones).toEqual([]);
     expect(respuesta.headers.get('Cache-Control')).toBeNull();
   });

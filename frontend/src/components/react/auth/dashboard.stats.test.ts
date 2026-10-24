@@ -36,6 +36,9 @@ function tareaBase(cambios: Partial<TareaTablero> = {}): TareaTablero {
 
 describe('resumenPerfil', () => {
   test('perfil vacío: 0% y tres pendientes', () => {
+    // Given: un perfil sin foto, descripción ni ubicación
+    // When: se calcula el resumen
+    // Then: 0 % de avance y tres pendientes
     expect(resumenPerfil(perfilBase())).toEqual({
       completados: 0,
       total: 3,
@@ -45,6 +48,8 @@ describe('resumenPerfil', () => {
   });
 
   test('perfil completo: 100% sin pendientes', () => {
+    // Given: un perfil con foto, descripción y ubicación
+    // When: se calcula el resumen
     const resumen = resumenPerfil(
       perfilBase({
         fotoUrl: '/uploads/foto.jpg',
@@ -52,6 +57,7 @@ describe('resumenPerfil', () => {
         ubicacion: 'Chapinero',
       })
     );
+    // Then: 100 % de avance y sin pendientes
     expect(resumen).toEqual({
       completados: 3,
       total: 3,
@@ -61,9 +67,12 @@ describe('resumenPerfil', () => {
   });
 
   test('texto solo con espacios no cuenta como lleno', () => {
+    // Given: una descripción en blanco y una ubicación con espacios alrededor
+    // When: se calcula el resumen
     const resumen = resumenPerfil(
       perfilBase({ descripcion: '   ', ubicacion: ' Chapinero ' })
     );
+    // Then: la descripción en blanco no cuenta y queda 33 %
     expect(resumen.completados).toBe(1);
     expect(resumen.porcentaje).toBe(33);
     expect(resumen.pendientes).toEqual(['Foto', 'Descripción']);
@@ -72,25 +81,37 @@ describe('resumenPerfil', () => {
 
 describe('contarAbiertas', () => {
   test('solo cuenta estado abierta', () => {
+    // Given: dos tareas abiertas y una cerrada
     const tareas = [
       tareaBase({ id: 't-1', estado: 'abierta' }),
       tareaBase({ id: 't-2', estado: 'abierta' }),
       tareaBase({ id: 't-3', estado: 'cerrada' }),
     ];
+    // When: se cuentan las abiertas
+    // Then: el resultado es 2
     expect(contarAbiertas(tareas)).toBe(2);
   });
 
   test('lista vacía: cero', () => {
+    // Given: una lista sin tareas
+    // When: se cuentan las abiertas
+    // Then: el resultado es 0
     expect(contarAbiertas([])).toBe(0);
   });
 });
 
 describe('etiquetaRol', () => {
   test('afiliado se presenta como Clic-Worker', () => {
+    // Given: el rol afiliado
+    // When: se pide su etiqueta
+    // Then: se presenta como Clic-Worker
     expect(etiquetaRol('afiliado')).toBe('Clic-Worker');
   });
 
   test('cliente se presenta como Cliente', () => {
+    // Given: el rol cliente
+    // When: se pide su etiqueta
+    // Then: se presenta como Cliente
     expect(etiquetaRol('cliente')).toBe('Cliente');
   });
 });

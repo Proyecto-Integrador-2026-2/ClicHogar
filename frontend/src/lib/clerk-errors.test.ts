@@ -16,6 +16,9 @@ function errorClerk(code: string, message = 'x') {
 
 describe('clasificarErrorSignIn', () => {
   test('password incorrecta e identificador inexistente comparten clase (Esc 3-4)', () => {
+    // Given: errores de Clerk por contraseña incorrecta y por identificador inexistente
+    // When: se clasifica cada error
+    // Then: ambos son de credenciales, sin revelar cuál falló
     expect(
       clasificarErrorSignIn(errorClerk('form_password_incorrect'))
     ).toEqual({ kind: 'credenciales' });
@@ -25,6 +28,9 @@ describe('clasificarErrorSignIn', () => {
   });
 
   test('bloqueo/rate-limit se clasifica aparte (Esc 9)', () => {
+    // Given: errores de sesión bloqueada y de demasiadas solicitudes
+    // When: se clasifica cada error
+    // Then: ambos se clasifican como bloqueo
     expect(
       clasificarErrorSignIn(errorClerk('session_locked', 'locked out'))
     ).toEqual({ kind: 'bloqueo' });
@@ -34,12 +40,18 @@ describe('clasificarErrorSignIn', () => {
   });
 
   test('error desconocido con mensaje se propaga', () => {
+    // Given: un error de Clerk con código sin clasificar y un mensaje
+    // When: se clasifica
+    // Then: se propaga su mensaje
     expect(
       clasificarErrorSignIn(errorClerk('form_param_missing', 'Falta el código'))
     ).toEqual({ kind: 'otro', message: 'Falta el código' });
   });
 
   test('valor sin forma Clerk cae al genérico', () => {
+    // Given: un Error plano y un valor undefined
+    // When: se clasifica cada uno
+    // Then: cae al mensaje genérico
     expect(clasificarErrorSignIn(new Error('boom'))).toEqual({
       kind: 'otro',
       message: 'Ocurrió un error al iniciar sesión.',
@@ -53,11 +65,17 @@ describe('clasificarErrorSignIn', () => {
 
 describe('getFirstClerkError', () => {
   test('primer error no-objeto se descarta', () => {
+    // Given: listas de errores cuyo primer elemento es null o un texto
+    // When: se extrae el primer error
+    // Then: se descarta
     expect(getFirstClerkError({ errors: [null] })).toBeUndefined();
     expect(getFirstClerkError({ errors: ['texto'] })).toBeUndefined();
   });
 
   test('extrae código y mensaje del primer error', () => {
+    // Given: un error de Clerk con código y mensaje
+    // When: se extrae el primer error
+    // Then: devuelve su código y su mensaje
     expect(
       getFirstClerkError(errorClerk('form_password_incorrect', 'Mal'))
     ).toEqual({ code: 'form_password_incorrect', message: 'Mal' });
@@ -66,16 +84,25 @@ describe('getFirstClerkError', () => {
 
 describe('mensajeErrorSignIn', () => {
   test('credenciales no revelan el dato fallido', () => {
+    // Given: una clasificación de credenciales
+    // When: se obtiene el mensaje para la UI
+    // Then: no revela qué dato falló
     expect(mensajeErrorSignIn({ kind: 'credenciales' })).toBe(
       'Correo o contraseña incorrectos.'
     );
   });
 
   test('bloqueo anuncia la ventana de 15 minutos', () => {
+    // Given: una clasificación de bloqueo
+    // When: se obtiene el mensaje para la UI
+    // Then: anuncia la ventana de 15 minutos
     expect(mensajeErrorSignIn({ kind: 'bloqueo' })).toContain('15 minutos');
   });
 
   test('otro devuelve su mensaje', () => {
+    // Given: una clasificación 'otro' con su mensaje
+    // When: se obtiene el mensaje para la UI
+    // Then: devuelve ese mismo mensaje
     expect(mensajeErrorSignIn({ kind: 'otro', message: 'Hola' })).toBe('Hola');
   });
 });

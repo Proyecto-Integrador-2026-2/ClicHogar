@@ -9,13 +9,19 @@ import * as schema from './schema';
 
 describe('schema de Drizzle', () => {
   test('expone las tablas de usuarios, disponibilidad y tareas', () => {
+    // Given: el schema que reexporta las tres tablas
+    // When: se lee el nombre de cada tabla
+    // Then: son usuarios, disponibilidad y tareas
     expect(getTableName(schema.usuarios)).toBe('usuarios');
     expect(getTableName(schema.disponibilidad)).toBe('disponibilidad');
     expect(getTableName(schema.tareas)).toBe('tareas');
   });
 
   test('disponibilidad declara sus restricciones e índices', () => {
+    // Given: la tabla disponibilidad
+    // When: se lee su configuración
     const config = getTableConfig(schema.disponibilidad);
+    // Then: declara su nombre y al menos una restricción o índice
     expect(config.name).toBe('disponibilidad');
     expect(
       config.uniqueConstraints.length +

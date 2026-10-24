@@ -73,11 +73,14 @@ const CUERPO_VALIDO = {
 
 describe('POST /api/tareas', () => {
   test('publica con 201 usando el clerkId de la sesión', async () => {
+    // Given: una sesión válida de Clerk y un servicio que devuelve la tarea creada
     const crear = spyOn(tareasService, 'crearTarea');
     crear.mockResolvedValue(TAREA_PUBLICA);
 
+    // When: se envía POST /api/tareas con un cuerpo válido
     const respuesta = await pedido('/api/tareas', 'POST', CUERPO_VALIDO);
 
+    // Then: responde 201 y el servicio recibe el clerkId de la sesión
     expect(respuesta.status).toBe(201);
     expect(crear).toHaveBeenCalledWith(
       'clerk-1',
@@ -88,10 +91,13 @@ describe('POST /api/tareas', () => {
   });
 
   test('cuerpo inválido responde 400 sin tocar el servicio', async () => {
+    // Given: un cuerpo con título vacío y un servicio espiado
     const crear = spyOn(tareasService, 'crearTarea');
 
+    // When: se envía POST /api/tareas
     const respuesta = await pedido('/api/tareas', 'POST', { titulo: '' });
 
+    // Then: responde 400 de validación y el servicio no se toca
     expect(respuesta.status).toBe(400);
     expect(crear).not.toHaveBeenCalled();
     const cuerpo = (await respuesta.json()) as { error: string };
@@ -99,6 +105,8 @@ describe('POST /api/tareas', () => {
   });
 
   test('JSON malformado responde 400 genérico (PARSE)', async () => {
+    // Given: un cuerpo que no es JSON válido
+    // When: se envía POST /api/tareas
     const respuesta = await buildApp().handle(
       new Request('http://localhost/api/tareas', {
         method: 'POST',
@@ -110,18 +118,22 @@ describe('POST /api/tareas', () => {
       })
     );
 
+    // Then: responde 400 genérico, sin detalles internos
     expect(respuesta.status).toBe(400);
     const cuerpo = (await respuesta.json()) as { error: string };
     expect(cuerpo.error).toBe('ValidationError');
   });
 
   test('sin sesión responde 401 (Escenario 7)', async () => {
+    // Given: una sesión que Clerk rechaza
     comportamientoSesion = async () => {
       throw new UnauthorizedError('Sesión inválida.');
     };
 
+    // When: se envía POST /api/tareas
     const respuesta = await pedido('/api/tareas', 'POST', CUERPO_VALIDO);
 
+    // Then: responde 401 UnauthorizedError
     expect(respuesta.status).toBe(401);
     const cuerpo = (await respuesta.json()) as { error: string };
     expect(cuerpo.error).toBe('UnauthorizedError');
@@ -130,10 +142,13 @@ describe('POST /api/tareas', () => {
 
 describe('GET /api/tareas', () => {
   test('lista el tablero con 200', async () => {
+    // Given: un servicio con una tarea abierta
     spyOn(tareasService, 'listarAbiertas').mockResolvedValue([TAREA_PUBLICA]);
 
+    // When: se pide GET /api/tareas
     const respuesta = await pedido('/api/tareas', 'GET');
 
+    // Then: responde 200 con la tarea del tablero
     expect(respuesta.status).toBe(200);
     const cuerpo = (await respuesta.json()) as Array<{ id: string }>;
     expect(cuerpo).toHaveLength(1);
