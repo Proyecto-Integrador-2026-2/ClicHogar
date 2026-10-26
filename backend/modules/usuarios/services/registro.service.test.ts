@@ -1,7 +1,6 @@
 /**
- * Pruebas del registro (US-001 y legacy pre-Clerk) con repositorio
- * simulado (sin Postgres). El hash argon2id sí es real: verifica que
- * la contraseña jamás se guarda en texto plano.
+ * Pruebas del registro con Clerk (US-001) con repositorio simulado
+ * (sin Postgres).
  */
 import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { ConflictError } from '../../../shared/errors/app-error';
@@ -124,85 +123,6 @@ describe('registroService.sincronizarDesdeClerk', () => {
     // Then: el error se propaga sin traducir
     await expect(
       registroService.sincronizarDesdeClerk(SESION, {})
-    ).rejects.toThrow('caída');
-  });
-});
-
-describe('registroService.registrarUsuario (legacy)', () => {
-  test('duplicado explícito devuelve 409 sin hashear', async () => {
-    // Given: un email que ya está registrado
-    spyOn(usuariosRepository, 'buscarPorEmail').mockResolvedValue(
-      filaUsuario()
-    );
-
-    // When: se registra con el email en mayúsculas
-    // Then: falla con ConflictError sin hashear la clave
-    await expect(
-      registroService.registrarUsuario({
-        nombre: 'Ana',
-        email: 'ANA@ejemplo.com',
-        password: 'Secreta123',
-      })
-    ).rejects.toBeInstanceOf(ConflictError);
-  });
-
-  test('normaliza el email y guarda hash, no la clave', async () => {
-    // Given: un email en mayúsculas y un nombre con espacios
-    spyOn(usuariosRepository, 'buscarPorEmail').mockResolvedValue(null);
-    const crear = spyOn(usuariosRepository, 'crear');
-    crear.mockImplementation(async (nuevo) =>
-      filaUsuario({ ...nuevo, id: 'u-4' })
-    );
-
-    // When: se registra el usuario
-    const resultado = await registroService.registrarUsuario({
-      nombre: '  Ana  ',
-      email: 'ANA@Ejemplo.COM',
-      password: 'Secreta123',
-    });
-
-    // Then: se guarda el hash y no la clave, con email y nombre normalizados
-    const guardado = crear.mock.calls[0][0] as { passwordHash: string };
-    expect(guardado.passwordHash).not.toBe('Secreta123');
-    expect(await Bun.password.verify('Secreta123', guardado.passwordHash)).toBe(
-      true
-    );
-    expect(crear).toHaveBeenCalledWith(
-      expect.objectContaining({ nombre: 'Ana', email: 'ana@ejemplo.com' })
-    );
-    expect(resultado.email).toBe('ana@ejemplo.com');
-    expect(resultado).not.toHaveProperty('passwordHash');
-  });
-
-  test('carrera concurrente reporta 409', async () => {
-    spyOn(usuariosRepository, 'buscarPorEmail').mockResolvedValue(null);
-    // Given: un INSERT que falla por duplicado concurrente
-    spyOn(usuariosRepository, 'crear').mockRejectedValue({ code: '23505' });
-
-    // When: se registra el usuario
-    // Then: falla con ConflictError (409)
-    await expect(
-      registroService.registrarUsuario({
-        nombre: 'Ana',
-        email: 'ana@ejemplo.com',
-        password: 'Secreta123',
-      })
-    ).rejects.toBeInstanceOf(ConflictError);
-  });
-
-  test('otro error de BD se propaga sin traducir', async () => {
-    spyOn(usuariosRepository, 'buscarPorEmail').mockResolvedValue(null);
-    // Given: un INSERT que falla con un error cualquiera
-    spyOn(usuariosRepository, 'crear').mockRejectedValue(new Error('caída'));
-
-    // When: se registra el usuario
-    // Then: el error se propaga sin traducir
-    await expect(
-      registroService.registrarUsuario({
-        nombre: 'Ana',
-        email: 'ana@ejemplo.com',
-        password: 'Secreta123',
-      })
     ).rejects.toThrow('caída');
   });
 });

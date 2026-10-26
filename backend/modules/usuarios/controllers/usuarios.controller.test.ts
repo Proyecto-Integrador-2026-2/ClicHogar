@@ -258,25 +258,6 @@ describe('disponibilidad', () => {
   });
 });
 
-describe('POST /api/usuarios (legacy)', () => {
-  test('registra con 201', async () => {
-    // Given: un servicio de registro que devuelve el perfil
-    spyOn(registroService, 'registrarUsuario').mockResolvedValue(
-      PERFIL_PUBLICO
-    );
-
-    // When: se envía POST /api/usuarios con nombre, email y contraseña
-    const respuesta = await pedido('/api/usuarios', 'POST', {
-      nombre: 'Ana',
-      email: 'ana@ejemplo.com',
-      password: 'Secreta123',
-    });
-
-    // Then: responde 201
-    expect(respuesta.status).toBe(201);
-  });
-});
-
 describe('errores globales', () => {
   test('sin sesión responde 401', async () => {
     // Given: una sesión que Clerk rechaza

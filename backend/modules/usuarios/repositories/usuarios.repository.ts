@@ -57,7 +57,7 @@ const COLUMNAS =
  * (nunca texto del cliente) y el valor viaja como parámetro `$1`.
  */
 async function buscarUno(
-  columna: 'email' | 'clerk_id' | 'id',
+  columna: 'clerk_id' | 'id',
   valor: string
 ): Promise<Usuario | undefined> {
   const filas = await sql.unsafe<UsuarioRow[]>(
@@ -68,8 +68,6 @@ async function buscarUno(
 }
 
 export const usuariosRepository = {
-  buscarPorEmail: (email: string) => buscarUno('email', email),
-
   buscarPorClerkId: (clerkId: string) => buscarUno('clerk_id', clerkId),
 
   buscarPorId: (id: string) => buscarUno('id', id),

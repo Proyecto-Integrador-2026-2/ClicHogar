@@ -121,14 +121,11 @@ describe('tareasRepository', () => {
 });
 
 describe('usuariosRepository', () => {
-  test('buscarPorEmail / ClerkId / Id devuelven el usuario mapeado', async () => {
+  test('buscarPorClerkId / Id devuelven el usuario mapeado', async () => {
     // Given: una fila de usuario para cada búsqueda
-    respuestas = [[FILA_USUARIO], [FILA_USUARIO], [FILA_USUARIO]];
-    // When: se busca por email, por clerkId y por id
+    respuestas = [[FILA_USUARIO], [FILA_USUARIO]];
+    // When: se busca por clerkId y por id
     // Then: cada búsqueda devuelve el usuario mapeado
-    expect((await usuariosRepository.buscarPorEmail('a@b.c'))?.clerkId).toBe(
-      'c1'
-    );
     expect((await usuariosRepository.buscarPorClerkId('c1'))?.nombre).toBe(
       'Ana'
     );
@@ -139,9 +136,8 @@ describe('usuariosRepository', () => {
 
   test('las búsquedas devuelven undefined si no hay fila', async () => {
     // Given: un repositorio sin filas
-    // When: se hacen las tres búsquedas
+    // When: se hacen las dos búsquedas
     // Then: todas devuelven undefined
-    expect(await usuariosRepository.buscarPorEmail('x')).toBeUndefined();
     expect(await usuariosRepository.buscarPorClerkId('x')).toBeUndefined();
     expect(await usuariosRepository.buscarPorId('x')).toBeUndefined();
   });
