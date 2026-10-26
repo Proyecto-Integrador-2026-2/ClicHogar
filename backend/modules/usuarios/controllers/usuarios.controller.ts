@@ -2,7 +2,6 @@ import { Elysia } from 'elysia';
 import { sesionDesdeHeaders } from '../../../shared/auth/clerk';
 import { ActualizarPerfilDto } from '../dto/actualizar-perfil.dto';
 import { DisponibilidadDto } from '../dto/disponibilidad.dto';
-import { RegistrarUsuarioDto } from '../dto/registrar-usuario.dto';
 import { SincronizarUsuarioDto } from '../dto/sincronizar-usuario.dto';
 import { disponibilidadService } from '../services/disponibilidad.service';
 import { perfilService } from '../services/perfil.service';
@@ -22,9 +21,6 @@ import { toUsuarioPublico } from '../mappers/usuario.mapper';
  *   semanal del afiliado (US-005; arreglo vacío = limpiar). Solo rol
  *   afiliado (403 en otro caso).
  * - GET /api/usuarios/disponibilidad: matriz actual (prefill y vista).
- * - POST /api/usuarios/: flujo legacy con password (pre-Clerk). Se mantiene
- *   por compatibilidad pero está deprecado: los clientes nuevos deben usar
- *   Clerk + /sync.
  */
 export const usuariosController = new Elysia({ prefix: '/api/usuarios' })
   .post(
@@ -75,20 +71,4 @@ export const usuariosController = new Elysia({ prefix: '/api/usuarios' })
   .get('/disponibilidad', async ({ headers }) => {
     const sesionClerk = await sesionDesdeHeaders(headers);
     return disponibilidadService.obtener(sesionClerk.clerkId);
-  })
-  .post(
-    '/',
-    async ({ body, set }) => {
-      const usuario = await registroService.registrarUsuario(body);
-      set.status = 201;
-      return usuario;
-    },
-    {
-      body: RegistrarUsuarioDto,
-      detail: {
-        deprecated: true,
-        description:
-          'Legacy pre-Clerk. Usa POST /api/usuarios/sync con session token.',
-      },
-    }
-  );
+  });

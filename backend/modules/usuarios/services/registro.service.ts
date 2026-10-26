@@ -1,7 +1,5 @@
 import { ConflictError } from '../../../shared/errors/app-error';
 import type { SesionClerk } from '../../../shared/auth/clerk';
-import { hashPassword } from '../../../shared/security/password';
-import type { RegistrarUsuarioInput } from '../dto/registrar-usuario.dto';
 import type { SincronizarUsuarioInput } from '../dto/sincronizar-usuario.dto';
 import {
   toUsuarioPublico,
@@ -14,10 +12,7 @@ import type { RolUsuario } from '../entities/usuario.entity';
 // Código de PostgreSQL para violación de restricción UNIQUE.
 const PG_UNIQUE_VIOLATION = '23505';
 
-type Dependencias = Pick<
-  UsuariosRepositorio,
-  'buscarPorClerkId' | 'buscarPorEmail' | 'crear'
->;
+type Dependencias = Pick<UsuariosRepositorio, 'buscarPorClerkId' | 'crear'>;
 
 /** Construye el service con el repositorio recibido (inyección). */
 export function crearRegistroService(usuarios: Dependencias) {
@@ -52,53 +47,6 @@ export function crearRegistroService(usuarios: Dependencias) {
         if (isUniqueViolation(error)) {
           // Carrera o email ya registrado por otro medio: si el email existe
           // con otro clerkId se reporta como conflicto para no fusionar cuentas.
-          throw new ConflictError(
-            'Ya existe una cuenta registrada con ese email.'
-          );
-        }
-        throw error;
-      }
-    },
-
-    /**
-     * Flujo legacy con password (pre-Clerk).
-     * @deprecated Usa `sincronizarDesdeClerk` (POST /api/usuarios/sync).
-     * Se conserva solo por compatibilidad con clientes antiguos.
-     */
-    async registrarUsuario(
-      input: RegistrarUsuarioInput
-    ): Promise<UsuarioPublico> {
-      // El email se normaliza a minúsculas para que la unicidad y el login
-      // no dependan de cómo el usuario escribió las mayúsculas.
-      const email = input.email.trim().toLowerCase();
-      const nombre = input.nombre.trim();
-
-      // Verificación de Duplicados (HU1): chequeo explícito antes de insertar
-      // para poder devolver un 409 claro en el caso normal.
-      const existente = await usuarios.buscarPorEmail(email);
-      if (existente) {
-        throw new ConflictError(
-          'Ya existe una cuenta registrada con ese email.'
-        );
-      }
-
-      // Seguridad de Credenciales (HU1): la contraseña nunca se guarda en
-      // texto plano, solo su hash argon2id.
-      const passwordHash = await hashPassword(input.password);
-
-      try {
-        const usuario = await usuarios.crear({
-          nombre,
-          email,
-          passwordHash,
-          rol: input.rol ?? 'cliente',
-        });
-        return toUsuarioPublico(usuario);
-      } catch (error) {
-        // Defensa contra condición de carrera: dos registros concurrentes con
-        // el mismo email pueden pasar el chequeo anterior a la vez; la
-        // restricción UNIQUE de la base de datos es la garantía final.
-        if (isUniqueViolation(error)) {
           throw new ConflictError(
             'Ya existe una cuenta registrada con ese email.'
           );

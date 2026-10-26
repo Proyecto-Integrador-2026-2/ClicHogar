@@ -44,7 +44,6 @@ function usuariosFalso(existente?: Usuario) {
   const creados: NuevoUsuario[] = [];
   return {
     creados,
-    buscarPorEmail: async () => existente,
     buscarPorClerkId: async () => existente,
     buscarPorId: async () => existente,
     crear: async (datos: NuevoUsuario) => {
