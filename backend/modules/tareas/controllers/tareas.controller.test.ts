@@ -7,12 +7,14 @@ import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 process.env.DATABASE_URL ??= 'postgres://test';
 
 import {
+  GoneError,
+  NotFoundError,
   UnauthorizedError,
   ValidationError,
 } from '../../../shared/errors/app-error';
 import { authService } from '../../auth/services/auth.service';
 import type { Usuario } from '../../usuarios/entities/usuario.entity';
-import type { TareaPublica } from '../mappers/tarea.mapper';
+import type { DetalleTarea, TareaPublica } from '../mappers/tarea.mapper';
 import { tareasService, type PaginaTareas } from '../services/tareas.service';
 
 const { buildApp } = await import('../../../app');
@@ -183,6 +185,79 @@ describe('GET /api/tareas (tablero, US-008)', () => {
     );
     // When: se pide el tablero
     const res = await pedido('/api/tareas', 'GET');
+    // Then: responde 401
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('GET /api/tareas/:id (detalle, US-009)', () => {
+  const ID = '33333333-3333-4333-8333-333333333333';
+  const DETALLE: DetalleTarea = {
+    ...TAREA,
+    autor: {
+      id: 'u-1',
+      nombre: 'Ana',
+      descripcion: null,
+      ubicacion: null,
+      fotoUrl: null,
+    },
+    esPropia: false,
+    puedeOfertar: true,
+  };
+
+  test('200 con el detalle; el visitante sale de la sesión', async () => {
+    // Given: una sesión válida y un servicio con el detalle
+    conSesion();
+    const obtener = spyOn(tareasService, 'obtenerDetalle').mockResolvedValue(
+      DETALLE
+    );
+    // When: se pide el detalle
+    const res = await pedido(`/api/tareas/${ID}`, 'GET');
+    // Then: responde 200 y el servicio recibe al visitante y el id
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as DetalleTarea).puedeOfertar).toBe(true);
+    expect(obtener).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'u-1' }),
+      ID
+    );
+  });
+
+  test('410 si la tarea ya no está disponible y 404 si no existe', async () => {
+    // Given: una sesión válida y un servicio que detecta el cambio de estado
+    conSesion();
+    const obtener = spyOn(tareasService, 'obtenerDetalle').mockRejectedValue(
+      new GoneError('Esta tarea ya no se encuentra disponible.')
+    );
+    // When: se pide el detalle
+    const gone = await pedido(`/api/tareas/${ID}`, 'GET');
+    // Then: responde 410 con el mensaje
+    expect(gone.status).toBe(410);
+    expect(((await gone.json()) as { message: string }).message).toContain(
+      'ya no se encuentra disponible'
+    );
+    // Given: ahora una tarea inexistente
+    obtener.mockRejectedValue(new NotFoundError('Tarea no encontrada.'));
+    // When: se pide
+    // Then: responde 404
+    expect((await pedido(`/api/tareas/${ID}`, 'GET')).status).toBe(404);
+  });
+
+  test('400 si el id no es uuid', async () => {
+    // Given: una sesión válida
+    conSesion();
+    // When: se pide con un id inválido
+    const res = await pedido('/api/tareas/abc', 'GET');
+    // Then: responde 400
+    expect(res.status).toBe(400);
+  });
+
+  test('401 sin sesión válida', async () => {
+    // Given: una sesión que no existe
+    spyOn(authService, 'resolverUsuario').mockRejectedValue(
+      new UnauthorizedError('Sesión inválida o expirada.')
+    );
+    // When: se pide el detalle
+    const res = await pedido(`/api/tareas/${ID}`, 'GET');
     // Then: responde 401
     expect(res.status).toBe(401);
   });

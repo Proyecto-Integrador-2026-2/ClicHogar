@@ -140,6 +140,42 @@ describe('tareasRepository', () => {
   });
 });
 
+describe('tareasRepository.buscarPorId (US-009)', () => {
+  test('devuelve la tarea con los datos públicos del autor', async () => {
+    // Given: una fila de tarea con las columnas del autor
+    respuestas = [
+      [
+        {
+          ...FILA_TAREA,
+          autor_nombre: 'Ana',
+          autor_descripcion: 'Plomera',
+          autor_ubicacion: 'Envigado',
+          autor_foto_url: '/f.jpg',
+        },
+      ],
+    ];
+    // When: se busca por id
+    const resultado = await tareasRepository.buscarPorId('t1');
+    // Then: devuelve tarea y autor mapeados, y consulta por ese id
+    expect(resultado?.tarea.id).toBe('t1');
+    expect(resultado?.autor).toEqual({
+      id: 'u1',
+      nombre: 'Ana',
+      descripcion: 'Plomera',
+      ubicacion: 'Envigado',
+      fotoUrl: '/f.jpg',
+    });
+    expect(llamadas[0]?.valores).toEqual(['t1']);
+  });
+
+  test('sin fila devuelve undefined', async () => {
+    // Given: un repositorio sin esa tarea
+    // When: se busca
+    // Then: devuelve undefined
+    expect(await tareasRepository.buscarPorId('x')).toBeUndefined();
+  });
+});
+
 describe('usuariosRepository', () => {
   test('buscarPorId / Id devuelven el usuario mapeado', async () => {
     // Given: una fila de usuario para cada búsqueda

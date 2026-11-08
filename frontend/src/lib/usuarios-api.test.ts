@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import {
   ErrorSesionExpirada,
+  ErrorTareaNoDisponible,
   actualizarPerfil,
   crearTarea,
   crearCalificacion,
@@ -14,12 +15,12 @@ import {
   iniciarSesion,
   listarCalificaciones,
   listarConversacion,
-  obtenerPerfilPublico,
   registrar,
   listarTareas,
   normalizarRolParaBackend,
   obtenerDisponibilidad,
   obtenerPerfil,
+  obtenerTarea,
   urlPublica,
 } from './usuarios-api';
 
@@ -142,14 +143,8 @@ describe('registrar e iniciarSesion', () => {
   });
 });
 
-describe('perfil público y calificaciones (lecturas sin token)', () => {
-  test('obtenerPerfilPublico y listarCalificaciones llaman a su ruta', async () => {
-    // Given: un backend que responde con datos
-    simular(json({ id: 'u9' }));
-    // When: se lee el perfil público
-    expect((await obtenerPerfilPublico('u9')).id).toBe('u9');
-    // Then: llama a /api/usuarios/:id
-    expect(ultima?.url).toBe('http://api.test/api/usuarios/u9');
+describe('listarCalificaciones (lectura sin token)', () => {
+  test('llama a la ruta del usuario y devuelve la lista', async () => {
     // Given: un backend que responde con una lista
     simular(json([{ id: 'c1' }]));
     // When: se listan las calificaciones del usuario
@@ -159,13 +154,69 @@ describe('perfil público y calificaciones (lecturas sin token)', () => {
   });
 
   test('un error del backend llega con su mensaje', async () => {
-    // Given: un backend que responde 404 con mensaje
-    simular(json({ message: 'Usuario no encontrado.' }, 404));
-    // When: se lee el perfil público
+    // Given: un backend que responde 400 con mensaje
+    simular(json({ message: 'Id inválido.' }, 400));
+    // When: se listan las calificaciones
     // Then: falla con ese mensaje
-    await expect(obtenerPerfilPublico('x')).rejects.toThrow(
-      'Usuario no encontrado.'
+    await expect(listarCalificaciones('x')).rejects.toThrow('Id inválido.');
+  });
+});
+
+describe('obtenerTarea (US-009)', () => {
+  const detalle = {
+    id: 't1',
+    titulo: 'Arreglar grifo',
+    esPropia: false,
+    puedeOfertar: true,
+    autor: { id: 'u1', nombre: 'Ana' },
+  };
+
+  test('devuelve el detalle y llama a la ruta con el token', async () => {
+    // Given: un backend que responde con el detalle
+    simular(json(detalle));
+    // When: se pide la tarea (el id se codifica en la URL)
+    const resultado = await obtenerTarea('tk', 't 1');
+    // Then: llama a /api/tareas/:id con Bearer, con timeout, y devuelve el detalle
+    expect(resultado).toEqual(detalle as never);
+    expect(ultima?.url).toBe('http://api.test/api/tareas/t%201');
+    expect(
+      (ultima?.init?.headers as Record<string, string>).Authorization
+    ).toBe('Bearer tk');
+    expect(ultima?.init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  test('404 y 410 son "tarea no disponible"', async () => {
+    // Given: un backend que dice que la tarea no existe (404)
+    simular(json({ message: 'Tarea no encontrada.' }, 404));
+    // When / Then: falla con ErrorTareaNoDisponible
+    await expect(obtenerTarea('tk', 't1')).rejects.toBeInstanceOf(
+      ErrorTareaNoDisponible
     );
+    // Given: un backend que dice que ya no está abierta (410)
+    simular(
+      json({ message: 'Esta tarea ya no se encuentra disponible.' }, 410)
+    );
+    // When / Then: mismo error, con el mensaje de la historia
+    await expect(obtenerTarea('tk', 't1')).rejects.toThrow(
+      'Lo sentimos, esta tarea ya no se encuentra disponible'
+    );
+  });
+
+  test('401 es sesión expirada, otros fallos conservan su mensaje y sin red avisa', async () => {
+    // Given: un 401
+    simular(json({}, 401));
+    // When / Then: sesión expirada
+    await expect(obtenerTarea('tk', 't1')).rejects.toBeInstanceOf(
+      ErrorSesionExpirada
+    );
+    // Given: un 500 con mensaje
+    simular(json({ message: 'Caído' }, 500));
+    // When / Then: propaga el mensaje del backend
+    await expect(obtenerTarea('tk', 't1')).rejects.toThrow('Caído');
+    // Given: un fallo de red
+    simular(new Error('offline'));
+    // When / Then: mensaje de falta de conexión
+    await expect(obtenerTarea('tk', 't1')).rejects.toThrow(SIN_RED);
   });
 });
 

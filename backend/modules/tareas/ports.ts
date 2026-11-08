@@ -1,4 +1,4 @@
-import type { NuevaTarea, Tarea } from './entities/tarea.entity';
+import type { AutorTarea, NuevaTarea, Tarea } from './entities/tarea.entity';
 
 /** Filtro por cercanía: centro (grados) y radio en kilómetros. */
 export type FiltroCercania = { lat: number; lng: number; radio: number };
@@ -16,6 +16,9 @@ export type OpcionesListado = {
  */
 export interface TareasRepositorio {
   crear(datos: NuevaTarea): Promise<Tarea>;
+  buscarPorId(
+    id: string
+  ): Promise<{ tarea: Tarea; autor: AutorTarea } | undefined>;
   listarAbiertas(
     opciones: OpcionesListado
   ): Promise<Array<{ tarea: Tarea; autorNombre: string }>>;

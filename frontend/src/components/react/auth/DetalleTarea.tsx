@@ -1,0 +1,239 @@
+/**
+ * Detalle de una tarea (US-009).
+ * - Esc 1: título, descripción completa, categoría, ubicación aproximada y
+ *   datos del autor.
+ * - Esc 2: acción de ofertar si la tarea está abierta y el visitante puede.
+ * - Esc 3: si la tarea ya no está disponible no se muestra el detalle: se
+ *   avisa y se vuelve solo al tablero.
+ * - Esc 4: en una tarea propia se ve todo, pero no se ofrece ofertar.
+ */
+import React, { useCallback, useEffect, useState } from 'react';
+import { estaFirmado, obtenerToken } from '../../../lib/auth';
+import {
+  ErrorSesionExpirada,
+  ErrorTareaNoDisponible,
+  obtenerTarea,
+  urlPublica,
+  type DetalleTareaApi,
+} from '../../../lib/usuarios-api';
+import './auth.css';
+import {
+  AlertaConReintento,
+  PantallaCargando,
+  PantallaSinSesion,
+} from './carga-sesion';
+import MapaUbicacion from './MapaUbicacion';
+
+export const MENSAJE_NO_DISPONIBLE =
+  'Lo sentimos, esta tarea ya no se encuentra disponible';
+export const MENSAJE_ERROR_DETALLE =
+  'No pudimos cargar la tarea. Por favor, verifica tu conexión e intenta nuevamente';
+export const MENSAJE_OFERTA_PENDIENTE =
+  'El envío de ofertas estará disponible próximamente.';
+
+/** Espera antes de volver al tablero tras avisar que la tarea no está disponible. */
+export const REDIRECCION_MS = 3000;
+
+type Estado =
+  | { tipo: 'cargando' }
+  | { tipo: 'listo'; tarea: DetalleTareaApi }
+  | { tipo: 'no-disponible' }
+  | { tipo: 'error' };
+
+/** Id de la tarea en `?id=` (cadena vacía si falta o no se puede leer). */
+function idDeLaUrl(): string {
+  try {
+    return new URLSearchParams(window.location.search).get('id') ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function fechaLarga(iso: string): string {
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return '';
+  return fecha.toLocaleDateString('es-CO', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+/** Aviso bajo el título que explica por qué no se puede ofertar. */
+function NotaOferta({ tarea }: Readonly<{ tarea: DetalleTareaApi }>) {
+  const [aviso, setAviso] = useState('');
+
+  if (tarea.esPropia) {
+    return (
+      <p className="ch-field__hint">
+        Esta es tu solicitud: no puedes enviar una oferta a tu propia tarea.
+      </p>
+    );
+  }
+  if (!tarea.puedeOfertar) {
+    return (
+      <p className="ch-field__hint">
+        Solo los afiliados pueden enviar ofertas a una tarea abierta.
+      </p>
+    );
+  }
+  return (
+    <div className="ch-tarea__actions">
+      <button
+        type="button"
+        className="ch-btn ch-btn--primary"
+        onClick={() => setAviso(MENSAJE_OFERTA_PENDIENTE)}
+      >
+        Enviar oferta
+      </button>
+      {aviso && (
+        <p className="ch-field__hint" role="status">
+          {aviso}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Autor({ autor }: Readonly<{ autor: DetalleTareaApi['autor'] }>) {
+  return (
+    <section className="ch-autor" aria-label="Quién publica">
+      {autor.fotoUrl && (
+        <img
+          className="ch-autor__foto"
+          src={urlPublica(autor.fotoUrl)}
+          alt={`Foto de ${autor.nombre}`}
+        />
+      )}
+      <div>
+        <h3 className="ch-autor__nombre">{autor.nombre}</h3>
+        {autor.descripcion && (
+          <p className="ch-tarea__meta">{autor.descripcion}</p>
+        )}
+        {autor.ubicacion && <p className="ch-tarea__meta">{autor.ubicacion}</p>}
+      </div>
+    </section>
+  );
+}
+
+export default function DetalleTarea() {
+  const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
+
+  const cargar = useCallback(async () => {
+    const id = idDeLaUrl();
+    if (!id) {
+      setEstado({ tipo: 'no-disponible' });
+      return;
+    }
+    setEstado({ tipo: 'cargando' });
+    try {
+      const token = obtenerToken();
+      if (!token) throw new ErrorSesionExpirada();
+      setEstado({ tipo: 'listo', tarea: await obtenerTarea(token, id) });
+    } catch (err: unknown) {
+      if (err instanceof ErrorSesionExpirada) {
+        window.location.href = '/login?expirada=1';
+        return;
+      }
+      setEstado({
+        tipo: err instanceof ErrorTareaNoDisponible ? 'no-disponible' : 'error',
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (estaFirmado()) void cargar();
+  }, [cargar]);
+
+  // Esc 3: tras avisar, vuelve solo al tablero (que se recarga actualizado).
+  useEffect(() => {
+    if (estado.tipo !== 'no-disponible') return;
+    const espera = setTimeout(() => {
+      window.location.href = '/tareas';
+    }, REDIRECCION_MS);
+    return () => clearTimeout(espera);
+  }, [estado.tipo]);
+
+  if (!estaFirmado()) {
+    return (
+      <PantallaSinSesion
+        titulo="Detalle de la tarea"
+        subtitulo="Inicia sesión para ver los detalles de la tarea."
+      />
+    );
+  }
+
+  if (estado.tipo === 'cargando') {
+    return <PantallaCargando texto="Cargando la tarea…" />;
+  }
+
+  if (estado.tipo === 'no-disponible') {
+    return (
+      <div className="ch-auth">
+        <div className="ch-card">
+          <div className="ch-alert ch-alert--error" role="alert">
+            <p style={{ margin: '0 0 8px' }}>{MENSAJE_NO_DISPONIBLE}</p>
+            <p className="ch-field__hint">Te llevamos de vuelta al tablero…</p>
+          </div>
+          <a className="ch-btn ch-btn--primary" href="/tareas">
+            Volver al tablero
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (estado.tipo === 'error') {
+    return (
+      <div className="ch-auth">
+        <div className="ch-card">
+          <AlertaConReintento
+            mensaje={MENSAJE_ERROR_DETALLE}
+            onReintentar={() => void cargar()}
+          />
+          <a className="ch-btn ch-btn--ghost" href="/tareas">
+            Volver al tablero
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const { tarea } = estado;
+  const fecha = fechaLarga(tarea.creadoEn);
+
+  return (
+    <div className="ch-auth">
+      <div className="ch-card ch-card--wide">
+        <a className="ch-btn ch-btn--ghost" href="/tareas">
+          ← Volver al tablero
+        </a>
+        <div className="ch-tarea__head">
+          <h2 className="ch-card__title">{tarea.titulo}</h2>
+          <span className="ch-chip">{tarea.categoria}</span>
+        </div>
+        <p className="ch-tarea__meta">
+          {tarea.ubicacion}
+          {fecha ? ` · Publicada el ${fecha}` : ''}
+        </p>
+        <span className="ch-badge">
+          {tarea.estado === 'abierta' ? 'Abierta' : tarea.estado}
+        </span>
+
+        <h3 className="ch-autor__nombre">Descripción</h3>
+        <p className="ch-tarea__descripcion">{tarea.descripcion}</p>
+
+        {tarea.latitud !== null && tarea.longitud !== null && (
+          <MapaUbicacion
+            latitud={tarea.latitud}
+            longitud={tarea.longitud}
+            aproximada={!tarea.esPropia}
+          />
+        )}
+
+        <Autor autor={tarea.autor} />
+        <NotaOferta tarea={tarea} />
+      </div>
+    </div>
+  );
+}

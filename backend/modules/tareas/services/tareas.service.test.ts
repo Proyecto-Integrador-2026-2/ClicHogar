@@ -5,6 +5,7 @@
  */
 import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import {
+  GoneError,
   NotFoundError,
   ValidationError,
 } from '../../../shared/errors/app-error';
@@ -276,5 +277,112 @@ describe('tareasService con repositorios simulados (sin Postgres)', () => {
         tareasService.listarAbiertas(consulta)
       ).rejects.toBeInstanceOf(ValidationError);
     });
+  });
+});
+
+describe('tareasService.obtenerDetalle (US-009)', () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  const tarea = (cambios: Partial<Tarea> = {}): Tarea => ({
+    id: 't-1',
+    usuarioId: 'u-autor',
+    titulo: 'Arreglar grifo',
+    descripcion: 'El grifo de la cocina gotea día y noche, hay que repararlo.',
+    categoria: 'Plomería',
+    estado: 'abierta',
+    ubicacion: 'Belén',
+    latitud: 6.244203,
+    longitud: -75.581211,
+    creadoEn: new Date('2026-02-01T00:00:00.000Z'),
+    actualizadoEn: new Date('2026-02-01T00:00:00.000Z'),
+    ...cambios,
+  });
+  const AUTOR = {
+    id: 'u-autor',
+    nombre: 'Ana',
+    descripcion: null,
+    ubicacion: null,
+    fotoUrl: null,
+  };
+  const encontrada = (cambios: Partial<Tarea> = {}) =>
+    spyOn(tareasRepository, 'buscarPorId').mockResolvedValue({
+      tarea: tarea(cambios),
+      autor: AUTOR,
+    });
+  const AFILIADO = { id: 'u-afiliado', rol: 'afiliado' as const };
+  const CLIENTE = { id: 'u-cliente', rol: 'cliente' as const };
+
+  test('Esc 1-2: un afiliado ve el detalle de una tarea abierta y puede ofertar', async () => {
+    // Given: una tarea abierta de otra persona
+    encontrada();
+    // When: un afiliado pide el detalle
+    const detalle = await tareasService.obtenerDetalle(AFILIADO, 't-1');
+    // Then: ve todo (con el autor) y puede ofertar; la ubicación va aproximada
+    expect(detalle).toMatchObject({
+      titulo: 'Arreglar grifo',
+      autor: AUTOR,
+      esPropia: false,
+      puedeOfertar: true,
+      latitud: 6.24,
+      longitud: -75.58,
+    });
+  });
+
+  test('un cliente ve el detalle pero no puede ofertar', async () => {
+    // Given: una tarea abierta de otra persona
+    encontrada();
+    // When: un usuario con rol cliente pide el detalle
+    const detalle = await tareasService.obtenerDetalle(CLIENTE, 't-1');
+    // Then: la ve sin poder ofertar
+    expect(detalle.puedeOfertar).toBe(false);
+    expect(detalle.esPropia).toBe(false);
+  });
+
+  test('Esc 4: el autor ve su tarea completa y sin oferta, aunque sea afiliado', async () => {
+    // Given: una tarea abierta publicada por un afiliado
+    encontrada({ usuarioId: AFILIADO.id });
+    // When: ese mismo afiliado pide el detalle
+    const detalle = await tareasService.obtenerDetalle(AFILIADO, 't-1');
+    // Then: la ve con el punto exacto, marcada como propia y sin oferta
+    expect(detalle).toMatchObject({
+      esPropia: true,
+      puedeOfertar: false,
+      latitud: 6.244203,
+    });
+  });
+
+  test('Esc 3: una tarea asignada o finalizada ya no está disponible (410)', async () => {
+    // Given / When / Then: asignada, finalizada o cancelada para un tercero
+    for (const estado of ['asignada', 'finalizada', 'cancelada']) {
+      encontrada({ estado });
+      await expect(
+        tareasService.obtenerDetalle(AFILIADO, 't-1')
+      ).rejects.toBeInstanceOf(GoneError);
+    }
+  });
+
+  test('el autor puede ver su tarea aunque ya no esté abierta, sin oferta', async () => {
+    // Given: una tarea asignada del propio usuario
+    encontrada({ estado: 'asignada', usuarioId: AFILIADO.id });
+    // When: su autor pide el detalle
+    const detalle = await tareasService.obtenerDetalle(AFILIADO, 't-1');
+    // Then: la ve, con su estado y sin poder ofertar
+    expect(detalle).toMatchObject({
+      estado: 'asignada',
+      esPropia: true,
+      puedeOfertar: false,
+    });
+  });
+
+  test('una tarea inexistente responde NotFoundError', async () => {
+    // Given: un repositorio sin esa tarea
+    spyOn(tareasRepository, 'buscarPorId').mockResolvedValue(undefined);
+    // When: se pide el detalle
+    // Then: falla con NotFoundError
+    await expect(
+      tareasService.obtenerDetalle(AFILIADO, 'no-existe')
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

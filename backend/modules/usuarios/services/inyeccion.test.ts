@@ -71,6 +71,7 @@ describe('tareas con repositorios inyectados', () => {
           guardadas.push(datos);
           return { ...datos, id: 't1', creadoEn: FECHA, actualizadoEn: FECHA };
         },
+        buscarPorId: async () => undefined,
         listarAbiertas: async () => [],
       },
     });
@@ -91,6 +92,7 @@ describe('tareas con repositorios inyectados', () => {
       usuarios: usuariosFalso(undefined),
       tareas: {
         crear: async () => Promise.reject(),
+        buscarPorId: async () => undefined,
         listarAbiertas: async () => [],
       },
     });

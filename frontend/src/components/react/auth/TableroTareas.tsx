@@ -11,14 +11,11 @@
  * - Esc 6: error de red/timeout con mensaje claro y reintento.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { Map as MapaLeaflet } from 'leaflet';
 import { estaFirmado, obtenerToken } from '../../../lib/auth';
 import {
   ErrorSesionExpirada,
   listarTareas,
-  obtenerPerfilPublico,
   type TareaTablero,
-  type UsuarioPublico,
 } from '../../../lib/usuarios-api';
 import './auth.css';
 import {
@@ -76,10 +73,6 @@ export default function TableroTareas() {
   const [filtroRadio, setFiltroRadio] = useState('10');
   const [errorFiltro, setErrorFiltro] = useState('');
 
-  const [expandida, setExpandida] = useState<TareaTablero | null>(null);
-  const [perfilAutor, setPerfilAutor] = useState<UsuarioPublico | null>(null);
-  const mapaRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<MapaLeaflet | null>(null);
   const centinelaRef = useRef<HTMLLIElement>(null);
 
   // Descarta respuestas de peticiones antiguas (cambio de filtro o
@@ -186,49 +179,6 @@ export default function TableroTareas() {
     setCercania(null);
     void cargarPagina(1, null, true);
   };
-
-  useEffect(() => {
-    if (!expandida) {
-      setPerfilAutor(null);
-      return;
-    }
-    let cancelado = false;
-    obtenerPerfilPublico(expandida.autorId)
-      .then((perfil) => {
-        if (!cancelado) setPerfilAutor(perfil);
-      })
-      .catch(() => {
-        if (!cancelado) setPerfilAutor(null);
-      });
-    return () => {
-      cancelado = true;
-    };
-  }, [expandida]);
-
-  useEffect(() => {
-    if (!expandida || !expandida.latitud || !expandida.longitud) return;
-    if (!mapaRef.current) return;
-    const { latitud, longitud } = expandida;
-    let cancelado = false;
-    (async () => {
-      const L = (await import('leaflet')).default;
-      await import('leaflet/dist/leaflet.css');
-      if (cancelado || !mapaRef.current) return;
-      mapInstanceRef.current?.remove();
-      const mapa = L.map(mapaRef.current).setView([latitud, longitud], 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19,
-      }).addTo(mapa);
-      L.marker([latitud, longitud]).addTo(mapa);
-      mapInstanceRef.current = mapa;
-    })();
-    return () => {
-      cancelado = true;
-      mapInstanceRef.current?.remove();
-      mapInstanceRef.current = null;
-    };
-  }, [expandida]);
 
   const firmado = estaFirmado();
 
@@ -339,13 +289,12 @@ export default function TableroTareas() {
                 <p className="ch-tarea__descripcion">{tarea.descripcion}</p>
                 <div className="ch-tarea__actions">
                   <span className="ch-badge">Abierta</span>
-                  <button
-                    type="button"
+                  <a
                     className="ch-btn ch-btn--ghost"
-                    onClick={() => setExpandida(tarea)}
+                    href={`/tareas/detalle?id=${encodeURIComponent(tarea.id)}`}
                   >
                     Ver detalle
-                  </button>
+                  </a>
                 </div>
               </li>
             ))}
@@ -362,40 +311,6 @@ export default function TableroTareas() {
           >
             {cargandoMas ? 'Cargando…' : 'Cargar más tareas'}
           </button>
-        )}
-
-        {expandida && (
-          <div className="ch-modal" role="dialog" aria-modal="true">
-            <div className="ch-modal__card">
-              <h3 className="ch-card__title">{expandida.titulo}</h3>
-              <p className="ch-card__subtitle">
-                {expandida.categoria} · {expandida.autorNombre}
-              </p>
-              <p>{expandida.descripcion}</p>
-              <p className="ch-tarea__meta">{expandida.ubicacion}</p>
-              {perfilAutor && (
-                <p className="ch-tarea__meta">
-                  Autor: {perfilAutor.nombre}
-                  {perfilAutor.descripcion
-                    ? ` · ${perfilAutor.descripcion}`
-                    : ''}
-                  {perfilAutor.ubicacion ? ` · ${perfilAutor.ubicacion}` : ''}
-                </p>
-              )}
-              {expandida.latitud && expandida.longitud ? (
-                <div ref={mapaRef} className="ch-map__canvas" />
-              ) : (
-                <p className="ch-field__hint">Sin ubicación exacta.</p>
-              )}
-              <button
-                type="button"
-                className="ch-btn ch-btn--primary"
-                onClick={() => setExpandida(null)}
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
         )}
       </div>
     </div>

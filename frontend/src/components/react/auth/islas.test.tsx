@@ -10,6 +10,7 @@ import { resetSesion } from '../../../../test-setup';
 import CalificacionIsla from './CalificacionIsla';
 import ChatIsla from './ChatIsla';
 import DashboardIsla from './DashboardIsla';
+import DetalleTareaIsla from './DetalleTareaIsla';
 import DisponibilidadIsla from './DisponibilidadIsla';
 import LoginIsla from './LoginIsla';
 import PerfilIsla from './PerfilIsla';
@@ -35,6 +36,7 @@ describe('islas', () => {
     CalificacionIsla,
     ChatIsla,
     DashboardIsla,
+    DetalleTareaIsla,
     DisponibilidadIsla,
     LoginIsla,
     PerfilIsla,

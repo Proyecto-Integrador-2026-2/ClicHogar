@@ -1,0 +1,344 @@
+/**
+ * Pruebas del detalle de una tarea (US-009). `obtenerTarea` y la red se
+ * simulan; cada prueba mapea a un escenario de aceptación.
+ */
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import React from 'react';
+import { resetSesion, simularNavegacion } from '../../../../test-setup';
+import * as api from '../../../lib/usuarios-api';
+import DetalleTarea, {
+  MENSAJE_ERROR_DETALLE,
+  MENSAJE_NO_DISPONIBLE,
+  MENSAJE_OFERTA_PENDIENTE,
+  REDIRECCION_MS,
+} from './DetalleTarea';
+
+const ID = '33333333-3333-4333-8333-333333333333';
+
+const detalle = (
+  cambios: Partial<api.DetalleTareaApi> = {}
+): api.DetalleTareaApi => ({
+  id: ID,
+  titulo: 'Arreglar grifo',
+  descripcion:
+    'El grifo de la cocina gotea día y noche. Incluye cambiar el empaque.',
+  categoria: 'Plomería',
+  estado: 'abierta',
+  ubicacion: 'Belén, Medellín',
+  latitud: null,
+  longitud: null,
+  autorId: 'u-1',
+  autorNombre: 'Ana Pérez',
+  creadoEn: '2026-03-15T12:00:00.000Z',
+  autor: {
+    id: 'u-1',
+    nombre: 'Ana Pérez',
+    descripcion: 'Vivo en Belén desde hace años.',
+    ubicacion: 'Medellín',
+    fotoUrl: '/uploads/perfiles/ana.jpg',
+  },
+  esPropia: false,
+  puedeOfertar: true,
+  ...cambios,
+});
+
+let nav: ReturnType<typeof simularNavegacion>;
+
+/** Simula la página `/tareas/detalle` con la query dada. */
+function conId(id: string | null = ID) {
+  nav.restaurar();
+  nav = simularNavegacion(id === null ? '' : `?id=${id}`);
+}
+
+beforeEach(() => {
+  resetSesion();
+  process.env.PUBLIC_API_URL = 'http://api.test';
+  nav = simularNavegacion(`?id=${ID}`);
+});
+
+afterEach(() => {
+  cleanup();
+  nav.restaurar();
+  spyOn(api, 'obtenerTarea').mockRestore();
+});
+
+describe('DetalleTarea', () => {
+  test('Esc 1: muestra título, descripción completa, categoría, ubicación y autor', async () => {
+    // Given: una tarea abierta de otra persona
+    const obtener = spyOn(api, 'obtenerTarea').mockResolvedValue(detalle());
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: se ve toda la información de la tarea y de quien la publicó
+    expect(
+      await screen.findByRole('heading', { name: 'Arreglar grifo' })
+    ).toBeTruthy();
+    expect(screen.getByText(/Incluye cambiar el empaque\./)).toBeTruthy();
+    expect(screen.getByText('Plomería')).toBeTruthy();
+    expect(screen.getByText(/Belén, Medellín/)).toBeTruthy();
+    expect(screen.getByText(/Publicada el 15 de marzo de 2026/)).toBeTruthy();
+    expect(screen.getByText('Abierta')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Ana Pérez' })).toBeTruthy();
+    expect(screen.getByText('Vivo en Belén desde hace años.')).toBeTruthy();
+    expect(
+      (screen.getByAltText('Foto de Ana Pérez') as HTMLImageElement).src
+    ).toBe('http://api.test/uploads/perfiles/ana.jpg');
+    expect(obtener).toHaveBeenCalledWith('token-falso', ID);
+  });
+
+  test('Esc 2: una tarea abierta ajena ofrece "Enviar oferta"', async () => {
+    // Given: una tarea abierta que el visitante puede ofertar
+    spyOn(api, 'obtenerTarea').mockResolvedValue(detalle());
+    render(<DetalleTarea />);
+    // When: pulsa Enviar oferta
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Enviar oferta' })
+    );
+    // Then: recibe el aviso (el envío real llega con la US de ofertas)
+    expect((await screen.findByRole('status')).textContent).toBe(
+      MENSAJE_OFERTA_PENDIENTE
+    );
+  });
+
+  test('un visitante que no es afiliado ve la tarea pero no puede ofertar', async () => {
+    // Given: un detalle que el servidor marca como no ofertable
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({ puedeOfertar: false })
+    );
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: se ve la tarea, sin botón y con la explicación
+    await screen.findByRole('heading', { name: 'Arreglar grifo' });
+    expect(screen.queryByRole('button', { name: 'Enviar oferta' })).toBeNull();
+    expect(
+      screen.getByText(/Solo los afiliados pueden enviar ofertas/)
+    ).toBeTruthy();
+  });
+
+  test('Esc 4: en su propia tarea se ve todo pero no se puede ofertar', async () => {
+    // Given: un detalle de una tarea propia
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({ esPropia: true, puedeOfertar: false })
+    );
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: se ve la información y el botón no aparece
+    await screen.findByRole('heading', { name: 'Arreglar grifo' });
+    expect(screen.queryByRole('button', { name: 'Enviar oferta' })).toBeNull();
+    expect(
+      screen.getByText(/no puedes enviar una oferta a tu propia tarea/)
+    ).toBeTruthy();
+  });
+
+  test('sin foto ni datos opcionales del autor, solo muestra su nombre', async () => {
+    // Given: un autor sin foto, descripción ni ubicación
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({
+        estado: 'asignada',
+        autor: {
+          id: 'u-1',
+          nombre: 'Luis',
+          descripcion: null,
+          ubicacion: null,
+          fotoUrl: null,
+        },
+      })
+    );
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: aparece el nombre, el estado tal cual y ninguna foto
+    expect(await screen.findByRole('heading', { name: 'Luis' })).toBeTruthy();
+    expect(screen.getByText('asignada')).toBeTruthy();
+    expect(screen.queryByRole('img', { name: /Foto de/ })).toBeNull();
+  });
+
+  test('una fecha inválida no muestra "Publicada el"', async () => {
+    // Given: una tarea con fecha ilegible
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({ creadoEn: 'no-es-fecha' })
+    );
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: no inventa una fecha
+    await screen.findByRole('heading', { name: 'Arreglar grifo' });
+    expect(screen.queryByText(/Publicada el/)).toBeNull();
+  });
+
+  test('con coordenadas muestra el mapa; aproximado si la tarea es ajena', async () => {
+    // Given: una tarea ajena con coordenadas
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({ latitud: 6.24, longitud: -75.58 })
+    );
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: aparece el mapa de la zona aproximada
+    const mapa = await screen.findByRole('img', {
+      name: 'Mapa con la zona aproximada',
+    });
+    await waitFor(() =>
+      expect(mapa.classList.contains('leaflet-container')).toBe(true)
+    );
+  });
+
+  test('en su propia tarea el mapa es exacto', async () => {
+    // Given: una tarea propia con coordenadas
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({ latitud: 6.244203, longitud: -75.581211, esPropia: true })
+    );
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: el mapa indica la ubicación exacta
+    expect(
+      await screen.findByRole('img', { name: 'Mapa con la ubicación' })
+    ).toBeTruthy();
+  });
+});
+
+describe('DetalleTarea: tarea no disponible (Esc 3)', () => {
+  test('muestra la alerta y vuelve al tablero tras unos segundos', async () => {
+    // Given: la tarea cambió de estado: el servidor responde "no disponible"
+    spyOn(api, 'obtenerTarea').mockRejectedValue(
+      new api.ErrorTareaNoDisponible()
+    );
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: no se carga el detalle, se avisa y todavía no se redirige
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      MENSAJE_NO_DISPONIBLE
+    );
+    expect(
+      screen.queryByRole('heading', { name: 'Arreglar grifo' })
+    ).toBeNull();
+    expect(nav.destino()).toBe('');
+    // When: pasa el tiempo de espera
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, REDIRECCION_MS + 200));
+    });
+    // Then: vuelve solo al tablero
+    expect(nav.destino()).toBe('/tareas');
+  }, 10000);
+
+  test('si se sale antes, no redirige después', async () => {
+    // Given: el aviso de no disponible mostrándose
+    spyOn(api, 'obtenerTarea').mockRejectedValue(
+      new api.ErrorTareaNoDisponible()
+    );
+    const { unmount } = render(<DetalleTarea />);
+    await screen.findByRole('alert');
+    // When: se desmonta el componente antes de que venza la espera
+    unmount();
+    await new Promise((r) => setTimeout(r, REDIRECCION_MS + 200));
+    // Then: no hubo redirección
+    expect(nav.destino()).toBe('');
+  }, 10000);
+
+  test('sin id en la URL cuenta como tarea no disponible', async () => {
+    // Given: una URL sin ?id=
+    conId(null);
+    const obtener = spyOn(api, 'obtenerTarea');
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: avisa sin consultar el backend
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      MENSAJE_NO_DISPONIBLE
+    );
+    expect(obtener).not.toHaveBeenCalled();
+  });
+
+  test('si no se puede leer la URL también cuenta como no disponible', async () => {
+    // Given: una página cuya URL no se puede leer
+    nav.restaurar();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      get() {
+        throw new Error('sin acceso');
+      },
+    });
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: avisa que no está disponible
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      MENSAJE_NO_DISPONIBLE
+    );
+    nav = simularNavegacion();
+  });
+});
+
+describe('DetalleTarea: sesión y errores', () => {
+  test('sin sesión invita a iniciar sesión y no llama al backend', async () => {
+    // Given: no hay token
+    localStorage.removeItem('ch-token');
+    const obtener = spyOn(api, 'obtenerTarea');
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: invita a iniciar sesión
+    expect(
+      await screen.findByRole('link', { name: /Iniciar sesión/i })
+    ).toBeTruthy();
+    expect(obtener).not.toHaveBeenCalled();
+  });
+
+  test('muestra "Cargando" mientras llega la respuesta', () => {
+    // Given: un backend que no responde todavía
+    spyOn(api, 'obtenerTarea').mockReturnValue(new Promise(() => {}));
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: indica que carga
+    expect(screen.getByRole('status').textContent).toContain('Cargando');
+  });
+
+  test('una sesión expirada redirige al login', async () => {
+    // Given: un backend que responde 401
+    spyOn(api, 'obtenerTarea').mockRejectedValue(new api.ErrorSesionExpirada());
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: redirige a /login?expirada=1
+    await waitFor(() => expect(nav.destino()).toBe('/login?expirada=1'));
+  });
+
+  test('si el token desaparece antes de cargar, redirige al login', async () => {
+    // Given: una primera carga fallida y luego se pierde el token
+    const obtener = spyOn(api, 'obtenerTarea').mockRejectedValue(
+      new Error('caída')
+    );
+    render(<DetalleTarea />);
+    await screen.findByRole('alert');
+    localStorage.removeItem('ch-token');
+    obtener.mockResolvedValue(detalle());
+    // When: se reintenta
+    fireEvent.click(screen.getByRole('button', { name: /Reintentar/i }));
+    // Then: sin token se pide iniciar sesión de nuevo
+    await waitFor(() => expect(nav.destino()).toBe('/login?expirada=1'));
+  });
+
+  test('un fallo de red muestra el mensaje y permite reintentar', async () => {
+    // Given: un backend que falla la primera vez
+    const obtener = spyOn(api, 'obtenerTarea').mockRejectedValueOnce(
+      new Error('offline')
+    );
+    render(<DetalleTarea />);
+    // When: falla la carga
+    const alerta = await screen.findByRole('alert');
+    // Then: muestra el mensaje y la opción de volver al tablero
+    expect(alerta.textContent).toContain(MENSAJE_ERROR_DETALLE);
+    expect(
+      screen
+        .getByRole('link', { name: 'Volver al tablero' })
+        .getAttribute('href')
+    ).toBe('/tareas');
+    // When: el backend se recupera y se pulsa Reintentar
+    obtener.mockResolvedValue(detalle());
+    fireEvent.click(screen.getByRole('button', { name: /Reintentar/i }));
+    // Then: se muestra el detalle
+    expect(
+      await screen.findByRole('heading', { name: 'Arreglar grifo' })
+    ).toBeTruthy();
+  });
+});

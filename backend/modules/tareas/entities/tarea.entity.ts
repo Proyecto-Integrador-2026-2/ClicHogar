@@ -18,6 +18,15 @@ export type Tarea = {
   actualizadoEn: Date;
 };
 
+/** Datos públicos del autor que acompañan al detalle de una tarea. */
+export type AutorTarea = {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  ubicacion: string | null;
+  fotoUrl: string | null;
+};
+
 /** Campos para insertar una tarea nueva (estado lo pone el servicio). */
 export type NuevaTarea = {
   usuarioId: string;

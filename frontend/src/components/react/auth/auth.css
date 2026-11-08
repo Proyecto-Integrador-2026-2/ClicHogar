@@ -822,3 +822,24 @@ textarea.ch-field__input {
   gap: 8px;
   margin-top: 8px;
 }
+
+/* Detalle de tarea (US-009): autor de la solicitud */
+.ch-autor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--ch-border, rgba(127, 127, 127, 0.3));
+  border-radius: 12px;
+}
+.ch-autor__foto {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.ch-autor__nombre {
+  margin: 12px 0 4px;
+  font-size: 1rem;
+}

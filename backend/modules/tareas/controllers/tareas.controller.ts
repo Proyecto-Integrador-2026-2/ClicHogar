@@ -3,13 +3,17 @@ import { usuarioDesdeHeaders } from '../../auth/token';
 import { CrearTareaDto } from '../dto/crear-tarea.dto';
 import { tareasService } from '../services/tareas.service';
 
+const ParamsTareaDto = t.Object({ id: t.String({ format: 'uuid' }) });
+
 /**
  * Módulo `tareas` (US-006 y US-008).
  * - POST /api/tareas: publica una solicitud (estado 'abierta').
  * - GET /api/tareas: tablero paginado de solicitudes abiertas, recientes
  *   primero. Query opcional: `pagina`, `limite` y, juntos, `lat`, `lng`,
  *   `radio` (km). Responde `{ tareas, pagina, limite, hayMas }`.
- * Ambos exigen Bearer válido (401 si falta o expiró).
+ * - GET /api/tareas/:id: detalle de una tarea (US-009): 404 si no existe,
+ *   410 si ya no está abierta (salvo para su autor).
+ * Todos exigen Bearer válido (401 si falta o expiró).
  */
 export const tareasController = new Elysia({ prefix: '/api/tareas' })
   .post(
@@ -37,4 +41,12 @@ export const tareasController = new Elysia({ prefix: '/api/tareas' })
         radio: t.Optional(t.Numeric()),
       }),
     }
+  )
+  .get(
+    '/:id',
+    async ({ headers, params }) => {
+      const visitante = await usuarioDesdeHeaders(headers);
+      return tareasService.obtenerDetalle(visitante, params.id);
+    },
+    { params: ParamsTareaDto }
   );

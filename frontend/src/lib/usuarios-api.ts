@@ -30,11 +30,24 @@ export class ErrorSesionExpirada extends Error {
   }
 }
 
+/**
+ * La tarea ya no se puede ver (US-009, Escenario 3): no existe (404) o dejó
+ * de estar abierta (410), p. ej. la asignaron mientras se miraba el tablero.
+ */
+export class ErrorTareaNoDisponible extends Error {
+  constructor() {
+    super('Lo sentimos, esta tarea ya no se encuentra disponible');
+    this.name = 'ErrorTareaNoDisponible';
+  }
+}
+
 type OpcionesPedir = {
   /** Convierte un fallo de `fetch` (sin red) en un mensaje amigable. */
   mensajeSinRed?: boolean;
   /** Traduce un 401 a `ErrorSesionExpirada`. */
   detectarSesionExpirada?: boolean;
+  /** Traduce un 404 o 410 a `ErrorTareaNoDisponible`. */
+  detectarNoDisponible?: boolean;
 };
 
 /** Tareas: sin red con mensaje amigable y 401 como sesión expirada. */
@@ -52,7 +65,11 @@ async function pedir<T>(
   ruta: string,
   token: string | null,
   init: RequestInit = {},
-  { mensajeSinRed = false, detectarSesionExpirada = false }: OpcionesPedir = {}
+  {
+    mensajeSinRed = false,
+    detectarSesionExpirada = false,
+    detectarNoDisponible = false,
+  }: OpcionesPedir = {}
 ): Promise<T> {
   const base = apiUrl();
   if (!base) {
@@ -72,6 +89,12 @@ async function pedir<T>(
 
   if (detectarSesionExpirada && respuesta.status === 401) {
     throw new ErrorSesionExpirada();
+  }
+  if (
+    detectarNoDisponible &&
+    (respuesta.status === 404 || respuesta.status === 410)
+  ) {
+    throw new ErrorTareaNoDisponible();
   }
   if (!respuesta.ok) {
     const detalle = await respuesta.json().catch(() => null);
@@ -226,11 +249,6 @@ export function listarCalificaciones(
   return pedir(`/api/calificaciones/usuario/${usuarioId}`, null);
 }
 
-/** Perfil público de un usuario (lectura pública). */
-export function obtenerPerfilPublico(id: string): Promise<UsuarioPublico> {
-  return pedir(`/api/usuarios/${id}`, null);
-}
-
 /**
  * Actualización parcial del perfil (US-004, Escenario 2): solo viajan los
  * campos presentes; lo ausente no se toca en el servidor.
@@ -315,6 +333,41 @@ export function listarTareas(
     token,
     { signal: AbortSignal.timeout(TIMEOUT_TABLERO_MS) },
     OPCIONES_TAREAS
+  );
+}
+
+/** Datos públicos del autor de una tarea (US-009). */
+export type AutorTareaApi = {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  ubicacion: string | null;
+  fotoUrl: string | null;
+};
+
+/**
+ * Detalle de una tarea (US-009). `esPropia` y `puedeOfertar` las decide el
+ * servidor; las coordenadas son aproximadas salvo para el autor.
+ */
+export type DetalleTareaApi = TareaTablero & {
+  autor: AutorTareaApi;
+  esPropia: boolean;
+  puedeOfertar: boolean;
+};
+
+/**
+ * Detalle de una tarea. Lanza `ErrorTareaNoDisponible` si no existe o ya no
+ * está abierta, y `ErrorSesionExpirada` ante un 401.
+ */
+export function obtenerTarea(
+  token: string,
+  id: string
+): Promise<DetalleTareaApi> {
+  return pedir(
+    `/api/tareas/${encodeURIComponent(id)}`,
+    token,
+    { signal: AbortSignal.timeout(TIMEOUT_TABLERO_MS) },
+    { ...OPCIONES_TAREAS, detectarNoDisponible: true }
   );
 }
 

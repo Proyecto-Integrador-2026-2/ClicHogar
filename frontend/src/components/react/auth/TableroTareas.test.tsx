@@ -243,28 +243,22 @@ describe('TableroTareas (US-008)', () => {
     expect(screen.queryByText(MENSAJE_TABLERO_VACIO)).toBeNull();
   });
 
-  test('Ver detalle abre y cierra el modal de la tarea', async () => {
-    // Given: un tablero con una tarea sin coordenadas y el perfil del autor
-    respuestas = [
-      json(pagina([tarea(1)])),
-      json({ id: 'u-1', nombre: 'Ana', descripcion: 'Hola', ubicacion: null }),
-    ];
+  test('US-009 Esc 1: "Ver detalle" lleva a la página de detalle de esa tarea', async () => {
+    // Given: un tablero con dos tareas
+    respuestas = [json(pagina([tarea(1), tarea(2)]))];
     render(<TableroTareas />);
     await screen.findByText('Tarea 1');
-    // When: se abre el detalle
-    fireEvent.click(screen.getByRole('button', { name: /Ver detalle/i }));
-    // Then: aparece el modal con el autor y sin mapa
-    const modal = await screen.findByRole('dialog');
-    expect(modal.textContent).toContain('Sin ubicación exacta.');
-    await waitFor(() => expect(modal.textContent).toContain('Autor: Ana'));
-    // When: se cierra
-    fireEvent.click(screen.getByRole('button', { name: /Cerrar/i }));
-    // Then: el modal desaparece
-    expect(screen.queryByRole('dialog')).toBeNull();
+    // When: se miran los enlaces de detalle
+    const enlaces = screen.getAllByRole('link', { name: /Ver detalle/i });
+    // Then: cada tarjeta enlaza a su propia página de detalle
+    expect(enlaces.map((e) => e.getAttribute('href'))).toEqual([
+      '/tareas/detalle?id=t-1',
+      '/tareas/detalle?id=t-2',
+    ]);
   });
 });
 
-describe('TableroTareas: scroll infinito y mapa del detalle', () => {
+describe('TableroTareas: scroll infinito', () => {
   const ioOriginal = Object.getOwnPropertyDescriptor(
     globalThis,
     'IntersectionObserver'
@@ -313,46 +307,5 @@ describe('TableroTareas: scroll infinito y mapa del detalle', () => {
     // Then: se carga y agrega la página siguiente
     await screen.findByText('Tarea 2');
     expect(urls[1]).toContain('pagina=2');
-  });
-
-  test('el detalle con coordenadas dibuja el mapa y se limpia al cerrar', async () => {
-    // Given: una tarea con coordenadas y el perfil del autor
-    respuestas = [
-      json(pagina([tarea(1, { latitud: 6.2, longitud: -75.5 })])),
-      json({
-        id: 'u-1',
-        nombre: 'Ana',
-        descripcion: null,
-        ubicacion: 'Laureles',
-      }),
-    ];
-    render(<TableroTareas />);
-    await screen.findByText('Tarea 1');
-    // When: se abre el detalle
-    fireEvent.click(screen.getByRole('button', { name: /Ver detalle/i }));
-    // Then: aparece el mapa de Leaflet con el autor y su ubicación
-    const modal = await screen.findByRole('dialog');
-    await waitFor(() =>
-      expect(modal.querySelector('.leaflet-container')).not.toBeNull()
-    );
-    await waitFor(() => expect(modal.textContent).toContain('Laureles'));
-    expect(modal.textContent).not.toContain('Sin ubicación exacta.');
-    // When: se cierra
-    fireEvent.click(screen.getByRole('button', { name: /Cerrar/i }));
-    // Then: el modal desaparece
-    expect(screen.queryByRole('dialog')).toBeNull();
-  });
-
-  test('si el perfil del autor falla, el detalle se muestra sin él', async () => {
-    // Given: un detalle cuyo perfil de autor no se puede cargar
-    respuestas = [json(pagina([tarea(1)])), json({ message: 'No' }, 500)];
-    render(<TableroTareas />);
-    await screen.findByText('Tarea 1');
-    // When: se abre el detalle
-    fireEvent.click(screen.getByRole('button', { name: /Ver detalle/i }));
-    // Then: el modal aparece sin la línea de autor
-    const modal = await screen.findByRole('dialog');
-    await waitFor(() => expect(urls).toHaveLength(2));
-    expect(modal.textContent).not.toContain('Autor:');
   });
 });

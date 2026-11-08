@@ -48,6 +48,13 @@ export class ConflictError extends AppError {
   }
 }
 
+/** 410 — el recurso existió pero ya no está disponible (p. ej. tarea asignada). */
+export class GoneError extends AppError {
+  constructor(message = 'El recurso ya no está disponible.') {
+    super(message, 410);
+  }
+}
+
 /** 429 — se superó un límite de intentos (p. ej. fuerza bruta en login). */
 export class TooManyRequestsError extends AppError {
   constructor(message = 'Demasiados intentos. Inténtalo más tarde.') {

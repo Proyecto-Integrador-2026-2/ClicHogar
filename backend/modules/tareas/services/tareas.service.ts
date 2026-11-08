@@ -1,9 +1,19 @@
-import { ValidationError } from '../../../shared/errors/app-error';
+import {
+  GoneError,
+  NotFoundError,
+  ValidationError,
+} from '../../../shared/errors/app-error';
+import type { Usuario } from '../../usuarios/entities/usuario.entity';
 import type { UsuariosRepositorio } from '../../usuarios/ports';
 import { usuariosRepository } from '../../usuarios/repositories/usuarios.repository';
 import { crearExigirUsuario } from '../../usuarios/services/usuario-actual';
 import { ESTADO_INICIAL_TAREA } from '../categorias';
-import { toTareaPublica, type TareaPublica } from '../mappers/tarea.mapper';
+import {
+  toDetalleTarea,
+  toTareaPublica,
+  type DetalleTarea,
+  type TareaPublica,
+} from '../mappers/tarea.mapper';
 import type { FiltroCercania, TareasRepositorio } from '../ports';
 import { tareasRepository } from '../repositories/tareas.repository';
 import {
@@ -88,6 +98,31 @@ export function crearTareasService({ usuarios, tareas }: Dependencias) {
         estado: ESTADO_INICIAL_TAREA,
       });
       return toTareaPublica(tarea, autor.nombre);
+    },
+
+    /**
+     * Detalle de una tarea (US-009). Solo es visible si está abierta (si
+     * se asignó o cerró mientras el afiliado miraba el tablero: 410) salvo
+     * para su propio autor, que siempre puede verla. Marca `esPropia`
+     * (Esc 4: sin auto-postulación) y `puedeOfertar` (abierta, ajena y el
+     * visitante es afiliado).
+     */
+    async obtenerDetalle(
+      visitante: Pick<Usuario, 'id' | 'rol'>,
+      id: string
+    ): Promise<DetalleTarea> {
+      const encontrada = await tareas.buscarPorId(id);
+      if (!encontrada) throw new NotFoundError('Tarea no encontrada.');
+      const { tarea, autor } = encontrada;
+      const esPropia = tarea.usuarioId === visitante.id;
+      const abierta = tarea.estado === ESTADO_INICIAL_TAREA;
+      if (!abierta && !esPropia) {
+        throw new GoneError('Esta tarea ya no se encuentra disponible.');
+      }
+      return toDetalleTarea(tarea, autor, {
+        esPropia,
+        puedeOfertar: abierta && !esPropia && visitante.rol === 'afiliado',
+      });
     },
 
     /**
