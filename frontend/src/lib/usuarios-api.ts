@@ -227,6 +227,34 @@ export function iniciarSesion(args: {
 }
 
 /**
+ * Pide el enlace de recuperación (`POST /api/auth/olvide-contrasena`). La
+ * respuesta es la misma exista o no la cuenta.
+ */
+export function solicitarRecuperacion(
+  email: string
+): Promise<{ mensaje: string }> {
+  return pedir(
+    '/api/auth/olvide-contrasena',
+    null,
+    conJson('POST', { email }),
+    { mensajeSinRed: true }
+  );
+}
+
+/** Cambia la contraseña con el token del enlace (`POST /api/auth/restablecer-contrasena`). */
+export function restablecerContrasena(
+  token: string,
+  password: string
+): Promise<{ mensaje: string }> {
+  return pedir(
+    '/api/auth/restablecer-contrasena',
+    null,
+    conJson('POST', { token, password }),
+    { mensajeSinRed: true }
+  );
+}
+
+/**
  * Lee el perfil local del usuario autenticado (US-002, redirección por rol).
  * Requiere el token de sesión; el backend resuelve el rol desde Postgres. Lanza Error con el mensaje del backend si algo falla.
  */

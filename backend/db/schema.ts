@@ -11,3 +11,4 @@ export * from './schema/sesiones.schema';
 export * from './schema/calificaciones.schema';
 export * from './schema/mensajes.schema';
 export * from './schema/ofertas.schema';
+export * from './schema/recuperaciones.schema';

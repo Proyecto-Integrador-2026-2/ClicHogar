@@ -29,6 +29,8 @@ import {
   iniciarSesion,
   listarConversacion,
   registrar,
+  restablecerContrasena,
+  solicitarRecuperacion,
   listarTareas,
   normalizarRolParaBackend,
   obtenerDisponibilidad,
@@ -154,6 +156,56 @@ describe('registrar e iniciarSesion', () => {
     process.env.PUBLIC_API_URL = '';
     // Then: pide configurar PUBLIC_API_URL
     await expect(iniciarSesion(args)).rejects.toThrow(SIN_URL);
+  });
+});
+
+describe('recuperación de contraseña', () => {
+  test('solicitarRecuperacion envía el correo sin Authorization', async () => {
+    // Given: un backend que responde con el mensaje genérico
+    simular(json({ mensaje: 'Revisa tu correo.' }));
+    // When: se pide el enlace
+    const r = await solicitarRecuperacion('ana@ejemplo.com');
+    // Then: POST a /api/auth/olvide-contrasena con el correo y sin token
+    expect(r.mensaje).toBe('Revisa tu correo.');
+    expect(ultima?.url).toBe('http://api.test/api/auth/olvide-contrasena');
+    expect(ultima?.init?.method).toBe('POST');
+    expect(JSON.parse(String(ultima?.init?.body))).toEqual({
+      email: 'ana@ejemplo.com',
+    });
+    expect(
+      (ultima?.init?.headers as Record<string, string>).Authorization
+    ).toBeUndefined();
+  });
+
+  test('restablecerContrasena envía token y clave; el error del backend llega con su mensaje', async () => {
+    // Given: un backend que acepta
+    simular(json({ mensaje: 'Listo.' }));
+    // When: se restablece
+    await restablecerContrasena('tok', 'NuevaClave1');
+    // Then: POST a /api/auth/restablecer-contrasena con token y clave
+    expect(ultima?.url).toBe('http://api.test/api/auth/restablecer-contrasena');
+    expect(JSON.parse(String(ultima?.init?.body))).toEqual({
+      token: 'tok',
+      password: 'NuevaClave1',
+    });
+    // Given: un enlace vencido
+    simular(json({ message: 'El enlace no es válido o ya expiró.' }, 400));
+    // When / Then: el error trae el mensaje del backend
+    await expect(restablecerContrasena('x', 'NuevaClave1')).rejects.toThrow(
+      'ya expiró'
+    );
+  });
+
+  test('sin red avisan de la falta de conexión', async () => {
+    // Given: un fallo de red
+    simular(new Error('offline'));
+    // When / Then: ErrorSinConexion en ambas
+    await expect(solicitarRecuperacion('a@b.co')).rejects.toBeInstanceOf(
+      ErrorSinConexion
+    );
+    await expect(restablecerContrasena('x', 'y')).rejects.toBeInstanceOf(
+      ErrorSinConexion
+    );
   });
 });
 

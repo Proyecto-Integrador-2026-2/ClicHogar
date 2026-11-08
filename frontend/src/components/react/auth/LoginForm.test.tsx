@@ -51,6 +51,17 @@ function enviar() {
 }
 
 describe('LoginForm', () => {
+  test('ofrece el enlace "¿Olvidaste tu contraseña?"', () => {
+    // Given / When: el formulario de login
+    render(<LoginForm />);
+    // Then: enlaza a la página de recuperación
+    expect(
+      screen
+        .getByRole('link', { name: '¿Olvidaste tu contraseña?' })
+        .getAttribute('href')
+    ).toBe('/olvide-contrasena');
+  });
+
   test('envío vacío muestra el resumen de errores y no llama al backend', async () => {
     // Given: un formulario de login vacío
     const login = spyOn(api, 'iniciarSesion');

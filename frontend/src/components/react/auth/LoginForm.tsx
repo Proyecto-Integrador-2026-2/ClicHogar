@@ -173,6 +173,10 @@ export default function LoginForm() {
                 autoComplete="current-password"
               />
 
+              <p className="ch-field__hint">
+                <a href="/olvide-contrasena">¿Olvidaste tu contraseña?</a>
+              </p>
+
               <button
                 type="submit"
                 className="ch-btn ch-btn--primary"

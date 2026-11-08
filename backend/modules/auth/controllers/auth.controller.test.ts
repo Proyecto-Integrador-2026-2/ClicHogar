@@ -10,8 +10,10 @@ process.env.DATABASE_URL ??= 'postgres://test';
 import {
   ConflictError,
   UnauthorizedError,
+  ValidationError,
 } from '../../../shared/errors/app-error';
 import { authService, type RespuestaSesion } from '../services/auth.service';
+import { recuperacionService } from '../services/recuperacion.service';
 
 const { buildApp } = await import('../../../app');
 
@@ -207,5 +209,80 @@ describe('errores globales', () => {
     const cuerpo = (await res.json()) as { error: string; message: string };
     expect(cuerpo.error).toBe('InternalServerError');
     expect(cuerpo.message).not.toContain('caída');
+  });
+});
+
+describe('POST /api/auth/olvide-contrasena', () => {
+  test('200 con el mensaje genérico', async () => {
+    // Given: un servicio que acepta la solicitud
+    const solicitar = spyOn(recuperacionService, 'solicitar').mockResolvedValue(
+      {
+        mensaje: 'Si el correo está registrado, te enviamos un enlace.',
+      }
+    );
+    // When: se pide el enlace
+    const res = await pedido('/api/auth/olvide-contrasena', 'POST', {
+      email: 'ana@ejemplo.com',
+    });
+    // Then: responde 200 y delega el correo
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { mensaje: string }).mensaje).toContain(
+      'te enviamos'
+    );
+    expect(solicitar).toHaveBeenCalledWith({ email: 'ana@ejemplo.com' });
+  });
+
+  test('400 sin correo', async () => {
+    // When: se envía un cuerpo vacío
+    const res = await pedido('/api/auth/olvide-contrasena', 'POST', {});
+    // Then: error de validación
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /api/auth/restablecer-contrasena', () => {
+  test('200 cuando el enlace es válido', async () => {
+    // Given: un servicio que acepta el enlace
+    const restablecer = spyOn(
+      recuperacionService,
+      'restablecer'
+    ).mockResolvedValue({ mensaje: 'Tu contraseña se actualizó.' });
+    // When: se restablece
+    const res = await pedido('/api/auth/restablecer-contrasena', 'POST', {
+      token: 'tok',
+      password: 'NuevaClave1',
+    });
+    // Then: responde 200
+    expect(res.status).toBe(200);
+    expect(restablecer).toHaveBeenCalledWith({
+      token: 'tok',
+      password: 'NuevaClave1',
+    });
+  });
+
+  test('400 con enlace inválido o cuerpo incompleto', async () => {
+    // Given: un servicio que rechaza el enlace
+    spyOn(recuperacionService, 'restablecer').mockRejectedValue(
+      new ValidationError(
+        'El enlace no es válido o ya expiró. Solicita uno nuevo.'
+      )
+    );
+    // When / Then: enlace malo y cuerpo sin contraseña responden 400
+    const mala = await pedido('/api/auth/restablecer-contrasena', 'POST', {
+      token: 'x',
+      password: 'NuevaClave1',
+    });
+    expect(mala.status).toBe(400);
+    expect(((await mala.json()) as { message: string }).message).toContain(
+      'ya expiró'
+    );
+    const incompleta = await pedido(
+      '/api/auth/restablecer-contrasena',
+      'POST',
+      {
+        token: 'x',
+      }
+    );
+    expect(incompleta.status).toBe(400);
   });
 });

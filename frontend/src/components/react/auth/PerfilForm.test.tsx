@@ -236,7 +236,7 @@ describe('PerfilForm: edición', () => {
       ubicacion: 'Sabaneta',
     });
     // Then: viajan ubicación y foto, se libera la vista previa y se limpia la selección
-    expect(revocadas).toContain('blob:preview');
+    await waitFor(() => expect(revocadas).toContain('blob:preview'));
     expect(screen.queryByAltText(/Vista previa/)).toBeNull();
   });
 

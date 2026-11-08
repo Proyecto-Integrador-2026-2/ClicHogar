@@ -19,14 +19,14 @@ export type RespuestaSesion = {
   usuario: ReturnType<typeof toUsuarioPublico>;
 };
 
-function normalizarEmail(email: unknown): string {
+export function normalizarEmail(email: unknown): string {
   if (typeof email !== 'string' || !email.includes('@')) {
     throw new ValidationError('Email inválido.');
   }
   return email.trim().toLowerCase();
 }
 
-function normalizarPassword(password: unknown): string {
+export function normalizarPassword(password: unknown): string {
   if (typeof password !== 'string' || password.length < 8) {
     throw new ValidationError(
       'La contraseña debe tener al menos 8 caracteres.'

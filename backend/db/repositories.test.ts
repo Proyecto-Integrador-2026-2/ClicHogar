@@ -39,6 +39,8 @@ const { disponibilidadRepository } =
   await import('../modules/usuarios/repositories/disponibilidad.repository');
 const { sesionesRepository } =
   await import('../modules/auth/repositories/sesiones.repository');
+const { recuperacionesRepository } =
+  await import('../modules/auth/repositories/recuperaciones.repository');
 const { ofertasRepository } =
   await import('../modules/ofertas/repositories/ofertas.repository');
 const { chatRepository } =
@@ -357,6 +359,53 @@ describe('sesionesRepository', () => {
     // Then: el DELETE recibe el token como parámetro
     expect(llamadas[0]?.texto).toContain('DELETE FROM sesiones');
     expect(llamadas[0]?.valores).toEqual(['tok']);
+  });
+});
+
+describe('recuperacionesRepository', () => {
+  test('existeReciente indica si hay un enlace dentro de la ventana', async () => {
+    // Given: primero un enlace reciente y luego ninguno
+    respuestas = [[{ id: 'r1' }], []];
+    // When / Then: true y luego false, con la ventana en segundos como parámetro
+    expect(await recuperacionesRepository.existeReciente('u1', 60)).toBe(true);
+    expect(await recuperacionesRepository.existeReciente('u1', 60)).toBe(false);
+    expect(llamadas[0]?.texto).toContain('make_interval');
+    expect(llamadas[0]?.valores).toEqual(['u1', 60]);
+  });
+
+  test('crear descarta los enlaces previos sin usar e inserta el nuevo hash', async () => {
+    // Given: un vencimiento
+    const expira = new Date('2026-02-01T00:00:00Z');
+    // When: se crea el enlace
+    await recuperacionesRepository.crear('u1', 'hash', expira);
+    // Then: una sola sentencia que borra los pendientes y guarda el hash
+    expect(llamadas).toHaveLength(1);
+    expect(llamadas[0]?.texto).toContain(
+      'DELETE FROM recuperaciones_contrasena'
+    );
+    expect(llamadas[0]?.texto).toContain('usado_en IS NULL');
+    expect(llamadas[0]?.texto).toContain(
+      'INSERT INTO recuperaciones_contrasena'
+    );
+    expect(llamadas[0]?.valores).toEqual(['u1', 'u1', 'hash', expira]);
+  });
+
+  test('restablecer consume el enlace, cambia la clave y cierra las sesiones en una sentencia', async () => {
+    // Given: un enlace vigente y luego uno que no sirve
+    respuestas = [[{ usuario_id: 'u1' }], []];
+    // When / Then: devuelve el usuario y luego undefined
+    expect(await recuperacionesRepository.restablecer('hash', 'clave')).toBe(
+      'u1'
+    );
+    expect(
+      await recuperacionesRepository.restablecer('malo', 'clave')
+    ).toBeUndefined();
+    const texto = llamadas[0]?.texto ?? '';
+    expect(texto).toContain('usado_en IS NULL');
+    expect(texto).toContain('expira_en > now()');
+    expect(texto).toContain('UPDATE usuarios');
+    expect(texto).toContain('DELETE FROM sesiones');
+    expect(llamadas[0]?.valores).toEqual(['hash', 'clave']);
   });
 });
 

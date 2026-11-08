@@ -16,3 +16,12 @@ export const LoginDto = t.Object({
   email: t.String(),
   password: t.String(),
 });
+
+export const OlvideContrasenaDto = t.Object({
+  email: t.String(),
+});
+
+export const RestablecerContrasenaDto = t.Object({
+  token: t.String(),
+  password: t.String(),
+});
