@@ -141,3 +141,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Credenciales de prueba E2E (no commitear)
+.secret
+frontend/.secret

@@ -8,7 +8,6 @@ import '../../styles/register-page.css';
 // visual que el resto. Ruta ABIERTA a propósito (ver `src/lib/routes.ts`):
 // el contenido exige sesión y la isla invita a entrar si no la hay.
 // La isla se hidrata solo en el cliente por ClerkJS (ver TableroIsla.tsx).
-const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
 ---
 <!doctype html>
 <html lang="es" data-theme="light">
@@ -46,7 +45,7 @@ const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
         <h1>Explora tareas</h1>
         <p>Compara solicitudes activas y oferta en las que se ajusten a ti</p>
       </div>
-      <TableroIsla client:only="react" publishableKey={publishableKey} />
+      <TableroIsla client:only="react" />
     </main>
 
     <script>

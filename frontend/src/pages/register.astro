@@ -7,10 +7,7 @@ import '../styles/register-page.css';
 // Página de registro (US-001): pura composición. Los estilos viven en
 // `styles/register-page.css`, el fondo en `components/astro/Background`,
 // el toggle en `components/astro/ThemeToggle` (+ `scripts/`).
-// La isla se hidrata solo en el cliente: ClerkJS necesita `window` y el
-// provider de `@clerk/clerk-react` debe envolver el formulario en el mismo
-// root de React (ver RegisterIsla.tsx).
-const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
+// La isla se hidrata solo en el cliente.
 ---
 <!doctype html>
 <html lang="es" data-theme="light">
@@ -44,7 +41,7 @@ const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
         <h1>Bienvenido a Clic Hogar</h1>
         <p>La red de servicios y microtrabajos más confiable</p>
       </div>
-      <RegisterIsla client:only="react" publishableKey={publishableKey} />
+      <RegisterIsla client:only="react" />
     </main>
 
     <script>

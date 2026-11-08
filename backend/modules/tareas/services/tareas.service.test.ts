@@ -121,7 +121,7 @@ describe('tareasService con repositorios simulados (sin Postgres)', () => {
 
   test('crearTarea exige perfil local (404)', async () => {
     // Given: un clerkId sin perfil local en la base
-    spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(null);
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(null);
     // When: se intenta crear una tarea
     // Then: falla con NotFoundError
     await expect(
@@ -131,7 +131,7 @@ describe('tareasService con repositorios simulados (sin Postgres)', () => {
 
   test('crearTarea fija estado abierta y nombra al autor', async () => {
     // Given: un autor existente y un repositorio que guarda lo recibido
-    spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(autor);
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(autor);
     const crear = spyOn(tareasRepository, 'crear');
     crear.mockImplementation(async (nueva) => ({
       id: 't-1',

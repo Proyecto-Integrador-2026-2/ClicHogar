@@ -1,11 +1,5 @@
-/**
- * Tablero de solicitudes abiertas (US-008): lista centralizada para
- * comparar y elegir tareas. Sin sesión muestra invitación a entrar;
- * con sesión trae el tablero (vacío con estado explícito si no hay).
- * Sin red: alerta + reintento sin perder la página.
- */
-import React from 'react';
-import { listarTareas } from '../../../lib/usuarios-api';
+import React, { useEffect, useRef, useState } from 'react';
+import { listarTareas, type TareaTablero } from '../../../lib/usuarios-api';
 import './auth.css';
 import {
   AlertaConReintento,
@@ -23,9 +17,23 @@ function fechaCorta(iso: string): string {
   });
 }
 
-const cargarTablero = (token: string) => listarTareas(token);
-
 export default function TableroTareas() {
+  const [expandida, setExpandida] = useState<TareaTablero | null>(null);
+  const [filtroLat, setFiltroLat] = useState('');
+  const [filtroLng, setFiltroLng] = useState('');
+  const [filtroRadio, setFiltroRadio] = useState('10');
+  const [aplicarFiltro, setAplicarFiltro] = useState(false);
+  const [perfilAutor, setPerfilAutor] = useState<any>(null);
+  const mapaRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+
+  const cargarTablero = (token: string) =>
+    listarTareas(token, aplicarFiltro ? {
+      lat: filtroLat ? Number(filtroLat) : undefined,
+      lng: filtroLng ? Number(filtroLng) : undefined,
+      radio: filtroRadio ? Number(filtroRadio) : undefined,
+    } : undefined);
+
   const {
     datos: tareas,
     error,
@@ -33,6 +41,49 @@ export default function TableroTareas() {
     firmado,
     cargando,
   } = useCargaConSesion(cargarTablero, 'No se pudo cargar el tablero.');
+
+  useEffect(() => {
+    if (!expandida) {
+      setPerfilAutor(null);
+      return;
+    }
+    (async () => {
+      try {
+        const { obtenerPerfilPublico } = await import('../../../lib/usuarios-api');
+        setPerfilAutor(await obtenerPerfilPublico(expandida.autorId));
+      } catch {
+        setPerfilAutor(null);
+      }
+    })();
+  }, [expandida]);
+
+  useEffect(() => {
+    if (!expandida || !expandida.latitud || !expandida.longitud) return;
+    if (!mapaRef.current) return;
+    let cancelled = false;
+    (async () => {
+      const mod = await import('leaflet');
+      const L = mod.default;
+      await import('leaflet/dist/leaflet.css');
+      if (cancelled || !mapaRef.current) return;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      const map = L.map(mapaRef.current).setView([expandida.latitud!, expandida.longitud!], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+      L.marker([expandida.latitud!, expandida.longitud!]).addTo(map);
+      mapInstanceRef.current = map;
+    })();
+    return () => {
+      cancelled = true;
+      mapInstanceRef.current?.remove();
+      mapInstanceRef.current = null;
+    };
+  }, [expandida]);
 
   if (cargando) {
     return <PantallaCargando texto="Cargando tareas disponibles…" />;
@@ -66,6 +117,18 @@ export default function TableroTareas() {
           />
         )}
 
+        <div className="ch-filtro">
+          <input className="ch-input" placeholder="Lat" value={filtroLat} onChange={(e) => setFiltroLat(e.target.value)} />
+          <input className="ch-input" placeholder="Lng" value={filtroLng} onChange={(e) => setFiltroLng(e.target.value)} />
+          <input className="ch-input" placeholder="Radio km" value={filtroRadio} onChange={(e) => setFiltroRadio(e.target.value)} />
+          <button type="button" className="ch-btn ch-btn--ghost" onClick={() => { setAplicarFiltro(true); void recargar(); }}>
+            Filtrar por cercanía
+          </button>
+          <button type="button" className="ch-btn ch-btn--ghost" onClick={() => { setAplicarFiltro(false); setFiltroLat(''); setFiltroLng(''); void recargar(); }}>
+            Limpiar
+          </button>
+        </div>
+
         {tareas !== null && tareas.length === 0 && !error && (
           <p className="ch-field__hint">
             No hay tareas abiertas por ahora. Vuelve más tarde.
@@ -87,10 +150,51 @@ export default function TableroTareas() {
                     : ''}
                 </p>
                 <p className="ch-tarea__descripcion">{tarea.descripcion}</p>
-                <span className="ch-badge">Abierta</span>
+                <div className="ch-tarea__actions">
+                  <span className="ch-badge">Abierta</span>
+                  <button
+                    type="button"
+                    className="ch-btn ch-btn--ghost"
+                    onClick={() => setExpandida(tarea)}
+                  >
+                    Ver detalle
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
+        )}
+
+        {expandida && (
+          <div className="ch-modal" role="dialog" aria-modal="true">
+            <div className="ch-modal__card">
+              <h3 className="ch-card__title">{expandida.titulo}</h3>
+              <p className="ch-card__subtitle">
+                {expandida.categoria} · {expandida.autorNombre}
+              </p>
+              <p>{expandida.descripcion}</p>
+              <p className="ch-tarea__meta">{expandida.ubicacion}</p>
+              {perfilAutor && (
+                <p className="ch-tarea__meta">
+                  Autor: {perfilAutor.nombre}
+                  {perfilAutor.descripcion ? ` · ${perfilAutor.descripcion}` : ''}
+                  {perfilAutor.ubicacion ? ` · ${perfilAutor.ubicacion}` : ''}
+                </p>
+              )}
+              {expandida.latitud && expandida.longitud ? (
+                <div ref={mapaRef} className="ch-map__canvas" />
+              ) : (
+                <p className="ch-field__hint">Sin ubicación exacta.</p>
+              )}
+              <button
+                type="button"
+                className="ch-btn ch-btn--primary"
+                onClick={() => setExpandida(null)}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>

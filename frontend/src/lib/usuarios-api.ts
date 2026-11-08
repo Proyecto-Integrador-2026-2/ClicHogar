@@ -115,6 +115,53 @@ export function normalizarRolParaBackend(
  * la sesión de Clerk. Debe llamarse con el session token recién obtenido.
  * Lanza Error con el mensaje del backend si algo falla.
  */
+export type RespuestaAuth = { token: string; usuario: UsuarioPublico };
+
+export function registrar(args: {
+  nombre: string;
+  email: string;
+  password: string;
+  rol: 'Usuario' | 'Afiliado' | string;
+}): Promise<RespuestaAuth> {
+  const base = apiUrl();
+  if (!base) throw new Error(MENSAJE_SIN_URL);
+  return fetch(`${base}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      nombre: args.nombre,
+      email: args.email,
+      password: args.password,
+      rol: normalizarRolParaBackend(args.rol),
+    }),
+  }).then(async (r) => {
+    if (!r.ok) {
+      const d = await r.json().catch(() => null);
+      throw new Error((d as any)?.message ?? `El backend respondió ${r.status}.`);
+    }
+    return (await r.json()) as RespuestaAuth;
+  });
+}
+
+export function iniciarSesion(args: {
+  email: string;
+  password: string;
+}): Promise<RespuestaAuth> {
+  const base = apiUrl();
+  if (!base) throw new Error(MENSAJE_SIN_URL);
+  return fetch(`${base}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: args.email, password: args.password }),
+  }).then(async (r) => {
+    if (!r.ok) {
+      const d = await r.json().catch(() => null);
+      throw new Error((d as any)?.message ?? `El backend respondió ${r.status}.`);
+    }
+    return (await r.json()) as RespuestaAuth;
+  });
+}
+
 export function sincronizarUsuarioConBackend(args: {
   token: string;
   nombre: string;
@@ -136,7 +183,82 @@ export function sincronizarUsuarioConBackend(args: {
  * Postgres. Lanza Error con el mensaje del backend si algo falla.
  */
 export function obtenerPerfil(token: string): Promise<UsuarioPublico> {
-  return pedir('/api/usuarios/yo', token);
+  return pedir('/api/usuarios/yo', token, {}, { detectarSesionExpirada: true });
+}
+
+export type MensajeApi = {
+  id: string;
+  remitente_id: string;
+  destinatario_id: string;
+  contenido: string;
+  creado_en: string;
+};
+
+export type CalificacionApi = {
+  id: string;
+  tarea_id: string | null;
+  autor_id: string;
+  destinatario_id: string;
+  puntuacion: number;
+  comentario: string | null;
+  creado_en: string;
+};
+
+export function enviarMensaje(args: {
+  token: string;
+  destinatarioId: string;
+  contenido: string;
+}): Promise<MensajeApi> {
+  return pedir('/api/chat/mensajes', args.token, conJson('POST', {
+    destinatarioId: args.destinatarioId,
+    contenido: args.contenido,
+  }), OPCIONES_TAREAS);
+}
+
+export function listarConversacion(args: {
+  token: string;
+  usuarioId: string;
+}): Promise<MensajeApi[]> {
+  return pedir(`/api/chat/conversacion/${args.usuarioId}`, args.token, {}, OPCIONES_TAREAS);
+}
+
+export function crearCalificacion(args: {
+  token: string;
+  destinatarioId: string;
+  tareaId?: string | null;
+  puntuacion: number;
+  comentario?: string;
+}): Promise<CalificacionApi> {
+  return pedir('/api/calificaciones', args.token, conJson('POST', {
+    destinatarioId: args.destinatarioId,
+    tareaId: args.tareaId ?? null,
+    puntuacion: args.puntuacion,
+    comentario: args.comentario,
+  }), OPCIONES_TAREAS);
+}
+
+export function listarCalificaciones(usuarioId: string): Promise<CalificacionApi[]> {
+  const base = apiUrl();
+  if (!base) throw new Error(MENSAJE_SIN_URL);
+  return fetch(`${base}/api/calificaciones/usuario/${usuarioId}`).then(async (r) => {
+    if (!r.ok) {
+      const d = await r.json().catch(() => null);
+      throw new Error((d as any)?.message ?? `El backend respondió ${r.status}.`);
+    }
+    return (await r.json()) as CalificacionApi[];
+  });
+}
+
+export function obtenerPerfilPublico(id: string): Promise<UsuarioPublico> {
+  const base = apiUrl();
+  if (!base) throw new Error(MENSAJE_SIN_URL);
+  return fetch(`${base}/api/usuarios/${id}`).then(async (r) => {
+    if (!r.ok) {
+      const d = await r.json().catch(() => null);
+      throw new Error((d as any)?.message ?? `El backend respondió ${r.status}.`);
+    }
+    return (await r.json()) as UsuarioPublico;
+  });
 }
 
 /**
@@ -157,7 +279,7 @@ export function actualizarPerfil(args: {
   return pedir('/api/usuarios/yo', args.token, {
     method: 'PATCH',
     body: forma,
-  });
+  }, { detectarSesionExpirada: true });
 }
 
 /** Convierte una ruta pública del backend (`/uploads/...`) en URL absoluta. */
@@ -174,6 +296,9 @@ export type TareaTablero = {
   categoria: string;
   estado: string;
   ubicacion: string;
+  latitud: number | null;
+  longitud: number | null;
+  autorId: string;
   autorNombre: string;
   creadoEn: string;
 };
@@ -182,8 +307,16 @@ export type TareaTablero = {
  * Tablero de solicitudes abiertas (US-008): requiere sesión (el
  * middleware de página la exige; sin token el backend responde 401).
  */
-export function listarTareas(token: string): Promise<TareaTablero[]> {
-  return pedir('/api/tareas', token, {}, OPCIONES_TAREAS);
+export function listarTareas(
+  token: string,
+  filtros?: { lat?: number; lng?: number; radio?: number }
+): Promise<TareaTablero[]> {
+  const params = new URLSearchParams();
+  if (filtros?.lat != null) params.set('lat', String(filtros.lat));
+  if (filtros?.lng != null) params.set('lng', String(filtros.lng));
+  if (filtros?.radio != null) params.set('radio', String(filtros.radio));
+  const qs = params.toString();
+  return pedir(`/api/tareas${qs ? `?${qs}` : ''}`, token, {}, OPCIONES_TAREAS);
 }
 
 export type SlotApi = {
@@ -200,6 +333,8 @@ export type TareaPublicaApi = {
   ubicacion: string;
   latitud: number | null;
   longitud: number | null;
+  autorId: string;
+  autorNombre: string;
   creadoEn: string;
 };
 
@@ -214,6 +349,8 @@ export function crearTarea(args: {
   descripcion: string;
   categoria: string;
   ubicacion: string;
+  latitud?: number | null;
+  longitud?: number | null;
 }): Promise<TareaPublicaApi> {
   return pedir(
     '/api/tareas',
@@ -223,6 +360,8 @@ export function crearTarea(args: {
       descripcion: args.descripcion,
       categoria: args.categoria,
       ubicacion: args.ubicacion,
+      latitud: args.latitud ?? null,
+      longitud: args.longitud ?? null,
     }),
     OPCIONES_TAREAS
   );
@@ -237,7 +376,7 @@ export function obtenerDisponibilidad(token: string): Promise<SlotApi[]> {
     '/api/usuarios/disponibilidad',
     token,
     {},
-    { mensajeSinRed: true }
+    { mensajeSinRed: true, detectarSesionExpirada: true }
   );
 }
 
@@ -253,6 +392,6 @@ export function guardarDisponibilidad(args: {
     '/api/usuarios/disponibilidad',
     args.token,
     conJson('PUT', { slots: args.slots }),
-    { mensajeSinRed: true }
+    { mensajeSinRed: true, detectarSesionExpirada: true }
   );
 }

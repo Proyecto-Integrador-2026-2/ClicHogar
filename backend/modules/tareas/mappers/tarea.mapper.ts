@@ -14,6 +14,8 @@ export type TareaPublica = {
   ubicacion: string;
   latitud: number | null;
   longitud: number | null;
+  /** Id del autor (para consultar perfil público). */
+  autorId: string;
   /** Nombre del autor (US-008: el tablero muestra quién publica). */
   autorNombre: string;
   creadoEn: Date;
@@ -32,6 +34,7 @@ export function toTareaPublica(
     ubicacion: tarea.ubicacion,
     latitud: tarea.latitud,
     longitud: tarea.longitud,
+    autorId: tarea.usuarioId,
     autorNombre,
     creadoEn: tarea.creadoEn,
   };

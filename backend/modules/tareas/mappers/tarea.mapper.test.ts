@@ -34,6 +34,7 @@ describe('toTareaPublica', () => {
       ubicacion: 'Belén',
       latitud: null,
       longitud: null,
+      autorId: '11111111-1111-4111-8111-111111111111',
       autorNombre: 'Ana Pérez',
       creadoEn: TAREA.creadoEn,
     });
@@ -43,10 +44,8 @@ describe('toTareaPublica', () => {
     // Given: una tarea que tiene el usuarioId interno
     // When: se mapea a su forma pública
     const publica = toTareaPublica(TAREA, 'Ana Pérez');
-    // Then: el usuarioId no aparece, ni siquiera serializado
+    // Then: no se expone `usuarioId` (se expone como `autorId` público)
     expect(publica).not.toHaveProperty('usuarioId');
-    expect(JSON.stringify(publica)).not.toContain(
-      '11111111-1111-4111-8111-111111111111'
-    );
+    expect(publica.autorId).toBe('11111111-1111-4111-8111-111111111111');
   });
 });

@@ -16,7 +16,6 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@clerk/backend": "^3.20.1",
     "@elysiajs/cors": "^1.4.2",
     "@neondatabase/serverless": "^1.1.0",
     "elysia": "^1.4.30"

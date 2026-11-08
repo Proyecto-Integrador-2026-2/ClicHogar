@@ -135,11 +135,11 @@ describe('obtenerPerfil', () => {
   });
 
   test('errores del backend y URL ausente', async () => {
-    // Given: un backend que responde 401 con mensaje
-    simular(json({ message: 'No autorizado' }, 401));
+    // Given: un backend que responde 401
+    simular(json({}, 401));
     // When: se lee el perfil
-    // Then: falla con ese mensaje
-    await expect(obtenerPerfil('t')).rejects.toThrow('No autorizado');
+    // Then: falla con sesión expirada
+    await expect(obtenerPerfil('t')).rejects.toBeInstanceOf(ErrorSesionExpirada);
     // Given: un backend que responde 500 sin JSON
     simular(new Response('x', { status: 500 }));
     // When: se lee el perfil
@@ -265,6 +265,8 @@ describe('crearTarea', () => {
       descripcion: 'Gotea',
       categoria: 'plomeria',
       ubicacion: 'Envigado',
+      latitud: null,
+      longitud: null,
     });
   });
 

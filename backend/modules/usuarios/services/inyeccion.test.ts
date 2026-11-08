@@ -12,7 +12,7 @@ const { crearTareasService } =
   await import('../../tareas/services/tareas.service');
 const { crearDisponibilidadService } = await import('./disponibilidad.service');
 const { crearPerfilService } = await import('./perfil.service');
-const { crearRegistroService } = await import('./registro.service');
+// crearRegistroService eliminado con Clerk.
 const { NotFoundError, ForbiddenError } =
   await import('../../../shared/errors/app-error');
 
@@ -44,7 +44,7 @@ function usuariosFalso(existente?: Usuario) {
   const creados: NuevoUsuario[] = [];
   return {
     creados,
-    buscarPorClerkId: async () => existente,
+    buscarPorId: async () => existente,
     buscarPorId: async () => existente,
     crear: async (datos: NuevoUsuario) => {
       creados.push(datos);
@@ -150,37 +150,4 @@ describe('perfil con repositorio inyectado', () => {
   });
 });
 
-describe('registro con repositorio inyectado', () => {
-  test('crea el usuario si no existe', async () => {
-    // Given: un repositorio sin el usuario
-    const repo = usuariosFalso(undefined);
-    const service = crearRegistroService(repo);
-    // When: se sincroniza desde Clerk con rol afiliado
-    const { creado } = await service.sincronizarDesdeClerk(
-      { clerkId: 'c9', email: 'x@y.co', nombre: 'Luis', rolClerk: 'afiliado' },
-      {}
-    );
-    // Then: se crea el usuario con ese clerkId y rol
-    expect(creado).toBe(true);
-    expect(repo.creados[0]).toMatchObject({ clerkId: 'c9', rol: 'afiliado' });
-  });
-
-  test('devuelve el existente sin crear otro', async () => {
-    // Given: un repositorio que ya tiene al usuario
-    const repo = usuariosFalso(usuario());
-    const service = crearRegistroService(repo);
-    // When: se sincroniza desde Clerk
-    const { creado } = await service.sincronizarDesdeClerk(
-      {
-        clerkId: 'c1',
-        email: 'ana@ejemplo.com',
-        nombre: 'Ana',
-        rolClerk: undefined,
-      },
-      {}
-    );
-    // Then: devuelve el existente sin crear otro
-    expect(creado).toBe(false);
-    expect(repo.creados).toHaveLength(0);
-  });
-});
+// registro legacy eliminado: ahora el registro vive en modules/auth.

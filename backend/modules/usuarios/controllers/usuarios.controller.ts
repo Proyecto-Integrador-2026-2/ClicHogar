@@ -1,52 +1,32 @@
 import { Elysia } from 'elysia';
-import { sesionDesdeHeaders } from '../../../shared/auth/clerk';
+import { authService } from '../../auth/services/auth.service';
 import { ActualizarPerfilDto } from '../dto/actualizar-perfil.dto';
 import { DisponibilidadDto } from '../dto/disponibilidad.dto';
-import { SincronizarUsuarioDto } from '../dto/sincronizar-usuario.dto';
 import { disponibilidadService } from '../services/disponibilidad.service';
 import { perfilService } from '../services/perfil.service';
-import { registroService } from '../services/registro.service';
-import { exigirUsuario } from '../services/usuario-actual';
 import { toUsuarioPublico } from '../mappers/usuario.mapper';
 
-/**
- * Módulo `usuarios` (US-001 con Clerk).
- * - POST /api/usuarios/sync: crea o devuelve el usuario local a partir del
- *   session token de Clerk (flujo principal US-001). La identidad se extrae
- *   del token verificado, nunca del body.
- * - GET /api/usuarios/yo: devuelve el perfil local del usuario autenticado.
- * - PATCH /api/usuarios/yo: actualización parcial del perfil (US-004:
- *   foto, descripción, ubicación; solo los campos enviados).
- * - PUT /api/usuarios/disponibilidad: reemplazo total de la matriz
- *   semanal del afiliado (US-005; arreglo vacío = limpiar). Solo rol
- *   afiliado (403 en otro caso).
- * - GET /api/usuarios/disponibilidad: matriz actual (prefill y vista).
- */
+function tokenDesdeHeaders(headers: Record<string, string | undefined>): string {
+  const auth = headers.authorization ?? headers.Authorization;
+  if (!auth?.startsWith('Bearer ')) return '';
+  return auth.slice('Bearer '.length).trim();
+}
+
+async function usuarioIdDesdeHeaders(headers: Record<string, string | undefined>): Promise<string> {
+  const usuario = await authService.resolverUsuario(tokenDesdeHeaders(headers));
+  return usuario.id;
+}
+
 export const usuariosController = new Elysia({ prefix: '/api/usuarios' })
-  .post(
-    '/sync',
-    async ({ body, headers, set }) => {
-      const sesionClerk = await sesionDesdeHeaders(headers);
-      const { usuario, creado } = await registroService.sincronizarDesdeClerk(
-        sesionClerk,
-        body
-      );
-      set.status = creado ? 201 : 200;
-      return usuario;
-    },
-    { body: SincronizarUsuarioDto }
-  )
   .get('/yo', async ({ headers }) => {
-    const sesionClerk = await sesionDesdeHeaders(headers);
-    const usuario = await exigirUsuario(sesionClerk.clerkId);
-    return toUsuarioPublico(usuario);
+    return authService.me(tokenDesdeHeaders(headers as any));
   })
   .patch(
     '/yo',
     async ({ body, headers }) => {
-      const sesionClerk = await sesionDesdeHeaders(headers);
+      const usuarioId = await usuarioIdDesdeHeaders(headers as any);
       return perfilService.actualizarPerfil({
-        clerkId: sesionClerk.clerkId,
+        usuarioId,
         descripcion: body.descripcion,
         ubicacion: body.ubicacion,
         foto: body.foto
@@ -63,12 +43,20 @@ export const usuariosController = new Elysia({ prefix: '/api/usuarios' })
   .put(
     '/disponibilidad',
     async ({ body, headers }) => {
-      const sesionClerk = await sesionDesdeHeaders(headers);
-      return disponibilidadService.guardar(sesionClerk.clerkId, body.slots);
+      const usuarioId = await usuarioIdDesdeHeaders(headers as any);
+      return disponibilidadService.guardar(usuarioId, body.slots);
     },
     { body: DisponibilidadDto }
   )
   .get('/disponibilidad', async ({ headers }) => {
-    const sesionClerk = await sesionDesdeHeaders(headers);
-    return disponibilidadService.obtener(sesionClerk.clerkId);
+    const usuarioId = await usuarioIdDesdeHeaders(headers as any);
+    return disponibilidadService.obtener(usuarioId);
+  })
+  .get('/:id', async ({ params }) => {
+    const { usuariosRepository } = await import('../repositories/usuarios.repository');
+    const { toUsuarioPublico } = await import('../mappers/usuario.mapper');
+    const { NotFoundError } = await import('../../../shared/errors/app-error');
+    const usuario = await usuariosRepository.buscarPorId(params.id);
+    if (!usuario) throw new NotFoundError('Usuario no encontrado.');
+    return toUsuarioPublico(usuario);
   });

@@ -39,7 +39,7 @@ function filaAfiliado(cambios: Partial<Usuario> = {}): Usuario {
 describe('disponibilidadService.guardar', () => {
   test('404 sin perfil local', async () => {
     // Given: un clerkId sin perfil local
-    spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(null);
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(null);
     // When: se guarda la disponibilidad
     // Then: falla con NotFoundError
     await expect(
@@ -49,7 +49,7 @@ describe('disponibilidadService.guardar', () => {
 
   test('403 con rol cliente', async () => {
     // Given: un usuario con rol cliente
-    spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(
       filaAfiliado({ rol: 'cliente' })
     );
     // When: se guarda la disponibilidad
@@ -61,7 +61,7 @@ describe('disponibilidadService.guardar', () => {
 
   test('400 con slots inválidos', async () => {
     // Given: un afiliado y un día fuera de rango (9)
-    spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(
       filaAfiliado()
     );
     // When: se guarda la disponibilidad
@@ -73,7 +73,7 @@ describe('disponibilidadService.guardar', () => {
 
   test('reemplaza la matriz normalizada del afiliado', async () => {
     // Given: un afiliado y dos franjas desordenadas
-    spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(
       filaAfiliado()
     );
     const reemplazar = spyOn(disponibilidadRepository, 'reemplazar');
@@ -100,7 +100,7 @@ describe('disponibilidadService.guardar', () => {
 describe('disponibilidadService.obtener', () => {
   test('404 sin perfil local', async () => {
     // Given: un clerkId sin perfil local
-    spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(null);
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(null);
     // When: se lee la disponibilidad
     // Then: falla con NotFoundError
     await expect(
@@ -110,7 +110,7 @@ describe('disponibilidadService.obtener', () => {
 
   test('devuelve la matriz del usuario', async () => {
     // Given: un afiliado con una franja guardada
-    spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(
       filaAfiliado()
     );
     const slots = [{ diaSemana: 2, franjaHoraria: 'manana' }];

@@ -8,7 +8,6 @@ import '../../styles/register-page.css';
 // visual que el resto (fondo, temas, tokens `ch-`). Protegida por el
 // middleware: sin sesión redirige a `/login` (ver `src/middleware.ts`).
 // La isla se hidrata solo en el cliente por ClerkJS (ver TareaIsla.tsx).
-const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
 ---
 <!doctype html>
 <html lang="es" data-theme="light">
@@ -46,7 +45,7 @@ const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
         <h1>Publica tu tarea</h1>
         <p>Los afiliados disponibles podrán ofertar</p>
       </div>
-      <TareaIsla client:only="react" publishableKey={publishableKey} />
+      <TareaIsla client:only="react" />
     </main>
 
     <script>
@@ -56,6 +55,8 @@ const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
       initToolsBackground();
       initThemeToggle();
       initNavAuth();
+      import { initAuthGuard } from '../../scripts/auth-guard';
+      initAuthGuard();
     </script>
   </body>
 </html>

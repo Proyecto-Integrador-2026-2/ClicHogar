@@ -9,8 +9,10 @@
  * - Éxito (Esc 1): alerta + botón para publicar otra.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useAuth } from '@clerk/clerk-react';
+import { obtenerToken } from '../../../lib/auth';
 import { crearTarea, ErrorSesionExpirada } from '../../../lib/usuarios-api';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import './auth.css';
 import {
   ErrorSummary,
@@ -30,12 +32,14 @@ import {
 } from './tarea.validation';
 
 export default function TareaForm() {
-  const { getToken } = useAuth();
+  const getToken = obtenerToken;
 
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [categoria, setCategoria] = useState('');
   const [ubicacion, setUbicacion] = useState('');
+  const [latitud, setLatitud] = useState<number | null>(null);
+  const [longitud, setLongitud] = useState<number | null>(null);
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -43,6 +47,9 @@ export default function TareaForm() {
   const [exito, setExito] = useState('');
   const [publicando, setPublicando] = useState(false);
   const summaryRef = useRef<HTMLDivElement>(null);
+  const mapaRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
 
   const valores = useMemo(
     () => ({ titulo, descripcion, categoria, ubicacion }),
@@ -94,6 +101,55 @@ export default function TareaForm() {
     return () => window.removeEventListener('beforeunload', avisar);
   }, [sucio, exito]);
 
+  // Mapa para elegir la ubicación exacta (lat/lng). Inicia con la
+  // geolocalización del usuario y permite arrastrar el marcador.
+  useEffect(() => {
+    if (!mapaRef.current || mapInstanceRef.current) return;
+    const iconoPersona = L.divIcon({
+      className: 'ch-map-person',
+      html: '<div class="ch-map-person__pin">🧍</div>',
+      iconSize: [32, 40],
+      iconAnchor: [16, 40],
+    });
+
+    const iniciar = (lat: number, lng: number) => {
+      if (!mapaRef.current || mapInstanceRef.current) return;
+      const map = L.map(mapaRef.current).setView([lat, lng], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+      const marker = L.marker([lat, lng], { draggable: true, icon: iconoPersona }).addTo(map);
+      marker.on('dragstart', () => marker.getElement()?.classList.add('is-lifting'));
+      marker.on('dragend', () => {
+        marker.getElement()?.classList.remove('is-lifting');
+        const pos = marker.getLatLng();
+        setLatitud(pos.lat);
+        setLongitud(pos.lng);
+      });
+      mapInstanceRef.current = map;
+      markerRef.current = marker;
+      setLatitud(lat);
+      setLongitud(lng);
+    };
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => iniciar(pos.coords.latitude, pos.coords.longitude),
+        () => iniciar(4.6097, -74.0817),
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    } else {
+      iniciar(4.6097, -74.0817);
+    }
+
+    return () => {
+      mapInstanceRef.current?.remove();
+      mapInstanceRef.current = null;
+      markerRef.current = null;
+    };
+  }, []);
+
   const marcarTocados = () =>
     setTouched({
       titulo: true,
@@ -130,7 +186,7 @@ export default function TareaForm() {
 
     setPublicando(true);
     try {
-      const token = await getToken();
+      const token = getToken();
       if (!token) {
         throw new Error(
           'No se pudo obtener la sesión. Recarga e inténtalo de nuevo.'
@@ -142,6 +198,8 @@ export default function TareaForm() {
         descripcion: descripcion.trim(),
         categoria,
         ubicacion: ubicacion.trim(),
+        latitud,
+        longitud,
       });
       setExito('¡Tarea publicada! Los afiliados ya pueden verla.');
     } catch (err: unknown) {
@@ -286,6 +344,43 @@ export default function TareaForm() {
                 hint="Barrio o zona. El autocompletado con mapa llegará después."
                 autoComplete="address-level2"
               />
+
+              <div className="ch-map">
+                <p className="ch-map__hint">
+                  Arrastra la persona para marcar el punto exacto. Lat:{' '}
+                  {latitud?.toFixed(5) ?? '—'} · Lng: {longitud?.toFixed(5) ?? '—'}
+                </p>
+                <div ref={mapaRef} className="ch-map__canvas" />
+              </div>
+
+              <div className="ch-grid-2">
+                <label className="ch-field">
+                  <span className="ch-field__label">Latitud (opcional)</span>
+                  <input
+                    id="ch-tarea-latitud"
+                    type="number"
+                    className="ch-input"
+                    value={latitud ?? ''}
+                    onChange={(e) =>
+                      setLatitud(e.target.value === '' ? null : Number(e.target.value))
+                    }
+                    step="any"
+                  />
+                </label>
+                <label className="ch-field">
+                  <span className="ch-field__label">Longitud (opcional)</span>
+                  <input
+                    id="ch-tarea-longitud"
+                    type="number"
+                    className="ch-input"
+                    value={longitud ?? ''}
+                    onChange={(e) =>
+                      setLongitud(e.target.value === '' ? null : Number(e.target.value))
+                    }
+                    step="any"
+                  />
+                </label>
+              </div>
 
               <button
                 type="submit"

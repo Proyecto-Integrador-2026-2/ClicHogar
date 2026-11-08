@@ -9,6 +9,7 @@ import { mock } from 'bun:test';
 import { createElement, type ReactNode } from 'react';
 
 GlobalRegistrator.register({ url: 'http://localhost:4321/' });
+localStorage.setItem('ch-token', 'token-falso');
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
@@ -46,32 +47,7 @@ export function resetClerkFalso(): void {
 const getTokenEstable = (...args: unknown[]) =>
   (clerkFalso.getToken as Fn)(...(args as never[]));
 
-mock.module('@clerk/clerk-react', () => ({
-  ClerkProvider: ({
-    publishableKey,
-    children,
-  }: {
-    publishableKey: string;
-    children: ReactNode;
-  }) =>
-    createElement(
-      'div',
-      { 'data-testid': 'clerk-provider', 'data-key': publishableKey },
-      children
-    ),
-  useAuth: () => ({
-    getToken: getTokenEstable,
-    isLoaded: clerkFalso.isLoaded,
-    isSignedIn: clerkFalso.isSignedIn,
-  }),
-  useUser: () => ({
-    isLoaded: clerkFalso.isLoaded,
-    isSignedIn: clerkFalso.isSignedIn,
-    user: clerkFalso.user,
-  }),
-  useSignIn: () => clerkFalso.signIn,
-  useSignUp: () => clerkFalso.signUp,
-}));
+// Clerk eliminado: no se mockea @clerk/clerk-react.
 
 /**
  * Sustituye `window.location` por un objeto simple para capturar

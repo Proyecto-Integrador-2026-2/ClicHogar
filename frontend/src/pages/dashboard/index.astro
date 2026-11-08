@@ -11,7 +11,6 @@ import '../../styles/dashboard-page.css';
 // tablero (US-008). Ruta PROTEGIDA por `src/lib/routes.ts` + middleware:
 // sin sesión redirige a `/login` (ver `src/middleware.ts`).
 // Chat y calificaciones aún no existen: se anuncian como próximos.
-const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
 
 const modulos = [
   {
@@ -93,7 +92,7 @@ const proximos = [
         <p>Tu resumen y todos los módulos de ClicHogar en un solo lugar</p>
       </div>
 
-      <DashboardIsla client:only="react" publishableKey={publishableKey} />
+      <DashboardIsla client:only="react" />
 
       <ul class="ch-dash-modules" aria-label="Módulos disponibles">
         {
@@ -160,6 +159,8 @@ const proximos = [
       initToolsBackground();
       initThemeToggle();
       initNavAuth();
+      import { initAuthGuard } from '../../scripts/auth-guard';
+      initAuthGuard();
     </script>
   </body>
 </html>

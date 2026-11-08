@@ -5,7 +5,7 @@
  * La navegación a los módulos vive en `pages/dashboard` (Astro puro).
  */
 import React from 'react';
-import { useUser } from '@clerk/clerk-react';
+// auth propia: el nombre sale del perfil.
 import {
   listarTareas,
   obtenerPerfil,
@@ -74,7 +74,6 @@ function Indicadores({
 }
 
 export default function DashboardPanel() {
-  const { user } = useUser();
   const { datos, error, recargar, firmado, cargando } = useCargaConSesion(
     cargarPanel,
     'No se pudo cargar tu panel.'
@@ -93,8 +92,7 @@ export default function DashboardPanel() {
 
   const perfil = datos?.perfil ?? null;
   const abiertas = datos?.abiertas ?? 0;
-  const nombre =
-    user?.firstName ?? perfil?.nombre ?? user?.username ?? 'miembro';
+  const nombre = perfil?.nombre ?? 'miembro';
 
   return (
     <div className="ch-auth">

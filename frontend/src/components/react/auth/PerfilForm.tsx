@@ -7,7 +7,7 @@
  * vía `beforeunload`: no hay router SPA que interceptar).
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useAuth } from '@clerk/clerk-react';
+import { obtenerToken } from '../../../lib/auth';
 import {
   actualizarPerfil,
   obtenerPerfil,
@@ -32,7 +32,7 @@ type Snapshot = {
 };
 
 export default function PerfilForm() {
-  const { getToken } = useAuth();
+  const getToken = obtenerToken;
 
   const [foto, setFoto] = useState<File | null>(null);
   const [vistaPrevia, setVistaPrevia] = useState<string | null>(null);
@@ -55,7 +55,7 @@ export default function PerfilForm() {
     let vivo = true;
     void (async () => {
       try {
-        const token = await getToken();
+        const token = getToken();
         if (!token) {
           throw new Error(
             'No se pudo obtener la sesión. Recarga e inténtalo de nuevo.'
@@ -165,7 +165,7 @@ export default function PerfilForm() {
 
     setGuardando(true);
     try {
-      const token = await getToken();
+      const token = getToken();
       if (!token) {
         throw new Error(
           'No se pudo obtener la sesión. Recarga e inténtalo de nuevo.'

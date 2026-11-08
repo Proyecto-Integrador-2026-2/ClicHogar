@@ -80,7 +80,7 @@ export function verificarRolAfiliado(rol: RolUsuario): void {
 }
 
 type Dependencias = {
-  usuarios: Pick<UsuariosRepositorio, 'buscarPorClerkId'>;
+  usuarios: Pick<UsuariosRepositorio, 'buscarPorId'>;
   disponibilidad: DisponibilidadRepositorio;
 };
 
@@ -97,18 +97,18 @@ export function crearDisponibilidadService({
      * 404 sin perfil local; 403 sin rol afiliado; 400 con slots inválidos.
      */
     async guardar(
-      clerkId: string,
+      usuarioId: string,
       slotsCrudos: unknown
     ): Promise<SlotDisponibilidad[]> {
-      const usuario = await exigirUsuario(clerkId);
+      const usuario = await exigirUsuario(usuarioId);
       verificarRolAfiliado(usuario.rol);
       const slots = normalizarSlots(slotsCrudos);
       return disponibilidad.reemplazar(usuario.id, slots);
     },
 
     /** Lee la matriz actual (prefill del formulario y vista pública). */
-    async obtener(clerkId: string): Promise<SlotDisponibilidad[]> {
-      const usuario = await exigirUsuario(clerkId);
+    async obtener(usuarioId: string): Promise<SlotDisponibilidad[]> {
+      const usuario = await exigirUsuario(usuarioId);
       return disponibilidad.listarPorUsuarioId(usuario.id);
     },
   };

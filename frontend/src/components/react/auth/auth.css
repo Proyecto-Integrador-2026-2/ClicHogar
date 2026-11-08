@@ -767,3 +767,37 @@ textarea.ch-field__input {
     border-top-color: rgb(255 255 255 / 0.4);
   }
 }
+
+/* Mapa de selección de ubicación (Leaflet) */
+.ch-map { margin-top: 12px; }
+.ch-map__hint { font-size: 0.85rem; margin: 0 0 6px; color: var(--ch-muted, #666); }
+.ch-map__canvas { height: 260px; width: 100%; border-radius: 12px; overflow: hidden; }
+.ch-map-person { background: transparent; border: none; }
+.ch-map-person__pin { font-size: 28px; line-height: 1; filter: drop-shadow(0 4px 6px rgba(0,0,0,.35)); transition: transform 180ms ease; }
+.ch-map-person__pin.is-lifting { transform: translateY(-18px) scale(1.15); }
+
+/* Modal de detalle de tarea */
+.ch-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.ch-modal__card {
+  background: var(--ch-card, #fff);
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 520px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: auto;
+}
+.ch-tarea__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}

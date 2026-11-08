@@ -7,3 +7,6 @@
 export * from './schema/usuarios.schema';
 export * from './schema/disponibilidad.schema';
 export * from './schema/tareas.schema';
+export * from './schema/sesiones.schema';
+export * from './schema/calificaciones.schema';
+export * from './schema/mensajes.schema';

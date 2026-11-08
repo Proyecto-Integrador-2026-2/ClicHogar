@@ -1,0 +1,34 @@
+---
+import CalificacionIsla from '../components/react/auth/CalificacionIsla';
+import Background from '../components/astro/Background.astro';
+import SiteNav from '../components/astro/SiteNav.astro';
+import '../styles/register-page.css';
+---
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Calificaciones · ClicHogar</title>
+    <link rel="icon" href="/favicon.ico?v=6" sizes="any" />
+  </head>
+  <body>
+    <SiteNav current="dashboard" />
+    <Background />
+    <main class="ch-page">
+      <div class="ch-page__head">
+        <h1>Calificaciones</h1>
+        <p>Valora a otros miembros</p>
+      </div>
+      <CalificacionIsla client:only="react" />
+    </main>
+    <script>
+      import { initToolsBackground } from '../scripts/tools-background';
+      import { initThemeToggle } from '../scripts/theme-toggle';
+      import { initNavAuth } from '../scripts/nav-auth';
+      initToolsBackground();
+      initThemeToggle();
+      initNavAuth();
+    </script>
+  </body>
+</html>

@@ -7,7 +7,6 @@ import '../styles/register-page.css';
 // Página de inicio de sesión (US-002): misma composición y sistema visual
 // que `register.astro` (fondo, temas, tokens `ch-`). La isla se hidrata
 // solo en el cliente por ClerkJS (ver LoginIsla.tsx).
-const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
 ---
 <!doctype html>
 <html lang="es" data-theme="light">
@@ -41,7 +40,7 @@ const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
         <h1>Hola de nuevo</h1>
         <p>La red de servicios y microtrabajos más confiable</p>
       </div>
-      <LoginIsla client:only="react" publishableKey={publishableKey} />
+      <LoginIsla client:only="react" />
     </main>
 
     <script>

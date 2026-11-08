@@ -45,7 +45,7 @@ export function normalizarPatch(input: {
 
 type Dependencias = Pick<
   UsuariosRepositorio,
-  'buscarPorClerkId' | 'actualizarParcial'
+  'buscarPorId' | 'actualizarParcial'
 >;
 
 /** Construye el service con el repositorio recibido (inyección). */
@@ -59,13 +59,13 @@ export function crearPerfilService(usuarios: Dependencias) {
      * persiste solo los campos recibidos. Devuelve el perfil público.
      */
     async actualizarPerfil(args: {
-      clerkId: string;
+      usuarioId: string;
       descripcion?: string;
       ubicacion?: string;
       foto?: FotoRecibida;
       almacenamiento?: AlmacenamientoFotos;
     }): Promise<UsuarioPublico> {
-      const existente = await exigirUsuario(args.clerkId);
+      const existente = await exigirUsuario(args.usuarioId);
 
       const patch = normalizarPatch({
         descripcion: args.descripcion,

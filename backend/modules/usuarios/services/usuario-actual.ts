@@ -10,14 +10,12 @@ import { usuariosRepository } from '../repositories/usuarios.repository';
  * controller de usuarios y tareas.
  */
 export function crearExigirUsuario(
-  usuarios: Pick<UsuariosRepositorio, 'buscarPorClerkId'>
+  usuarios: Pick<UsuariosRepositorio, 'buscarPorId'>
 ) {
-  return async (clerkId: string): Promise<Usuario> => {
-    const usuario = await usuarios.buscarPorClerkId(clerkId);
+  return async (usuarioId: string): Promise<Usuario> => {
+    const usuario = await usuarios.buscarPorId(usuarioId);
     if (!usuario) {
-      throw new NotFoundError(
-        'Aún no tienes perfil local. Llama a POST /api/usuarios/sync primero.'
-      );
+      throw new NotFoundError('Usuario no encontrado.');
     }
     return usuario;
   };
