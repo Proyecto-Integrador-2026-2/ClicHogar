@@ -8,12 +8,18 @@ import {
   ErrorSesionExpirada,
   actualizarPerfil,
   crearTarea,
+  crearCalificacion,
+  enviarMensaje,
   guardarDisponibilidad,
+  iniciarSesion,
+  listarCalificaciones,
+  listarConversacion,
+  obtenerPerfilPublico,
+  registrar,
   listarTareas,
   normalizarRolParaBackend,
   obtenerDisponibilidad,
   obtenerPerfil,
-  sincronizarUsuarioConBackend,
   urlPublica,
 } from './usuarios-api';
 
@@ -74,53 +80,154 @@ describe('urlPublica', () => {
   });
 });
 
-describe('sincronizarUsuarioConBackend', () => {
-  const args = { token: 't', nombre: 'Ana', rol: 'Afiliado' };
+describe('registrar e iniciarSesion', () => {
+  const respuesta = { token: 'tok', usuario: { id: 'u1', rol: 'cliente' } };
 
-  test('envía token y rol normalizado y devuelve el usuario', async () => {
-    // Given: un backend que responde con el usuario
-    simular(json({ id: 'u1' }));
-    // When: se sincroniza con rol 'Afiliado'
-    expect((await sincronizarUsuarioConBackend(args)).id).toBe('u1');
-    // Then: llama a /api/usuarios/sync con el rol normalizado y devuelve el usuario
-    expect(ultima?.url).toBe('http://api.test/api/usuarios/sync');
-    expect(JSON.parse(String(ultima?.init?.body))).toEqual({
+  test('registrar envía el rol normalizado y no manda Authorization', async () => {
+    // Given: un backend que responde con token y usuario
+    simular(json(respuesta, 201));
+    // When: se registra una cuenta con rol 'Afiliado'
+    const resultado = await registrar({
       nombre: 'Ana',
+      email: 'ana@ejemplo.com',
+      password: 'Clave-1234',
+      rol: 'Afiliado',
+    });
+    // Then: llama a /api/auth/register con rol 'afiliado' y sin token
+    expect(resultado).toEqual(respuesta as never);
+    expect(ultima?.url).toBe('http://api.test/api/auth/register');
+    expect(JSON.parse(String(ultima?.init?.body))).toMatchObject({
       rol: 'afiliado',
+      email: 'ana@ejemplo.com',
+    });
+    expect(
+      (ultima?.init?.headers as Record<string, string>).Authorization
+    ).toBeUndefined();
+  });
+
+  test('iniciarSesion envía correo y contraseña', async () => {
+    // Given: un backend que responde con token y usuario
+    simular(json(respuesta));
+    // When: se inicia sesión
+    await iniciarSesion({ email: 'ana@ejemplo.com', password: 'Clave-1234' });
+    // Then: llama a /api/auth/login con las credenciales
+    expect(ultima?.url).toBe('http://api.test/api/auth/login');
+    expect(JSON.parse(String(ultima?.init?.body))).toEqual({
+      email: 'ana@ejemplo.com',
+      password: 'Clave-1234',
     });
   });
 
-  test('propaga el mensaje del backend, o un genérico sin cuerpo', async () => {
-    // Given: un backend que responde 409 con un mensaje
-    simular(json({ message: 'Correo en uso' }, 409));
-    // When: se sincroniza
-    // Then: falla con el mensaje del backend
-    await expect(sincronizarUsuarioConBackend(args)).rejects.toThrow(
-      'Correo en uso'
+  test('errores: mensaje del backend, genérico, sin red y sin URL', async () => {
+    const args = { email: 'a@b.co', password: 'x' };
+    // Given: un backend que rechaza las credenciales con mensaje
+    simular(json({ message: 'Credenciales inválidas.' }, 401));
+    // When: se inicia sesión
+    // Then: falla con el mensaje del backend (un 401 aquí no es sesión expirada)
+    await expect(iniciarSesion(args)).rejects.toThrow(
+      'Credenciales inválidas.'
     );
-    // Given: un backend que responde 500 sin JSON
-    simular(new Response('no json', { status: 500 }));
-    // When: se sincroniza
-    // Then: falla con el mensaje genérico con el status
-    await expect(sincronizarUsuarioConBackend(args)).rejects.toThrow(
-      'El backend respondió 500.'
-    );
-  });
-
-  test('un fallo de red sin mensaje amigable se propaga tal cual', async () => {
-    // Given: un fallo de red al llamar al backend
+    // Given: un error 500 sin cuerpo JSON
+    simular(new Response('x', { status: 500 }));
+    // Then: falla con el mensaje genérico
+    await expect(iniciarSesion(args)).rejects.toThrow('respondió 500');
+    // Given: un fallo de red
     simular(new Error('offline'));
-    // When: se sincroniza
-    // Then: el error se propaga tal cual, sin mensaje amigable
-    await expect(sincronizarUsuarioConBackend(args)).rejects.toThrow('offline');
-  });
-
-  test('falla sin PUBLIC_API_URL', async () => {
+    // Then: propaga el error original
+    await expect(iniciarSesion(args)).rejects.toThrow('offline');
     // Given: PUBLIC_API_URL vacía
     process.env.PUBLIC_API_URL = '';
-    // When: se sincroniza
-    // Then: falla pidiendo configurar PUBLIC_API_URL
-    await expect(sincronizarUsuarioConBackend(args)).rejects.toThrow(SIN_URL);
+    // Then: pide configurar PUBLIC_API_URL
+    await expect(iniciarSesion(args)).rejects.toThrow(SIN_URL);
+  });
+});
+
+describe('perfil público y calificaciones (lecturas sin token)', () => {
+  test('obtenerPerfilPublico y listarCalificaciones llaman a su ruta', async () => {
+    // Given: un backend que responde con datos
+    simular(json({ id: 'u9' }));
+    // When: se lee el perfil público
+    expect((await obtenerPerfilPublico('u9')).id).toBe('u9');
+    // Then: llama a /api/usuarios/:id
+    expect(ultima?.url).toBe('http://api.test/api/usuarios/u9');
+    // Given: un backend que responde con una lista
+    simular(json([{ id: 'c1' }]));
+    // When: se listan las calificaciones del usuario
+    expect(await listarCalificaciones('u9')).toEqual([{ id: 'c1' } as never]);
+    // Then: llama a /api/calificaciones/usuario/:id
+    expect(ultima?.url).toBe('http://api.test/api/calificaciones/usuario/u9');
+  });
+
+  test('un error del backend llega con su mensaje', async () => {
+    // Given: un backend que responde 404 con mensaje
+    simular(json({ message: 'Usuario no encontrado.' }, 404));
+    // When: se lee el perfil público
+    // Then: falla con ese mensaje
+    await expect(obtenerPerfilPublico('x')).rejects.toThrow(
+      'Usuario no encontrado.'
+    );
+  });
+});
+
+describe('chat y calificaciones (con token)', () => {
+  test('enviarMensaje y listarConversacion usan el token', async () => {
+    // Given: un backend que responde con un mensaje
+    simular(json({ id: 'm1' }, 201));
+    // When: se envía un mensaje
+    await enviarMensaje({
+      token: 'tk',
+      destinatarioId: 'u2',
+      contenido: 'Hola',
+    });
+    // Then: hace POST /api/chat/mensajes con Bearer y el cuerpo esperado
+    expect(ultima?.url).toBe('http://api.test/api/chat/mensajes');
+    expect(ultima?.init?.method).toBe('POST');
+    expect(
+      (ultima?.init?.headers as Record<string, string>).Authorization
+    ).toBe('Bearer tk');
+    expect(JSON.parse(String(ultima?.init?.body))).toEqual({
+      destinatarioId: 'u2',
+      contenido: 'Hola',
+    });
+    // Given: un backend que responde con la conversación
+    simular(json([{ id: 'm1' }]));
+    // When: se lista la conversación
+    expect(await listarConversacion({ token: 'tk', usuarioId: 'u2' })).toEqual([
+      { id: 'm1' } as never,
+    ]);
+    // Then: llama a /api/chat/conversacion/:id
+    expect(ultima?.url).toBe('http://api.test/api/chat/conversacion/u2');
+  });
+
+  test('crearCalificacion envía puntuación y tarea opcional', async () => {
+    // Given: un backend que responde con la calificación
+    simular(json({ id: 'c1' }, 201));
+    // When: se califica sin tarea ni comentario
+    await crearCalificacion({
+      token: 'tk',
+      destinatarioId: 'u2',
+      puntuacion: 5,
+    });
+    // Then: la tarea viaja como null
+    expect(ultima?.url).toBe('http://api.test/api/calificaciones');
+    expect(JSON.parse(String(ultima?.init?.body))).toMatchObject({
+      destinatarioId: 'u2',
+      tareaId: null,
+      puntuacion: 5,
+    });
+    // When: se califica con tarea
+    await crearCalificacion({
+      token: 'tk',
+      destinatarioId: 'u2',
+      tareaId: 't1',
+      puntuacion: 4,
+      comentario: 'Bien',
+    });
+    // Then: viaja la tarea y el comentario
+    expect(JSON.parse(String(ultima?.init?.body))).toMatchObject({
+      tareaId: 't1',
+      comentario: 'Bien',
+    });
   });
 });
 
@@ -139,7 +246,9 @@ describe('obtenerPerfil', () => {
     simular(json({}, 401));
     // When: se lee el perfil
     // Then: falla con sesión expirada
-    await expect(obtenerPerfil('t')).rejects.toBeInstanceOf(ErrorSesionExpirada);
+    await expect(obtenerPerfil('t')).rejects.toBeInstanceOf(
+      ErrorSesionExpirada
+    );
     // Given: un backend que responde 500 sin JSON
     simular(new Response('x', { status: 500 }));
     // When: se lee el perfil
@@ -205,12 +314,42 @@ describe('actualizarPerfil', () => {
 });
 
 describe('listarTareas', () => {
-  test('devuelve el tablero', async () => {
-    // Given: un backend que responde con una tarea
-    simular(json([{ id: 't1' }]));
+  test('devuelve la página del tablero', async () => {
+    // Given: un backend que responde con una página con una tarea
+    const pagina = {
+      tareas: [{ id: 't1' }],
+      pagina: 1,
+      limite: 12,
+      hayMas: false,
+    };
+    simular(json(pagina));
     // When: se lista el tablero
-    // Then: devuelve esa tarea
-    expect(await listarTareas('t')).toEqual([{ id: 't1' } as never]);
+    // Then: devuelve esa página
+    expect(await listarTareas('t')).toEqual(pagina as never);
+    expect(ultima?.url).toBe('http://api.test/api/tareas');
+  });
+
+  test('envía paginación y cercanía en la query y un timeout', async () => {
+    // Given: un backend que responde con una página vacía
+    simular(json({ tareas: [], pagina: 2, limite: 5, hayMas: false }));
+    // When: se pide la página 2 con filtro de cercanía
+    await listarTareas('t', {
+      pagina: 2,
+      limite: 5,
+      lat: 6.2,
+      lng: -75.5,
+      radio: 10,
+    });
+    // Then: la query lleva todos los parámetros y la petición puede abortarse
+    const url = new URL(ultima!.url);
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      pagina: '2',
+      limite: '5',
+      lat: '6.2',
+      lng: '-75.5',
+      radio: '10',
+    });
+    expect(ultima?.init?.signal).toBeInstanceOf(AbortSignal);
   });
 
   test('401 -> sesión expirada; otros errores con mensaje', async () => {

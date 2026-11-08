@@ -6,7 +6,6 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
 
 process.env.DATABASE_URL ??= 'postgres://test';
-process.env.CLERK_SECRET_KEY ??= 'sk_test';
 
 type Llamada = { texto: string; valores: unknown[] };
 let llamadas: Llamada[] = [];
@@ -38,12 +37,17 @@ const { usuariosRepository } =
   await import('../modules/usuarios/repositories/usuarios.repository');
 const { disponibilidadRepository } =
   await import('../modules/usuarios/repositories/disponibilidad.repository');
+const { sesionesRepository } =
+  await import('../modules/auth/repositories/sesiones.repository');
+const { chatRepository } =
+  await import('../modules/chat/repositories/chat.repository');
+const { calificacionesRepository } =
+  await import('../modules/calificaciones/repositories/calificaciones.repository');
 
 const FECHA = new Date('2026-01-01T00:00:00Z');
 
 const FILA_USUARIO = {
   id: 'u1',
-  clerk_id: 'c1',
   nombre: 'Ana',
   email: 'ana@ejemplo.com',
   password_hash: null,
@@ -112,11 +116,27 @@ describe('tareasRepository', () => {
     // Given: una fila de tarea con el nombre del autor
     respuestas = [[{ ...FILA_TAREA, autor_nombre: 'Ana' }]];
     // When: se listan las abiertas
-    const lista = await tareasRepository.listarAbiertas();
+    const lista = await tareasRepository.listarAbiertas({
+      limite: 12,
+      desplazamiento: 0,
+    });
     // Then: llega la tarea con su autorNombre
     expect(lista).toHaveLength(1);
     expect(lista[0]?.autorNombre).toBe('Ana');
     expect(lista[0]?.tarea.id).toBe('t1');
+  });
+
+  test('listarAbiertas acepta filtro de cercanía', async () => {
+    // Given: una fila de tarea con el nombre del autor
+    respuestas = [[{ ...FILA_TAREA, autor_nombre: 'Ana' }]];
+    // When: se listan las abiertas cerca de un punto
+    const lista = await tareasRepository.listarAbiertas({
+      limite: 12,
+      desplazamiento: 12,
+      cerca: { lat: 6.2, lng: -75.5, radio: 5 },
+    });
+    // Then: devuelve las filas de la consulta
+    expect(lista).toHaveLength(1);
   });
 });
 
@@ -124,11 +144,9 @@ describe('usuariosRepository', () => {
   test('buscarPorId / Id devuelven el usuario mapeado', async () => {
     // Given: una fila de usuario para cada búsqueda
     respuestas = [[FILA_USUARIO], [FILA_USUARIO]];
-    // When: se busca por clerkId y por id
+    // When: se busca por id dos veces
     // Then: cada búsqueda devuelve el usuario mapeado
-    expect((await usuariosRepository.buscarPorId('c1'))?.nombre).toBe(
-      'Ana'
-    );
+    expect((await usuariosRepository.buscarPorId('c1'))?.nombre).toBe('Ana');
     expect((await usuariosRepository.buscarPorId('u1'))?.email).toBe(
       'ana@ejemplo.com'
     );
@@ -142,19 +160,23 @@ describe('usuariosRepository', () => {
     expect(await usuariosRepository.buscarPorId('x')).toBeUndefined();
   });
 
-  test('crear inserta (con y sin clerkId/passwordHash) y mapea', async () => {
+  test('crear inserta (con y sin passwordHash) y mapea', async () => {
     // Given: un INSERT que devuelve la fila del usuario
     respuestas = [[FILA_USUARIO], [FILA_USUARIO]];
-    // When: se crea con y sin clerkId ni passwordHash
+    // When: se crea con y sin passwordHash
     await usuariosRepository.crear({
-      clerkId: 'c1',
       nombre: 'Ana',
       email: 'ana@ejemplo.com',
       passwordHash: 'h',
       rol: 'cliente',
     } as never);
     // Then: viajan como parámetros y se devuelve el usuario mapeado
-    expect(llamadas[0]?.valores).toContain('c1');
+    expect(llamadas[0]?.valores).toEqual([
+      'Ana',
+      'ana@ejemplo.com',
+      'h',
+      'cliente',
+    ]);
     const sinOpcionales = await usuariosRepository.crear({
       nombre: 'Ana',
       email: 'ana@ejemplo.com',
@@ -253,5 +275,127 @@ describe('disponibilidadRepository', () => {
     await disponibilidadRepository.reemplazar('u1', []);
     // Then: solo se borra, sin ningún INSERT
     expect(llamadas.filter((l) => l.texto.includes('INSERT'))).toHaveLength(0);
+  });
+});
+
+describe('sesionesRepository', () => {
+  test('crear inserta la sesión con el token y su vencimiento', async () => {
+    // Given: un repositorio de sesiones
+    const expira = new Date('2026-02-01T00:00:00Z');
+    // When: se crea una sesión
+    await sesionesRepository.crear('u1', 'tok', expira);
+    // Then: usuario, token y vencimiento viajan como parámetros
+    expect(llamadas[0]?.texto).toContain('INSERT INTO sesiones');
+    expect(llamadas[0]?.valores).toEqual(['u1', 'tok', expira]);
+  });
+
+  test('buscarUsuarioIdPorToken devuelve el id o undefined', async () => {
+    // Given: una sesión vigente y luego ninguna
+    respuestas = [[{ usuario_id: 'u1' }], []];
+    // When: se busca dos veces
+    // Then: la primera devuelve el id y la segunda undefined
+    expect(await sesionesRepository.buscarUsuarioIdPorToken('tok')).toBe('u1');
+    expect(
+      await sesionesRepository.buscarUsuarioIdPorToken('otro')
+    ).toBeUndefined();
+    expect(llamadas[0]?.texto).toContain('expira_en > now()');
+  });
+
+  test('eliminar borra por token', async () => {
+    // When: se elimina una sesión
+    await sesionesRepository.eliminar('tok');
+    // Then: el DELETE recibe el token como parámetro
+    expect(llamadas[0]?.texto).toContain('DELETE FROM sesiones');
+    expect(llamadas[0]?.valores).toEqual(['tok']);
+  });
+});
+
+describe('chatRepository', () => {
+  const MENSAJE = {
+    id: 'm1',
+    remitente_id: 'u1',
+    destinatario_id: 'u2',
+    contenido: 'Hola',
+    creado_en: FECHA,
+  };
+
+  test('crear inserta y devuelve el mensaje', async () => {
+    // Given: un INSERT que devuelve la fila
+    respuestas = [[MENSAJE]];
+    // When: se crea un mensaje
+    const mensaje = await chatRepository.crear('u1', 'u2', 'Hola');
+    // Then: viaja como parámetros y devuelve la fila
+    expect(llamadas[0]?.valores).toEqual(['u1', 'u2', 'Hola']);
+    expect(mensaje).toEqual(MENSAJE);
+  });
+
+  test('crear falla si el INSERT no devuelve fila', async () => {
+    // Given: un INSERT sin fila
+    // When / Then: falla con el mensaje esperado
+    await expect(chatRepository.crear('u1', 'u2', 'Hola')).rejects.toThrow(
+      'No se pudo guardar el mensaje.'
+    );
+  });
+
+  test('listarConversacion consulta ambos sentidos', async () => {
+    // Given: una conversación con un mensaje
+    respuestas = [[MENSAJE]];
+    // When: se lista entre u1 y u2
+    const lista = await chatRepository.listarConversacion('u1', 'u2');
+    // Then: devuelve el mensaje y usa ambos ids en los dos sentidos
+    expect(lista).toEqual([MENSAJE]);
+    expect(llamadas[0]?.valores).toEqual(['u1', 'u2', 'u2', 'u1']);
+  });
+});
+
+describe('calificacionesRepository', () => {
+  const FILA = {
+    id: 'c1',
+    tarea_id: null,
+    autor_id: 'u1',
+    destinatario_id: 'u2',
+    puntuacion: 5,
+    comentario: null,
+    creado_en: FECHA,
+  };
+
+  test('crear inserta y devuelve la calificación', async () => {
+    // Given: un INSERT que devuelve la fila
+    respuestas = [[FILA]];
+    // When: se crea una calificación
+    const resultado = await calificacionesRepository.crear({
+      tareaId: null,
+      autorId: 'u1',
+      destinatarioId: 'u2',
+      puntuacion: 5,
+      comentario: null,
+    });
+    // Then: viaja como parámetros y devuelve la fila
+    expect(llamadas[0]?.valores).toEqual([null, 'u1', 'u2', 5, null]);
+    expect(resultado).toEqual(FILA);
+  });
+
+  test('crear falla si el INSERT no devuelve fila', async () => {
+    // Given: un INSERT sin fila
+    // When / Then: falla con el mensaje esperado
+    await expect(
+      calificacionesRepository.crear({
+        tareaId: null,
+        autorId: 'u1',
+        destinatarioId: 'u2',
+        puntuacion: 5,
+        comentario: null,
+      })
+    ).rejects.toThrow('No se pudo guardar la calificación.');
+  });
+
+  test('listarPorDestinatario filtra por destinatario', async () => {
+    // Given: una calificación recibida
+    respuestas = [[FILA]];
+    // When: se listan las de u2
+    const lista = await calificacionesRepository.listarPorDestinatario('u2');
+    // Then: devuelve la fila y consulta por u2
+    expect(lista).toEqual([FILA]);
+    expect(llamadas[0]?.valores).toEqual(['u2']);
   });
 });

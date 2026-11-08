@@ -1,6 +1,6 @@
 /**
  * Lógica pura del panel principal (dashboard): resumen del perfil y
- * conteo de tareas abiertas. Sin Clerk ni red: recibe los datos que ya
+ * conteo de tareas abiertas. Sin red: recibe los datos que ya
  * trajo la isla y devuelve lo que se pinta. Cubierta por
  * `dashboard.stats.test.ts`.
  */

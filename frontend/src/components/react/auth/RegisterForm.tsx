@@ -1,8 +1,8 @@
 /**
- * Formulario de registro (US-001): orquesta estado, validación y los dos
- * flujos async (Clerk `signUp` + sincronización del perfil en el backend).
- * Las reglas viven en `register.validation.ts`, los primitivos visuales en
- * `fields.tsx` y los errores de Clerk en `lib/clerk-errors.ts`.
+ * Formulario de registro (US-001): orquesta estado, validación y el alta
+ * de la cuenta en el backend (`POST /api/auth/register`). Las reglas
+ * viven en `register.validation.ts` y los primitivos visuales en
+ * `fields.tsx`.
  */
 import React, { useMemo, useRef, useState } from 'react';
 import { registrar, normalizarRolParaBackend } from '../../../lib/usuarios-api';
@@ -27,8 +27,6 @@ import {
 } from './register.validation';
 
 export default function RegisterForm() {
-  // auth propia: sin Clerk.
-
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,9 +38,7 @@ export default function RegisterForm() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [globalError, setGlobalError] = useState('');
-  const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const summaryRef = useRef<HTMLDivElement>(null);
 
   const valores: Valores = useMemo(
@@ -93,7 +89,7 @@ export default function RegisterForm() {
   const tocar = (campo: string) =>
     setTouched((t) => (t[campo] ? t : { ...t, [campo]: true }));
 
-  const ocupado = isSubmitting || isSyncing;
+  const ocupado = isSubmitting;
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -108,13 +104,20 @@ export default function RegisterForm() {
     }
     setIsSubmitting(true);
     try {
-      const resp = await registrar({ nombre: name, email, password, rol: role });
+      const resp = await registrar({
+        nombre: name,
+        email,
+        password,
+        rol: role,
+      });
       guardarToken(resp.token);
       const rolBackend = normalizarRolParaBackend(resp.usuario.rol);
       window.location.href =
         rolBackend === 'afiliado' ? '/perfil/configurar' : '/dashboard';
     } catch (err: unknown) {
-      setGlobalError(err instanceof Error ? err.message : 'Ocurrió un error en el registro.');
+      setGlobalError(
+        err instanceof Error ? err.message : 'Ocurrió un error en el registro.'
+      );
     } finally {
       setIsSubmitting(false);
     }

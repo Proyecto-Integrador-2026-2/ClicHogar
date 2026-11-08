@@ -1,7 +1,7 @@
 import { sql } from '../../../db/client';
 import type { Categoria } from '../categorias';
 import type { NuevaTarea, Tarea } from '../entities/tarea.entity';
-import type { TareasRepositorio } from '../ports';
+import type { OpcionesListado, TareasRepositorio } from '../ports';
 
 /**
  * Única capa que sabe hablar con la tabla `tareas`. Queries con tagged
@@ -54,20 +54,40 @@ export const tareasRepository = {
   },
 
   /**
-   * Tablero de afiliados (US-008): solicitudes abiertas con el nombre
-   * del autor, recientes primero, tope 50. Solo `abierta`: los demás
-   * estados los gobernarán US futuras.
+   * Tablero de afiliados (US-008): solo solicitudes `abierta` (las
+   * asignadas o finalizadas quedan fuera), recientes primero, con el
+   * nombre del autor. Paginado por `limite`/`desplazamiento`; el
+   * desempate por id mantiene el orden estable entre páginas. Con
+   * `cerca` filtra en SQL por distancia (Haversine, km) y descarta las
+   * tareas sin coordenadas.
    */
-  async listarAbiertas(): Promise<
-    Array<{ tarea: Tarea; autorNombre: string }>
-  > {
+  async listarAbiertas({
+    limite,
+    desplazamiento,
+    cerca,
+  }: OpcionesListado): Promise<Array<{ tarea: Tarea; autorNombre: string }>> {
+    const lat = cerca?.lat ?? null;
+    const lng = cerca?.lng ?? null;
+    const radio = cerca?.radio ?? null;
     const filas = await sql<(TareaRow & { autor_nombre: string })[]>`
       SELECT t.id, t.usuario_id, t.titulo, t.descripcion, t.categoria, t.estado, t.ubicacion, t.latitud, t.longitud, t.creado_en, t.actualizado_en, u.nombre AS autor_nombre
       FROM tareas t
       JOIN usuarios u ON u.id = t.usuario_id
       WHERE t.estado = 'abierta'
-      ORDER BY t.creado_en DESC
-      LIMIT 50
+        AND (
+          ${radio}::float8 IS NULL
+          OR (
+            t.latitud IS NOT NULL
+            AND t.longitud IS NOT NULL
+            AND 6371 * 2 * asin(sqrt(least(1,
+                power(sin(radians(t.latitud - ${lat}::float8) / 2), 2)
+                + cos(radians(${lat}::float8)) * cos(radians(t.latitud))
+                * power(sin(radians(t.longitud - ${lng}::float8) / 2), 2)
+              ))) <= ${radio}::float8
+          )
+        )
+      ORDER BY t.creado_en DESC, t.id DESC
+      LIMIT ${limite} OFFSET ${desplazamiento}
     `;
     return filas.map((fila) => ({
       tarea: aTarea(fila),

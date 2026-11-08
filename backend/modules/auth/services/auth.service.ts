@@ -1,11 +1,23 @@
-import { ConflictError, UnauthorizedError, ValidationError } from '../../../shared/errors/app-error';
+import {
+  ConflictError,
+  UnauthorizedError,
+  ValidationError,
+} from '../../../shared/errors/app-error';
+import type {
+  RolUsuario,
+  Usuario,
+} from '../../usuarios/entities/usuario.entity';
+import { toUsuarioPublico } from '../../usuarios/mappers/usuario.mapper';
 import { usuariosRepository } from '../../usuarios/repositories/usuarios.repository';
 import { sesionesRepository } from '../repositories/sesiones.repository';
-import type { Usuario } from '../../usuarios/entities/usuario.entity';
-import { toUsuarioPublico } from '../../usuarios/mappers/usuario.mapper';
-import type { RolUsuario } from '../../usuarios/entities/usuario.entity';
 
-const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+/** Vigencia de una sesión: 7 días. */
+export const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+export type RespuestaSesion = {
+  token: string;
+  usuario: ReturnType<typeof toUsuarioPublico>;
+};
 
 function normalizarEmail(email: unknown): string {
   if (typeof email !== 'string' || !email.includes('@')) {
@@ -16,85 +28,87 @@ function normalizarEmail(email: unknown): string {
 
 function normalizarPassword(password: unknown): string {
   if (typeof password !== 'string' || password.length < 8) {
-    throw new ValidationError('La contraseña debe tener al menos 8 caracteres.');
+    throw new ValidationError(
+      'La contraseña debe tener al menos 8 caracteres.'
+    );
   }
   return password;
 }
 
 function normalizarRol(rol: unknown): RolUsuario {
   const v = typeof rol === 'string' ? rol.trim().toLowerCase() : '';
-  if (v === 'afiliado') return 'afiliado';
-  return 'cliente';
+  return v === 'afiliado' ? 'afiliado' : 'cliente';
+}
+
+function normalizarNombre(nombre: unknown): string {
+  return typeof nombre === 'string' && nombre.trim().length >= 2
+    ? nombre.trim().slice(0, 120)
+    : 'Usuario';
+}
+
+/** Crea una sesión nueva para el usuario y devuelve su token. */
+async function abrirSesion(usuario: Usuario): Promise<RespuestaSesion> {
+  const token = crypto.randomUUID() + crypto.randomUUID();
+  await sesionesRepository.crear(
+    usuario.id,
+    token,
+    new Date(Date.now() + TOKEN_TTL_MS)
+  );
+  return { token, usuario: toUsuarioPublico(usuario) };
 }
 
 export const authService = {
+  /** Alta de cuenta (correo único, contraseña con hash) y sesión abierta. */
   async register(args: {
     nombre?: unknown;
     email?: unknown;
     password?: unknown;
     rol?: unknown;
-  }): Promise<{ token: string; usuario: ReturnType<typeof toUsuarioPublico> }> {
-    const nombre =
-      typeof args.nombre === 'string' && args.nombre.trim().length >= 2
-        ? args.nombre.trim().slice(0, 120)
-        : 'Usuario';
+  }): Promise<RespuestaSesion> {
     const email = normalizarEmail(args.email);
     const password = normalizarPassword(args.password);
-    const rol = normalizarRol(args.rol);
 
-    const existente = await usuariosRepository.buscarPorEmail?.(email);
-    if (existente) {
+    if (await usuariosRepository.buscarPorEmail(email)) {
       throw new ConflictError('Ya existe una cuenta con ese email.');
     }
 
-    const passwordHash = await Bun.password.hash(password);
     const usuario = await usuariosRepository.crear({
-      clerkId: null,
-      nombre,
+      nombre: normalizarNombre(args.nombre),
       email,
-      passwordHash,
-      rol,
+      passwordHash: await Bun.password.hash(password),
+      rol: normalizarRol(args.rol),
     });
-
-    const token = crypto.randomUUID() + crypto.randomUUID();
-    const expiraEn = new Date(Date.now() + TOKEN_TTL_MS);
-    await sesionesRepository.crear(usuario.id, token, expiraEn);
-
-    return { token, usuario: toUsuarioPublico(usuario) };
+    return abrirSesion(usuario);
   },
 
+  /** Inicio de sesión: mismo error para correo desconocido y clave mala. */
   async login(args: {
     email?: unknown;
     password?: unknown;
-  }): Promise<{ token: string; usuario: ReturnType<typeof toUsuarioPublico> }> {
+  }): Promise<RespuestaSesion> {
     const email = normalizarEmail(args.email);
     const password = normalizarPassword(args.password);
 
-    const usuario = await usuariosRepository.buscarPorEmail?.(email);
-    if (!usuario || !usuario.passwordHash) {
+    const usuario = await usuariosRepository.buscarPorEmail(email);
+    if (
+      !usuario?.passwordHash ||
+      !(await Bun.password.verify(password, usuario.passwordHash))
+    ) {
       throw new UnauthorizedError('Credenciales inválidas.');
     }
-    const ok = await Bun.password.verify(password, usuario.passwordHash);
-    if (!ok) {
-      throw new UnauthorizedError('Credenciales inválidas.');
-    }
-
-    const token = crypto.randomUUID() + crypto.randomUUID();
-    const expiraEn = new Date(Date.now() + TOKEN_TTL_MS);
-    await sesionesRepository.crear(usuario.id, token, expiraEn);
-
-    return { token, usuario: toUsuarioPublico(usuario) };
+    return abrirSesion(usuario);
   },
 
   async me(token: string) {
-    const usuario = await this.resolverUsuario(token);
-    return toUsuarioPublico(usuario);
+    return toUsuarioPublico(await this.resolverUsuario(token));
   },
 
+  /** Usuario dueño de un token vigente; 401 si no existe o expiró. */
   async resolverUsuario(token: string): Promise<Usuario> {
     const usuarioId = await sesionesRepository.buscarUsuarioIdPorToken(token);
-    if (!usuarioId) throw new UnauthorizedError('Sesión inválida o expirada.');
-    const usuario = await usuariosRepository.buscarPorId(usuarioId);
+    const usuario = usuarioId
+      ? await usuariosRepository.buscarPorId(usuarioId)
+      : undefined;
     if (!usuario) throw new UnauthorizedError('Sesión inválida o expirada.');
     return usuario;
   },

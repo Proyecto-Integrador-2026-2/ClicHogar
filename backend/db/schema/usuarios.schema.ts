@@ -21,6 +21,8 @@ export const rolUsuarioEnum = pgEnum('rol_usuario', ['cliente', 'afiliado']);
 
 export const usuarios = pgTable('usuarios', {
   id: uuid('id').primaryKey().defaultRandom(),
+  // Legado de Clerk: sin uso (la autenticación es propia). Se conserva para
+  // no hacer una migración destructiva.
   clerkId: varchar('clerk_id', { length: 64 }).unique(),
   nombre: varchar('nombre', { length: 120 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),

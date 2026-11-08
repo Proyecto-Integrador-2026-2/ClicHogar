@@ -15,7 +15,12 @@ export default function CalificacionForm() {
     const token = getToken();
     if (!token) return;
     try {
-      await crearCalificacion({ token, destinatarioId, puntuacion, comentario });
+      await crearCalificacion({
+        token,
+        destinatarioId,
+        puntuacion,
+        comentario,
+      });
       setMsg('Calificación enviada.');
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Error');
@@ -27,10 +32,29 @@ export default function CalificacionForm() {
       <div className="ch-card ch-card--wide">
         <h2 className="ch-card__title">Calificar</h2>
         <form onSubmit={enviar} className="ch-form">
-          <input className="ch-input" placeholder="ID del usuario" value={destinatarioId} onChange={(e) => setDestinatarioId(e.target.value)} />
-          <input className="ch-input" type="number" min={1} max={5} value={puntuacion} onChange={(e) => setPuntuacion(Number(e.target.value))} />
-          <textarea className="ch-input" placeholder="Comentario" value={comentario} onChange={(e) => setComentario(e.target.value)} />
-          <button type="submit" className="ch-btn ch-btn--primary">Enviar</button>
+          <input
+            className="ch-input"
+            placeholder="ID del usuario"
+            value={destinatarioId}
+            onChange={(e) => setDestinatarioId(e.target.value)}
+          />
+          <input
+            className="ch-input"
+            type="number"
+            min={1}
+            max={5}
+            value={puntuacion}
+            onChange={(e) => setPuntuacion(Number(e.target.value))}
+          />
+          <textarea
+            className="ch-input"
+            placeholder="Comentario"
+            value={comentario}
+            onChange={(e) => setComentario(e.target.value)}
+          />
+          <button type="submit" className="ch-btn ch-btn--primary">
+            Enviar
+          </button>
         </form>
         {msg && <div className="ch-alert">{msg}</div>}
       </div>

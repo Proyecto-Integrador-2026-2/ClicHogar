@@ -5,8 +5,7 @@ import { usuariosRepository } from '../repositories/usuarios.repository';
 
 /**
  * Construye `exigirUsuario` sobre el repositorio recibido: resuelve al
- * usuario autenticado por su clerkId y lanza 404 si todavía no sincronizó
- * su perfil local. Centraliza la regla que repetían los services y el
+ * usuario autenticado por su id y lanza 404 si no existe. Centraliza la regla que repetían los services y el
  * controller de usuarios y tareas.
  */
 export function crearExigirUsuario(

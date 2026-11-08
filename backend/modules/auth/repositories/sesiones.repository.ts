@@ -1,13 +1,5 @@
 import { sql } from '../../../db/client';
 
-type SesionRow = {
-  id: string;
-  usuario_id: string;
-  token: string;
-  expira_en: Date;
-  creado_en: Date;
-};
-
 export const sesionesRepository = {
   async crear(usuarioId: string, token: string, expiraEn: Date): Promise<void> {
     await sql`

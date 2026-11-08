@@ -1,5 +1,8 @@
+import { estaFirmado } from '../lib/auth';
+
+/** Páginas protegidas: sin token guardado se manda al login. */
 export function initAuthGuard(): void {
-  if (!localStorage.getItem('ch-token')) {
+  if (!estaFirmado()) {
     window.location.href = '/login';
   }
 }

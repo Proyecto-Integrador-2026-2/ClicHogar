@@ -106,7 +106,6 @@ describe('tareasService con repositorios simulados (sin Postgres)', () => {
 
   const autor: Usuario = {
     id: 'u-1',
-    clerkId: 'clerk-1',
     nombre: 'Ana',
     email: 'ana@ejemplo.com',
     passwordHash: null,
@@ -120,12 +119,12 @@ describe('tareasService con repositorios simulados (sin Postgres)', () => {
   };
 
   test('crearTarea exige perfil local (404)', async () => {
-    // Given: un clerkId sin perfil local en la base
-    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(null);
+    // Given: un usuario sin perfil local en la base
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(undefined);
     // When: se intenta crear una tarea
     // Then: falla con NotFoundError
     await expect(
-      tareasService.crearTarea('clerk-x', VALIDA)
+      tareasService.crearTarea('u-x', VALIDA)
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
@@ -141,7 +140,7 @@ describe('tareasService con repositorios simulados (sin Postgres)', () => {
     }));
 
     // When: se crea la tarea
-    const resultado = await tareasService.crearTarea('clerk-1', VALIDA);
+    const resultado = await tareasService.crearTarea('u-1', VALIDA);
 
     // Then: se guarda con estado 'abierta' y el resultado nombra al autor
     expect(crear).toHaveBeenCalledWith({
@@ -165,7 +164,7 @@ describe('tareasService con repositorios simulados (sin Postgres)', () => {
       usuarioId: 'u-2',
       titulo: 'Pintar sala',
       descripcion: 'Dos manos de pintura blanca en sala-comedor.',
-      categoria: 'Pintura',
+      categoria: 'Limpieza',
       estado: 'abierta',
       ubicacion: 'Chapinero',
       latitud: null,
@@ -180,12 +179,102 @@ describe('tareasService con repositorios simulados (sin Postgres)', () => {
     // When: se listan las abiertas
     const resultado = await tareasService.listarAbiertas();
 
-    // Then: llega una tarea en forma pública con su autor
-    expect(resultado).toHaveLength(1);
-    expect(resultado[0]).toMatchObject({
+    // Then: llega una tarea en forma pública con su autor y sin más páginas
+    expect(resultado.tareas).toHaveLength(1);
+    expect(resultado.tareas[0]).toMatchObject({
       id: 't-7',
       autorNombre: 'Luis',
       estado: 'abierta',
+    });
+    expect(resultado).toMatchObject({ pagina: 1, limite: 12, hayMas: false });
+  });
+
+  describe('listarAbiertas: paginación y cercanía (US-008)', () => {
+    const fila = (n: number) => ({
+      tarea: {
+        id: `t-${n}`,
+        usuarioId: 'u-2',
+        titulo: `Tarea ${n}`,
+        descripcion: 'Descripción de la tarea de prueba.',
+        categoria: 'Limpieza' as const,
+        estado: 'abierta',
+        ubicacion: 'Laureles',
+        latitud: null,
+        longitud: null,
+        creadoEn: new Date('2026-02-01T00:00:00.000Z'),
+        actualizadoEn: new Date('2026-02-01T00:00:00.000Z'),
+      },
+      autorNombre: 'Luis',
+    });
+
+    test('pide una fila extra y marca hayMas si existe', async () => {
+      // Given: un repositorio con 3 filas para una página de 2
+      const listar = spyOn(
+        tareasRepository,
+        'listarAbiertas'
+      ).mockResolvedValue([fila(1), fila(2), fila(3)]);
+      // When: se pide la página 2 con límite 2
+      const resultado = await tareasService.listarAbiertas({
+        pagina: 2,
+        limite: 2,
+      });
+      // Then: consulta limite+1 con el desplazamiento y recorta la sobrante
+      expect(listar).toHaveBeenCalledWith({
+        limite: 3,
+        desplazamiento: 2,
+        cerca: undefined,
+      });
+      expect(resultado.tareas.map((t) => t.id)).toEqual(['t-1', 't-2']);
+      expect(resultado).toMatchObject({ pagina: 2, limite: 2, hayMas: true });
+    });
+
+    test('limita el tamaño de página al máximo', async () => {
+      // Given: un repositorio vacío
+      const listar = spyOn(
+        tareasRepository,
+        'listarAbiertas'
+      ).mockResolvedValue([]);
+      // When: se pide un límite enorme
+      const resultado = await tareasService.listarAbiertas({ limite: 500 });
+      // Then: se recorta al máximo permitido
+      expect(resultado.limite).toBe(50);
+      expect(listar).toHaveBeenCalledWith(
+        expect.objectContaining({ limite: 51 })
+      );
+    });
+
+    test('pasa el filtro de cercanía al repositorio', async () => {
+      // Given: un repositorio vacío
+      const listar = spyOn(
+        tareasRepository,
+        'listarAbiertas'
+      ).mockResolvedValue([]);
+      // When: se pide con lat, lng y radio
+      await tareasService.listarAbiertas({ lat: 6.2, lng: -75.5, radio: 5 });
+      // Then: el repositorio recibe el filtro
+      expect(listar).toHaveBeenCalledWith(
+        expect.objectContaining({ cerca: { lat: 6.2, lng: -75.5, radio: 5 } })
+      );
+    });
+
+    test.each([
+      [{ pagina: 0 }],
+      [{ pagina: 1.5 }],
+      [{ limite: -1 }],
+      [{ lat: 6.2 }],
+      [{ lat: 6.2, lng: -75.5 }],
+      [{ lat: 95, lng: 0, radio: 5 }],
+      [{ lat: 0, lng: 200, radio: 5 }],
+      [{ lat: 0, lng: 0, radio: 0 }],
+      [{ lat: Number.NaN, lng: 0, radio: 5 }],
+    ])('rechaza consultas inválidas %j', async (consulta) => {
+      // Given: una consulta con paginación o cercanía inválida
+      spyOn(tareasRepository, 'listarAbiertas').mockResolvedValue([]);
+      // When: se intenta listar
+      // Then: falla con ValidationError
+      await expect(
+        tareasService.listarAbiertas(consulta)
+      ).rejects.toBeInstanceOf(ValidationError);
     });
   });
 });

@@ -119,8 +119,13 @@ export default function TareaForm() {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19,
       }).addTo(map);
-      const marker = L.marker([lat, lng], { draggable: true, icon: iconoPersona }).addTo(map);
-      marker.on('dragstart', () => marker.getElement()?.classList.add('is-lifting'));
+      const marker = L.marker([lat, lng], {
+        draggable: true,
+        icon: iconoPersona,
+      }).addTo(map);
+      marker.on('dragstart', () =>
+        marker.getElement()?.classList.add('is-lifting')
+      );
       marker.on('dragend', () => {
         marker.getElement()?.classList.remove('is-lifting');
         const pos = marker.getLatLng();
@@ -348,7 +353,8 @@ export default function TareaForm() {
               <div className="ch-map">
                 <p className="ch-map__hint">
                   Arrastra la persona para marcar el punto exacto. Lat:{' '}
-                  {latitud?.toFixed(5) ?? '—'} · Lng: {longitud?.toFixed(5) ?? '—'}
+                  {latitud?.toFixed(5) ?? '—'} · Lng:{' '}
+                  {longitud?.toFixed(5) ?? '—'}
                 </p>
                 <div ref={mapaRef} className="ch-map__canvas" />
               </div>
@@ -362,7 +368,9 @@ export default function TareaForm() {
                     className="ch-input"
                     value={latitud ?? ''}
                     onChange={(e) =>
-                      setLatitud(e.target.value === '' ? null : Number(e.target.value))
+                      setLatitud(
+                        e.target.value === '' ? null : Number(e.target.value)
+                      )
                     }
                     step="any"
                   />
@@ -375,7 +383,9 @@ export default function TareaForm() {
                     className="ch-input"
                     value={longitud ?? ''}
                     onChange={(e) =>
-                      setLongitud(e.target.value === '' ? null : Number(e.target.value))
+                      setLongitud(
+                        e.target.value === '' ? null : Number(e.target.value)
+                      )
                     }
                     step="any"
                   />

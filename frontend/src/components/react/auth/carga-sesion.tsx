@@ -1,6 +1,6 @@
 /**
- * Piezas compartidas por las pantallas que cargan datos con la sesión de
- * Clerk (panel y tablero): el hook de carga y los estados visuales de
+ * Piezas compartidas por las pantallas que cargan datos con el token de
+ * sesión (panel y tablero): el hook de carga y los estados visuales de
  * "cargando", "sin sesión" y "error con reintento".
  */
 import React, { useCallback, useEffect, useState } from 'react';
@@ -10,7 +10,7 @@ import { ErrorSesionExpirada } from '../../../lib/usuarios-api';
 import './auth.css';
 
 /**
- * Carga `cargarDatos(token)` cuando Clerk está listo y hay sesión.
+ * Carga `cargarDatos(token)` cuando hay sesión.
  * - Sin sesión no llama al backend (la pantalla invita a entrar).
  * - `ErrorSesionExpirada` redirige a `/login?expirada=1`.
  * - Cualquier otro fallo queda en `error` y `recargar` reintenta.

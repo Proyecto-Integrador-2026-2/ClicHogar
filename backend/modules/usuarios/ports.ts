@@ -11,7 +11,6 @@ export type PatchPerfil = Partial<
 >;
 
 export interface UsuariosRepositorio {
-  buscarPorClerkId(clerkId: string): Promise<Usuario | undefined>;
   buscarPorId(id: string): Promise<Usuario | undefined>;
   buscarPorEmail(email: string): Promise<Usuario | undefined>;
   crear(datos: NuevoUsuario): Promise<Usuario>;

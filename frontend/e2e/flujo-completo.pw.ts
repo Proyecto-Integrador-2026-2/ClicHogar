@@ -16,7 +16,9 @@ function leerSecretos(): Record<string, string> {
   return out;
 }
 
-test('flujo completo: login, publicar tarea y ver en tablero', async ({ page }) => {
+test('flujo completo: login, publicar tarea y ver en tablero', async ({
+  page,
+}) => {
   const s = leerSecretos();
   // Login como usuario
   await page.goto('/login');
@@ -29,11 +31,17 @@ test('flujo completo: login, publicar tarea y ver en tablero', async ({ page }) 
   await page.goto('/tareas/nueva');
   const titulo = `Tarea E2E ${Date.now()}`;
   await page.locator('#ch-tarea-titulo').fill(titulo);
-  await page.locator('#ch-tarea-descripcion').fill('Esta es una tarea creada por el flujo E2E para verificar el mapa y el tablero.');
+  await page
+    .locator('#ch-tarea-descripcion')
+    .fill(
+      'Esta es una tarea creada por el flujo E2E para verificar el mapa y el tablero.'
+    );
   await page.locator('#ch-tarea-categoria').selectOption('Plomería');
   await page.locator('#ch-tarea-ubicacion').fill('Envigado');
   await page.getByRole('button', { name: /Publicar tarea/i }).click();
-  await expect(page.getByText(/Tarea publicada/i)).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText(/Tarea publicada/i)).toBeVisible({
+    timeout: 15000,
+  });
 
   // Ver en tablero
   await page.goto('/tareas');

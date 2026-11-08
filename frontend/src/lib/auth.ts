@@ -1,4 +1,5 @@
-const TOKEN_KEY = 'ch-token';
+/** Clave de `localStorage` donde se guarda el token de sesión. */
+export const TOKEN_KEY = 'ch-token';
 
 export function obtenerToken(): string | null {
   if (typeof window === 'undefined') return null;

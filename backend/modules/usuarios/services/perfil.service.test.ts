@@ -20,7 +20,6 @@ afterEach(() => {
 function filaUsuario(cambios: Partial<Usuario> = {}): Usuario {
   return {
     id: 'u-1',
-    clerkId: 'clerk-1',
     nombre: 'Ana',
     email: 'ana@ejemplo.com',
     passwordHash: null,
@@ -63,12 +62,12 @@ describe('normalizarPatch', () => {
 
 describe('perfilService.actualizarPerfil', () => {
   test('404 sin perfil local sincronizado', async () => {
-    // Given: un clerkId sin perfil local
-    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(null);
+    // Given: un usuario sin perfil local
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(undefined);
     // When: se actualiza el perfil
     // Then: falla con NotFoundError
     await expect(
-      perfilService.actualizarPerfil({ clerkId: 'clerk-x' })
+      perfilService.actualizarPerfil({ usuarioId: 'u-x' })
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
@@ -85,7 +84,7 @@ describe('perfilService.actualizarPerfil', () => {
 
     // When: se actualiza solo la descripción, con espacios
     const resultado = await perfilService.actualizarPerfil({
-      clerkId: 'clerk-1',
+      usuarioId: 'u-1',
       descripcion: '  Plomera con 5 años  ',
     });
 
@@ -119,7 +118,7 @@ describe('perfilService.actualizarPerfil', () => {
 
     // When: se actualiza el perfil con una foto PNG
     const resultado = await perfilService.actualizarPerfil({
-      clerkId: 'clerk-1',
+      usuarioId: 'u-1',
       foto: { datos: PNG, mimeDeclarado: 'image/png', tamano: PNG.length },
       almacenamiento: falsoAlmacenamiento,
     });
@@ -129,9 +128,7 @@ describe('perfilService.actualizarPerfil', () => {
   });
 
   test('rechaza foto pesada o con bytes inválidos', async () => {
-    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(
-      filaUsuario()
-    );
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(filaUsuario());
     // Given: una foto de más de 5 MB y otra con bytes que no son JPG ni PNG
     const falsoAlmacenamiento = {
       guardar: async () => ({ url: '/uploads/perfiles/falsa.jpg' }),
@@ -141,7 +138,7 @@ describe('perfilService.actualizarPerfil', () => {
     // Then: falla con ValidationError
     await expect(
       perfilService.actualizarPerfil({
-        clerkId: 'clerk-1',
+        usuarioId: 'u-1',
         foto: {
           datos: PNG,
           mimeDeclarado: 'image/png',
@@ -155,7 +152,7 @@ describe('perfilService.actualizarPerfil', () => {
     // Then: falla con el mensaje de formato no permitido
     await expect(
       perfilService.actualizarPerfil({
-        clerkId: 'clerk-1',
+        usuarioId: 'u-1',
         foto: {
           datos: new Uint8Array([0x00, 0x01, 0x02]),
           mimeDeclarado: 'image/jpeg',

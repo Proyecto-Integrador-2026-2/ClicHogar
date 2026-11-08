@@ -24,7 +24,6 @@ const FECHA = new Date('2026-01-01T00:00:00Z');
 function usuario(cambios: Partial<Usuario> = {}): Usuario {
   return {
     id: 'u1',
-    clerkId: 'c1',
     nombre: 'Ana',
     email: 'ana@ejemplo.com',
     passwordHash: null,
@@ -44,7 +43,6 @@ function usuariosFalso(existente?: Usuario) {
   const creados: NuevoUsuario[] = [];
   return {
     creados,
-    buscarPorId: async () => existente,
     buscarPorId: async () => existente,
     crear: async (datos: NuevoUsuario) => {
       creados.push(datos);
@@ -81,7 +79,10 @@ describe('tareas con repositorios inyectados', () => {
     // Then: se guarda con el autor y estado abierta, y el tablero queda vacío
     expect(tarea.autorNombre).toBe('Ana');
     expect(guardadas[0]).toMatchObject({ usuarioId: 'u1', estado: 'abierta' });
-    expect(await service.listarAbiertas()).toEqual([]);
+    expect(await service.listarAbiertas()).toMatchObject({
+      tareas: [],
+      hayMas: false,
+    });
   });
 
   test('404 si el usuario no tiene perfil local', async () => {
@@ -142,7 +143,7 @@ describe('perfil con repositorio inyectado', () => {
     const service = crearPerfilService(usuariosFalso(usuario()));
     // When: se actualiza la ubicación con espacios
     const perfil = await service.actualizarPerfil({
-      clerkId: 'c1',
+      usuarioId: 'u1',
       ubicacion: '  Envigado  ',
     });
     // Then: queda recortada

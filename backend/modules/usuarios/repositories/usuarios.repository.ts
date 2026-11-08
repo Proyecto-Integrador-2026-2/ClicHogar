@@ -17,7 +17,6 @@ import type {
 // Fila cruda tal como la devuelve Postgres (snake_case).
 type UsuarioRow = {
   id: string;
-  clerk_id: string | null;
   nombre: string;
   email: string;
   password_hash: string | null;
@@ -33,7 +32,6 @@ type UsuarioRow = {
 function aUsuario(fila: UsuarioRow): Usuario {
   return {
     id: fila.id,
-    clerkId: fila.clerk_id,
     nombre: fila.nombre,
     email: fila.email,
     passwordHash: fila.password_hash,
@@ -50,14 +48,14 @@ function aUsuario(fila: UsuarioRow): Usuario {
 // Lista única de columnas (constante fija, jamás viene del cliente): evita
 // repetirla en cada query y olvidar una al agregar un campo.
 const COLUMNAS =
-  'id, clerk_id, nombre, email, password_hash, rol, foto_url, descripcion, ubicacion, activo, creado_en, actualizado_en';
+  'id, nombre, email, password_hash, rol, foto_url, descripcion, ubicacion, activo, creado_en, actualizado_en';
 
 /**
  * Busca un usuario por una columna única. La columna es una unión cerrada
  * (nunca texto del cliente) y el valor viaja como parámetro `$1`.
  */
 async function buscarUno(
-  columna: 'clerk_id' | 'id' | 'email',
+  columna: 'id' | 'email',
   valor: string
 ): Promise<Usuario | undefined> {
   const filas = await sql.unsafe<UsuarioRow[]>(
@@ -68,22 +66,14 @@ async function buscarUno(
 }
 
 export const usuariosRepository = {
-  buscarPorClerkId: (clerkId: string) => buscarUno('clerk_id', clerkId),
-
   buscarPorId: (id: string) => buscarUno('id', id),
 
   buscarPorEmail: (email: string) => buscarUno('email', email),
 
   async crear(datos: NuevoUsuario): Promise<Usuario> {
     const filas = await sql.unsafe<UsuarioRow[]>(
-      `INSERT INTO usuarios (clerk_id, nombre, email, password_hash, rol) VALUES ($1, $2, $3, $4, $5) RETURNING ${COLUMNAS}`,
-      [
-        datos.clerkId ?? null,
-        datos.nombre,
-        datos.email,
-        datos.passwordHash ?? null,
-        datos.rol,
-      ]
+      `INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES ($1, $2, $3, $4) RETURNING ${COLUMNAS}`,
+      [datos.nombre, datos.email, datos.passwordHash ?? null, datos.rol]
     );
     const usuario = filas[0];
     if (!usuario) {

@@ -1,6 +1,6 @@
 /**
  * Pruebas de las reglas de validación del login (US-002, Esc 5-8).
- * Puras y sin Clerk: cubren vacíos, formato, saneamiento y mensajes.
+ * Puras y sin red: cubren vacíos, formato, saneamiento y mensajes.
  */
 import { describe, expect, test } from 'bun:test';
 import {

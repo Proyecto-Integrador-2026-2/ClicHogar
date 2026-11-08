@@ -1,5 +1,5 @@
 /**
- * Pruebas de la lógica pura del dashboard. Sin Clerk ni red: solo
+ * Pruebas de la lógica pura del dashboard. Sin red: solo
  * `dashboard.stats.ts` con perfiles y tareas de juguete.
  */
 import { describe, expect, test } from 'bun:test';

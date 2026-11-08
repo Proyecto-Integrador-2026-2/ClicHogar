@@ -1,6 +1,6 @@
 /**
  * Pruebas de las reglas de validación del registro (US-001, Esc 4–9).
- * Puras y sin BD ni Clerk: cubren cada rama de `validarCampo` con los
+ * Puras y sin BD : cubren cada rama de `validarCampo` con los
  * mensajes exactos que ve el usuario.
  */
 import { describe, expect, test } from 'bun:test';

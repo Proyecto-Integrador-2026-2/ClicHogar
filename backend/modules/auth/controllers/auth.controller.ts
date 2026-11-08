@@ -1,29 +1,25 @@
 import { Elysia } from 'elysia';
+import { LoginDto, RegistroDto } from '../dto/auth.dto';
 import { authService } from '../services/auth.service';
+import { tokenDesdeHeaders } from '../token';
 
-function tokenDesdeHeaders(headers: Record<string, string | undefined>): string {
-  const auth = headers.authorization ?? headers.Authorization;
-  if (!auth?.startsWith('Bearer ')) return '';
-  return auth.slice('Bearer '.length).trim();
-}
-
+/**
+ * Autenticación propia: registro, login, sesión actual y logout. El token
+ * viaja como `Authorization: Bearer <token>`.
+ */
 export const authController = new Elysia({ prefix: '/api/auth' })
-  .post('/register', async ({ body, set }) => {
-    const resultado = await authService.register(body as any);
-    set.status = 201;
-    return resultado;
-  })
-  .post('/login', async ({ body, set }) => {
-    const resultado = await authService.login(body as any);
-    set.status = 200;
-    return resultado;
-  })
-  .get('/me', async ({ headers }) => {
-    const token = tokenDesdeHeaders(headers as any);
-    return authService.me(token);
-  })
+  .post(
+    '/register',
+    async ({ body, set }) => {
+      const resultado = await authService.register(body);
+      set.status = 201;
+      return resultado;
+    },
+    { body: RegistroDto }
+  )
+  .post('/login', ({ body }) => authService.login(body), { body: LoginDto })
+  .get('/me', ({ headers }) => authService.me(tokenDesdeHeaders(headers)))
   .post('/logout', async ({ headers }) => {
-    const token = tokenDesdeHeaders(headers as any);
-    await authService.logout(token);
+    await authService.logout(tokenDesdeHeaders(headers));
     return { ok: true };
   });

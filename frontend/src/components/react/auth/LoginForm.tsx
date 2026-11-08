@@ -1,6 +1,6 @@
 /**
  * Formulario de inicio de sesión (US-002): orquesta estado, validación en
- * tiempo real (Esc 5-6), saneamiento (Esc 7/8), autenticación Clerk y
+ * tiempo real (Esc 5-6), saneamiento (Esc 7/8), autenticación propia (token en localStorage) y
  * redirección al panel principal. Errores genéricos sin revelar qué dato
  * falló (Esc 3-4) y alerta de bloqueo temporal (Esc 9). Primitivos
  * visuales en `fields.tsx`.
@@ -8,11 +8,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { iniciarSesion } from '../../../lib/usuarios-api';
 import { guardarToken } from '../../../lib/auth';
-import {
-  clasificarErrorSignIn,
-  mensajeErrorSignIn,
-} from '../../../lib/clerk-errors';
-import { obtenerPerfil } from '../../../lib/usuarios-api';
 import './auth.css';
 import {
   ErrorSummary,
@@ -31,8 +26,6 @@ import {
 } from './login.validation';
 
 export default function LoginForm() {
-  // auth propia.
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -112,9 +105,12 @@ export default function LoginForm() {
     try {
       const resp = await iniciarSesion({ email: sanearEmail(email), password });
       guardarToken(resp.token);
+      setIsRedirecting(true);
       window.location.href = '/dashboard';
     } catch (err: unknown) {
-      setGlobalError(err instanceof Error ? err.message : 'No se pudo iniciar sesión.');
+      setGlobalError(
+        err instanceof Error ? err.message : 'No se pudo iniciar sesión.'
+      );
     } finally {
       setIsSubmitting(false);
     }

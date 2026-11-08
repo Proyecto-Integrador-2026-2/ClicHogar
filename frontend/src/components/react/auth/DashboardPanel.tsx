@@ -5,7 +5,6 @@
  * La navegación a los módulos vive en `pages/dashboard` (Astro puro).
  */
 import React from 'react';
-// auth propia: el nombre sale del perfil.
 import {
   listarTareas,
   obtenerPerfil,
@@ -20,23 +19,37 @@ import {
 } from './carga-sesion';
 import { contarAbiertas, etiquetaRol, resumenPerfil } from './dashboard.stats';
 
-type DatosPanel = { perfil: UsuarioPublico; abiertas: number };
+/** `hayMas`: hay más tareas abiertas de las que cuenta el primer bloque. */
+type DatosPanel = {
+  perfil: UsuarioPublico;
+  abiertas: number;
+  hayMas: boolean;
+};
+
+/** Tamaño del bloque con el que se cuentan las abiertas (máximo del API). */
+const LIMITE_CONTEO = 50;
 
 async function cargarPanel(token: string): Promise<DatosPanel> {
-  const [perfil, tareas] = await Promise.all([
+  const [perfil, pagina] = await Promise.all([
     obtenerPerfil(token),
-    listarTareas(token),
+    listarTareas(token, { limite: LIMITE_CONTEO }),
   ]);
-  return { perfil, abiertas: contarAbiertas(tareas) };
+  return {
+    perfil,
+    abiertas: contarAbiertas(pagina.tareas),
+    hayMas: pagina.hayMas,
+  };
 }
 
 /** Tres indicadores del panel: rol, avance del perfil y tareas abiertas. */
 function Indicadores({
   perfil,
   abiertas,
+  hayMas,
 }: {
   perfil: UsuarioPublico;
   abiertas: number;
+  hayMas: boolean;
 }) {
   const resumen = resumenPerfil(perfil);
   return (
@@ -64,6 +77,7 @@ function Indicadores({
         <dt>Tareas abiertas</dt>
         <dd>
           {abiertas}
+          {hayMas ? '+' : ''}
           <span className="ch-dash-stat__hint">
             <a href="/tareas">Explorar tablero</a>
           </span>
@@ -92,6 +106,7 @@ export default function DashboardPanel() {
 
   const perfil = datos?.perfil ?? null;
   const abiertas = datos?.abiertas ?? 0;
+  const hayMas = datos?.hayMas ?? false;
   const nombre = perfil?.nombre ?? 'miembro';
 
   return (
@@ -111,7 +126,9 @@ export default function DashboardPanel() {
           />
         )}
 
-        {perfil && <Indicadores perfil={perfil} abiertas={abiertas} />}
+        {perfil && (
+          <Indicadores perfil={perfil} abiertas={abiertas} hayMas={hayMas} />
+        )}
       </div>
     </div>
   );

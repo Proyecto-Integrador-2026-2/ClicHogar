@@ -1,7 +1,7 @@
 /**
  * Pruebas del mapper público de usuarios (US-001).
  * Puras y sin BD: verifican que la frontera controller→JSON nunca filtre
- * credenciales ni identificadores internos de Clerk.
+ * credenciales ni datos internos.
  */
 import { describe, expect, test } from 'bun:test';
 import type { Usuario } from '../entities/usuario.entity';
@@ -9,7 +9,6 @@ import { toUsuarioPublico } from './usuario.mapper';
 
 const USUARIO_BASE: Usuario = {
   id: '11111111-1111-4111-8111-111111111111',
-  clerkId: 'user_secreto_123',
   nombre: 'Ana Pérez',
   email: 'ana@ejemplo.com',
   passwordHash: 'argon2id$hash_super_secreto',
@@ -48,12 +47,12 @@ describe('toUsuarioPublico', () => {
     expect(JSON.stringify(publico)).not.toContain('hash_super_secreto');
   });
 
-  test('no filtra clerkId, estado interno ni fecha de actualización', () => {
-    // Given: un usuario con clerkId, estado interno y fecha de actualización
+  test('no filtra el hash de la contraseña, el estado interno ni la fecha de actualización', () => {
+    // Given: un usuario con hash de contraseña, estado interno y fecha de actualización
     // When: se mapea a su forma pública
     const publico = toUsuarioPublico(USUARIO_BASE);
     // Then: ninguno de esos datos internos aparece
-    expect(publico).not.toHaveProperty('clerkId');
+    expect(publico).not.toHaveProperty('passwordHash');
     expect(publico).not.toHaveProperty('activo');
     expect(publico).not.toHaveProperty('actualizadoEn');
     expect(JSON.stringify(publico)).not.toContain('user_secreto_123');

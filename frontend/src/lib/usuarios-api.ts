@@ -1,8 +1,8 @@
 /// <reference types="astro/client" />
 /**
- * API del módulo `usuarios` (US-001): sincronización del perfil local en
- * Postgres a partir de la sesión de Clerk. La identidad siempre viene del
- * session token verificado en el backend, nunca del body.
+ * API del backend: registro, login, perfil, disponibilidad, tareas, chat y
+ * calificaciones. La identidad siempre viene del token de sesión verificado
+ * en el backend, nunca del body.
  * La URL se configura con `PUBLIC_API_URL` (ver `frontend/.env.example`).
  */
 
@@ -44,13 +44,13 @@ const OPCIONES_TAREAS: OpcionesPedir = {
 };
 
 /**
- * Única puerta de salida al backend: comprueba la URL, añade el token,
- * y unifica el manejo de errores (sin red, 401 y mensaje del backend).
+ * Única puerta de salida al backend: comprueba la URL, añade el token (si
+ * hay) y unifica el manejo de errores (sin red, 401 y mensaje del backend).
  * Lanza Error con el mensaje del backend si la respuesta no es 2xx.
  */
 async function pedir<T>(
   ruta: string,
-  token: string,
+  token: string | null,
   init: RequestInit = {},
   { mensajeSinRed = false, detectarSesionExpirada = false }: OpcionesPedir = {}
 ): Promise<T> {
@@ -62,7 +62,9 @@ async function pedir<T>(
   try {
     respuesta = await fetch(`${base}${ruta}`, {
       ...init,
-      headers: { ...init.headers, Authorization: `Bearer ${token}` },
+      headers: token
+        ? { ...init.headers, Authorization: `Bearer ${token}` }
+        : init.headers,
     });
   } catch (err: unknown) {
     throw mensajeSinRed ? new Error(MENSAJE_SIN_RED) : err;
@@ -110,77 +112,42 @@ export function normalizarRolParaBackend(
   return rol.trim().toLowerCase() === 'afiliado' ? 'afiliado' : 'cliente';
 }
 
-/**
- * Crea (o recupera, es idempotente) el perfil local en Postgres a partir de
- * la sesión de Clerk. Debe llamarse con el session token recién obtenido.
- * Lanza Error con el mensaje del backend si algo falla.
- */
 export type RespuestaAuth = { token: string; usuario: UsuarioPublico };
 
+/** Crea la cuenta y abre sesión (`POST /api/auth/register`). */
 export function registrar(args: {
   nombre: string;
   email: string;
   password: string;
   rol: 'Usuario' | 'Afiliado' | string;
 }): Promise<RespuestaAuth> {
-  const base = apiUrl();
-  if (!base) throw new Error(MENSAJE_SIN_URL);
-  return fetch(`${base}/api/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  return pedir(
+    '/api/auth/register',
+    null,
+    conJson('POST', {
       nombre: args.nombre,
       email: args.email,
       password: args.password,
-      rol: normalizarRolParaBackend(args.rol),
-    }),
-  }).then(async (r) => {
-    if (!r.ok) {
-      const d = await r.json().catch(() => null);
-      throw new Error((d as any)?.message ?? `El backend respondió ${r.status}.`);
-    }
-    return (await r.json()) as RespuestaAuth;
-  });
-}
-
-export function iniciarSesion(args: {
-  email: string;
-  password: string;
-}): Promise<RespuestaAuth> {
-  const base = apiUrl();
-  if (!base) throw new Error(MENSAJE_SIN_URL);
-  return fetch(`${base}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: args.email, password: args.password }),
-  }).then(async (r) => {
-    if (!r.ok) {
-      const d = await r.json().catch(() => null);
-      throw new Error((d as any)?.message ?? `El backend respondió ${r.status}.`);
-    }
-    return (await r.json()) as RespuestaAuth;
-  });
-}
-
-export function sincronizarUsuarioConBackend(args: {
-  token: string;
-  nombre: string;
-  rol: 'Usuario' | 'Afiliado' | string;
-}): Promise<UsuarioPublico> {
-  return pedir(
-    '/api/usuarios/sync',
-    args.token,
-    conJson('POST', {
-      nombre: args.nombre,
       rol: normalizarRolParaBackend(args.rol),
     })
   );
 }
 
+/** Abre sesión con correo y contraseña (`POST /api/auth/login`). */
+export function iniciarSesion(args: {
+  email: string;
+  password: string;
+}): Promise<RespuestaAuth> {
+  return pedir(
+    '/api/auth/login',
+    null,
+    conJson('POST', { email: args.email, password: args.password })
+  );
+}
+
 /**
  * Lee el perfil local del usuario autenticado (US-002, redirección por rol).
- * Requiere el session token de Clerk; el backend resuelve el rol desde
- * Postgres. Lanza Error con el mensaje del backend si algo falla.
+ * Requiere el token de sesión; el backend resuelve el rol desde Postgres. Lanza Error con el mensaje del backend si algo falla.
  */
 export function obtenerPerfil(token: string): Promise<UsuarioPublico> {
   return pedir('/api/usuarios/yo', token, {}, { detectarSesionExpirada: true });
@@ -209,17 +176,27 @@ export function enviarMensaje(args: {
   destinatarioId: string;
   contenido: string;
 }): Promise<MensajeApi> {
-  return pedir('/api/chat/mensajes', args.token, conJson('POST', {
-    destinatarioId: args.destinatarioId,
-    contenido: args.contenido,
-  }), OPCIONES_TAREAS);
+  return pedir(
+    '/api/chat/mensajes',
+    args.token,
+    conJson('POST', {
+      destinatarioId: args.destinatarioId,
+      contenido: args.contenido,
+    }),
+    OPCIONES_TAREAS
+  );
 }
 
 export function listarConversacion(args: {
   token: string;
   usuarioId: string;
 }): Promise<MensajeApi[]> {
-  return pedir(`/api/chat/conversacion/${args.usuarioId}`, args.token, {}, OPCIONES_TAREAS);
+  return pedir(
+    `/api/chat/conversacion/${args.usuarioId}`,
+    args.token,
+    {},
+    OPCIONES_TAREAS
+  );
 }
 
 export function crearCalificacion(args: {
@@ -229,36 +206,29 @@ export function crearCalificacion(args: {
   puntuacion: number;
   comentario?: string;
 }): Promise<CalificacionApi> {
-  return pedir('/api/calificaciones', args.token, conJson('POST', {
-    destinatarioId: args.destinatarioId,
-    tareaId: args.tareaId ?? null,
-    puntuacion: args.puntuacion,
-    comentario: args.comentario,
-  }), OPCIONES_TAREAS);
+  return pedir(
+    '/api/calificaciones',
+    args.token,
+    conJson('POST', {
+      destinatarioId: args.destinatarioId,
+      tareaId: args.tareaId ?? null,
+      puntuacion: args.puntuacion,
+      comentario: args.comentario,
+    }),
+    OPCIONES_TAREAS
+  );
 }
 
-export function listarCalificaciones(usuarioId: string): Promise<CalificacionApi[]> {
-  const base = apiUrl();
-  if (!base) throw new Error(MENSAJE_SIN_URL);
-  return fetch(`${base}/api/calificaciones/usuario/${usuarioId}`).then(async (r) => {
-    if (!r.ok) {
-      const d = await r.json().catch(() => null);
-      throw new Error((d as any)?.message ?? `El backend respondió ${r.status}.`);
-    }
-    return (await r.json()) as CalificacionApi[];
-  });
+/** Calificaciones recibidas por un usuario (lectura pública). */
+export function listarCalificaciones(
+  usuarioId: string
+): Promise<CalificacionApi[]> {
+  return pedir(`/api/calificaciones/usuario/${usuarioId}`, null);
 }
 
+/** Perfil público de un usuario (lectura pública). */
 export function obtenerPerfilPublico(id: string): Promise<UsuarioPublico> {
-  const base = apiUrl();
-  if (!base) throw new Error(MENSAJE_SIN_URL);
-  return fetch(`${base}/api/usuarios/${id}`).then(async (r) => {
-    if (!r.ok) {
-      const d = await r.json().catch(() => null);
-      throw new Error((d as any)?.message ?? `El backend respondió ${r.status}.`);
-    }
-    return (await r.json()) as UsuarioPublico;
-  });
+  return pedir(`/api/usuarios/${id}`, null);
 }
 
 /**
@@ -276,10 +246,15 @@ export function actualizarPerfil(args: {
   if (args.descripcion !== undefined)
     forma.append('descripcion', args.descripcion);
   if (args.ubicacion !== undefined) forma.append('ubicacion', args.ubicacion);
-  return pedir('/api/usuarios/yo', args.token, {
-    method: 'PATCH',
-    body: forma,
-  }, { detectarSesionExpirada: true });
+  return pedir(
+    '/api/usuarios/yo',
+    args.token,
+    {
+      method: 'PATCH',
+      body: forma,
+    },
+    { detectarSesionExpirada: true }
+  );
 }
 
 /** Convierte una ruta pública del backend (`/uploads/...`) en URL absoluta. */
@@ -303,20 +278,44 @@ export type TareaTablero = {
   creadoEn: string;
 };
 
+/** Una página del tablero: `hayMas` indica si existe una página siguiente. */
+export type PaginaTareasTablero = {
+  tareas: TareaTablero[];
+  pagina: number;
+  limite: number;
+  hayMas: boolean;
+};
+
+/** Tiempo máximo de espera del tablero antes de tratarlo como error. */
+export const TIMEOUT_TABLERO_MS = 10_000;
+
 /**
- * Tablero de solicitudes abiertas (US-008): requiere sesión (el
- * middleware de página la exige; sin token el backend responde 401).
+ * Tablero de solicitudes abiertas (US-008): requiere sesión (sin token el
+ * backend responde 401). Pagina con `pagina`/`limite` y, opcionalmente,
+ * filtra por cercanía (`lat`, `lng` y `radio` en km). Si el servidor no
+ * responde en `TIMEOUT_TABLERO_MS` la petición se aborta (error de red).
  */
 export function listarTareas(
   token: string,
-  filtros?: { lat?: number; lng?: number; radio?: number }
-): Promise<TareaTablero[]> {
+  opciones?: {
+    pagina?: number;
+    limite?: number;
+    lat?: number;
+    lng?: number;
+    radio?: number;
+  }
+): Promise<PaginaTareasTablero> {
   const params = new URLSearchParams();
-  if (filtros?.lat != null) params.set('lat', String(filtros.lat));
-  if (filtros?.lng != null) params.set('lng', String(filtros.lng));
-  if (filtros?.radio != null) params.set('radio', String(filtros.radio));
+  for (const [clave, valor] of Object.entries(opciones ?? {})) {
+    if (valor != null) params.set(clave, String(valor));
+  }
   const qs = params.toString();
-  return pedir(`/api/tareas${qs ? `?${qs}` : ''}`, token, {}, OPCIONES_TAREAS);
+  return pedir(
+    `/api/tareas${qs ? `?${qs}` : ''}`,
+    token,
+    { signal: AbortSignal.timeout(TIMEOUT_TABLERO_MS) },
+    OPCIONES_TAREAS
+  );
 }
 
 export type SlotApi = {
