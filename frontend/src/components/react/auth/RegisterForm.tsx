@@ -1,16 +1,12 @@
 /**
- * Formulario de registro (US-001): orquesta estado, validación y los dos
- * flujos async (Clerk `signUp` + sincronización del perfil en el backend).
- * Las reglas viven en `register.validation.ts`, los primitivos visuales en
- * `fields.tsx` y los errores de Clerk en `lib/clerk-errors.ts`.
+ * Formulario de registro (US-001): orquesta estado, validación y el alta
+ * de la cuenta en el backend (`POST /api/auth/register`). Las reglas
+ * viven en `register.validation.ts` y los primitivos visuales en
+ * `fields.tsx`.
  */
 import React, { useMemo, useRef, useState } from 'react';
-import { useAuth, useSignUp } from '@clerk/clerk-react';
-import {
-  normalizarRolParaBackend,
-  sincronizarUsuarioConBackend,
-} from '../../../lib/usuarios-api';
-import { getFirstClerkError } from '../../../lib/clerk-errors';
+import { registrar, normalizarRolParaBackend } from '../../../lib/usuarios-api';
+import { guardarToken } from '../../../lib/auth';
 import './auth.css';
 import {
   CheckField,
@@ -31,9 +27,6 @@ import {
 } from './register.validation';
 
 export default function RegisterForm() {
-  const { isLoaded, signUp, setActive } = useSignUp();
-  const { getToken } = useAuth();
-
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,10 +38,7 @@ export default function RegisterForm() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [globalError, setGlobalError] = useState('');
-  const [pendingVerification, setPendingVerification] = useState(false);
-  const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const summaryRef = useRef<HTMLDivElement>(null);
 
   const valores: Valores = useMemo(
@@ -99,7 +89,7 @@ export default function RegisterForm() {
   const tocar = (campo: string) =>
     setTouched((t) => (t[campo] ? t : { ...t, [campo]: true }));
 
-  const ocupado = isSubmitting || isSyncing;
+  const ocupado = isSubmitting;
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -112,140 +102,26 @@ export default function RegisterForm() {
       requestAnimationFrame(() => summaryRef.current?.focus());
       return;
     }
-    if (!isLoaded) return;
-
     setIsSubmitting(true);
     try {
-      // Escenario 1 y 2: Registro exitoso como "Usuario" o "Afiliado"
-      await signUp.create({
-        firstName: name,
-        emailAddress: email,
+      const resp = await registrar({
+        nombre: name,
+        email,
         password,
-        unsafeMetadata: {
-          rol: role, // Perfil dual: viaja en la metadata de Clerk
-        },
+        rol: role,
       });
-
-      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-      setPendingVerification(true);
+      guardarToken(resp.token);
+      const rolBackend = normalizarRolParaBackend(resp.usuario.rol);
+      window.location.href =
+        rolBackend === 'afiliado' ? '/perfil/configurar' : '/dashboard';
     } catch (err: unknown) {
-      const clerkError = getFirstClerkError(err);
-
-      if (clerkError?.code === 'form_identifier_exists') {
-        setGlobalError(
-          'Este correo ya está asociado a una cuenta. ¿Deseas iniciar sesión?'
-        );
-      } else {
-        setGlobalError(
-          clerkError?.message || 'Ocurrió un error en el registro.'
-        );
-      }
+      setGlobalError(
+        err instanceof Error ? err.message : 'Ocurrió un error en el registro.'
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const handleVerify = async (e: React.SubmitEvent) => {
-    e.preventDefault();
-    if (!isLoaded) return;
-
-    try {
-      const completeSignUp = await signUp.attemptEmailAddressVerification({
-        code,
-      });
-
-      if (completeSignUp.status === 'complete') {
-        await setActive({ session: completeSignUp.createdSessionId });
-
-        // US-001: crear el perfil local en Postgres (idempotente).
-        setIsSyncing(true);
-        try {
-          const token = await getToken();
-          if (!token) {
-            throw new Error(
-              'No se pudo obtener la sesión. Recarga e inténtalo de nuevo.'
-            );
-          }
-          const perfil = await sincronizarUsuarioConBackend({
-            token,
-            nombre: name,
-            rol: role,
-          });
-          const rolBackend = normalizarRolParaBackend(perfil.rol);
-          window.location.href =
-            rolBackend === 'afiliado' ? '/perfil/configurar' : '/dashboard';
-        } finally {
-          setIsSyncing(false);
-        }
-        return;
-      }
-
-      // El código era correcto pero Clerk exige más datos para completar el
-      // registro (p. ej. `phone_number` requerido en el dashboard). Antes
-      // esto quedaba en silencio: ahora se informa qué falta.
-      const faltantes = (completeSignUp.missingFields ?? []).join(', ');
-      setGlobalError(
-        faltantes
-          ? `Tu correo se verificó, pero falta completar el registro: ${faltantes}.`
-          : 'Tu correo se verificó, pero el registro quedó incompleto. Inténtalo de nuevo.'
-      );
-    } catch (err: unknown) {
-      if (err instanceof Error && !('errors' in err)) {
-        setGlobalError(
-          `Tu cuenta se verificó, pero no se pudo crear tu perfil: ${err.message}`
-        );
-        return;
-      }
-      const clerkError = getFirstClerkError(err);
-
-      setGlobalError(
-        clerkError?.message || 'Código de verificación incorrecto.'
-      );
-    }
-  };
-
-  // --- Vista de Verificación ---
-  if (pendingVerification) {
-    return (
-      <div className="ch-auth">
-        <div className="ch-card">
-          <h2 className="ch-card__title">Verifica tu correo</h2>
-          <p className="ch-card__subtitle">Hemos enviado un código a {email}</p>
-          {globalError && (
-            <div className="ch-alert ch-alert--error" role="alert">
-              {globalError}
-            </div>
-          )}
-          <form onSubmit={handleVerify} className="ch-form" noValidate>
-            <TextField
-              id={IDS.code}
-              label="Código de verificación"
-              type="text"
-              value={code}
-              onChange={setCode}
-              hint="Revisa tu bandeja de entrada y pégalo aquí."
-              required
-              autoComplete="one-time-code"
-              inputMode="numeric"
-              disabled={ocupado}
-            />
-            <button
-              type="submit"
-              className="ch-btn ch-btn--primary"
-              disabled={ocupado}
-              aria-busy={ocupado}
-            >
-              {ocupado && <span className="ch-spinner" aria-hidden="true" />}
-              {isSyncing ? 'Creando tu perfil...' : 'Verificar cuenta'}
-            </button>
-            <p className="ch-status" role="status">
-              {isSyncing ? 'Guardando tu perfil en ClicHogar…' : ''}
-            </p>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   // --- Vista del Formulario de Registro ---
   return (
@@ -352,7 +228,7 @@ export default function RegisterForm() {
               <button
                 type="submit"
                 className="ch-btn ch-btn--primary"
-                disabled={!isLoaded || ocupado}
+                disabled={ocupado}
                 aria-busy={ocupado}
               >
                 {ocupado && <span className="ch-spinner" aria-hidden="true" />}

@@ -5,18 +5,14 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import {
-  clerkFalso,
-  resetClerkFalso,
-  simularNavegacion,
-} from '../../../../test-setup';
+import { resetSesion, simularNavegacion } from '../../../../test-setup';
 import * as api from '../../../lib/usuarios-api';
 import TareaForm from './TareaForm';
 
 let nav: ReturnType<typeof simularNavegacion>;
 
 beforeEach(() => {
-  resetClerkFalso();
+  resetSesion();
   nav = simularNavegacion();
 });
 
@@ -100,6 +96,9 @@ describe('TareaForm', () => {
       descripcion: DESCRIPCION,
       categoria: 'Plomería',
       ubicacion: 'Envigado',
+      // Sin geolocalización el mapa arranca en Bogotá.
+      latitud: 4.6097,
+      longitud: -74.0817,
     });
 
     // When: se pulsa Publicar otra tarea
@@ -172,7 +171,7 @@ describe('TareaForm', () => {
 
   test('sin token de sesión muestra el error', async () => {
     // Given: una sesión sin token
-    clerkFalso.getToken = async () => null;
+    localStorage.removeItem('ch-token');
     render(<TareaForm />);
     // When: se llena el formulario y se envía
     llenar();

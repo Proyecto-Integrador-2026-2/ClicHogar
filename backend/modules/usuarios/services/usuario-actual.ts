@@ -5,19 +5,16 @@ import { usuariosRepository } from '../repositories/usuarios.repository';
 
 /**
  * Construye `exigirUsuario` sobre el repositorio recibido: resuelve al
- * usuario autenticado por su clerkId y lanza 404 si todavía no sincronizó
- * su perfil local. Centraliza la regla que repetían los services y el
+ * usuario autenticado por su id y lanza 404 si no existe. Centraliza la regla que repetían los services y el
  * controller de usuarios y tareas.
  */
 export function crearExigirUsuario(
-  usuarios: Pick<UsuariosRepositorio, 'buscarPorClerkId'>
+  usuarios: Pick<UsuariosRepositorio, 'buscarPorId'>
 ) {
-  return async (clerkId: string): Promise<Usuario> => {
-    const usuario = await usuarios.buscarPorClerkId(clerkId);
+  return async (usuarioId: string): Promise<Usuario> => {
+    const usuario = await usuarios.buscarPorId(usuarioId);
     if (!usuario) {
-      throw new NotFoundError(
-        'Aún no tienes perfil local. Llama a POST /api/usuarios/sync primero.'
-      );
+      throw new NotFoundError('Usuario no encontrado.');
     }
     return usuario;
   };

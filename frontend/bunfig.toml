@@ -1,2 +1,4 @@
 [test]
 preload = ["./test-setup.ts"]
+# Excluir E2E de Playwright del runner de unit tests.
+exclude = ["e2e/**"]

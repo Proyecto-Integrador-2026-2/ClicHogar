@@ -7,8 +7,7 @@ import '../../styles/register-page.css';
 // Página de disponibilidad semanal (US-005, exclusivo Afiliados): misma
 // composición y sistema visual que el resto de páginas auth. Protegida
 // por el middleware y con guardia de rol en el formulario (Escenario 4).
-// La isla se hidrata solo en el cliente por ClerkJS.
-const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
+// La isla se hidrata solo en el cliente.
 ---
 <!doctype html>
 <html lang="es" data-theme="light">
@@ -42,7 +41,7 @@ const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
         <h1>Mi disponibilidad</h1>
         <p>Cuándo pueden contratarte los usuarios</p>
       </div>
-      <DisponibilidadIsla client:only="react" publishableKey={publishableKey} />
+      <DisponibilidadIsla client:only="react" />
     </main>
 
     <script>
@@ -52,6 +51,8 @@ const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
       initToolsBackground();
       initThemeToggle();
       initNavAuth();
+      import { initAuthGuard } from '../../scripts/auth-guard';
+      initAuthGuard();
     </script>
   </body>
 </html>

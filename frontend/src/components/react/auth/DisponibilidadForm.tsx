@@ -8,7 +8,7 @@
  * - Ante fallo de red conserva la selección y avisa sin recargar (Esc 5).
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '@clerk/clerk-react';
+import { obtenerToken } from '../../../lib/auth';
 import {
   guardarDisponibilidad,
   obtenerDisponibilidad,
@@ -42,7 +42,7 @@ function CheckIcon() {
 }
 
 export default function DisponibilidadForm() {
-  const { getToken } = useAuth();
+  const getToken = obtenerToken;
 
   const [seleccion, setSeleccion] = useState<ReadonlySet<string>>(new Set());
   const [cargando, setCargando] = useState(true);
@@ -57,7 +57,7 @@ export default function DisponibilidadForm() {
     let vivo = true;
     void (async () => {
       try {
-        const token = await getToken();
+        const token = getToken();
         if (!token) {
           throw new Error(
             'No se pudo obtener la sesión. Recarga e inténtalo de nuevo.'
@@ -102,7 +102,7 @@ export default function DisponibilidadForm() {
     setExito('');
     setGuardando(true);
     try {
-      const token = await getToken();
+      const token = getToken();
       if (!token) {
         throw new Error(
           'No se pudo obtener la sesión. Recarga e inténtalo de nuevo.'

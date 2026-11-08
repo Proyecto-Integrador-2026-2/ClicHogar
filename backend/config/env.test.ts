@@ -12,7 +12,6 @@ afterEach(() => {
 describe('config/env', () => {
   test('requireEnv lanza si falta la variable', async () => {
     process.env.DATABASE_URL = 'postgres://test';
-    process.env.CLERK_SECRET_KEY = 'sk_test';
     const { requireEnv } = await import('./env');
     // Given: una variable de entorno que no existe
     delete process.env.VARIABLE_INEXISTENTE;
@@ -25,7 +24,6 @@ describe('config/env', () => {
 
   test('requireEnv lanza si está en blanco y devuelve el valor si existe', async () => {
     process.env.DATABASE_URL = 'postgres://test';
-    process.env.CLERK_SECRET_KEY = 'sk_test';
     const { requireEnv } = await import('./env');
     // Given: una variable con solo espacios
     process.env.VARIABLE_PRUEBA = '   ';
@@ -38,7 +36,6 @@ describe('config/env', () => {
 
   test('usa los valores por defecto fuera de producción', async () => {
     process.env.DATABASE_URL = 'postgres://test';
-    process.env.CLERK_SECRET_KEY = 'sk_test';
     // Given: un entorno sin NODE_ENV, PORT ni CORS_ORIGIN
     delete process.env.NODE_ENV;
     delete process.env.PORT;

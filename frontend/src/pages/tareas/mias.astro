@@ -1,0 +1,58 @@
+---
+import MisSolicitudesIsla from '../../components/react/auth/MisSolicitudesIsla';
+import Background from '../../components/astro/Background.astro';
+import SiteNav from '../../components/astro/SiteNav.astro';
+import '../../styles/register-page.css';
+
+// Mis solicitudes (US-012). Ruta abierta a propósito (ver `src/lib/routes.ts`):
+// el contenido exige sesión y la isla invita a entrar si no la hay.
+---
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mis solicitudes · ClicHogar</title>
+    <link rel="icon" href="/favicon.ico?v=6" sizes="any" />
+    <script is:inline>
+      // Tema inicial antes del primer pintado (evita flash): guardado >
+      // sistema > claro. Debe quedarse inline en el <head>.
+      try {
+        var t = localStorage.getItem('ch-theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
+  </head>
+  <body>
+    {/*
+      current="register": visitante sin sesión ve "Iniciar sesión",
+      que es lo correcto en esta página pública.
+    */}
+    <SiteNav current="register" />
+    <Background />
+
+    <main class="ch-page">
+      <div class="ch-page__head">
+        <h1>Mis solicitudes</h1>
+        <p>Tus tareas publicadas y las ofertas que han recibido</p>
+      </div>
+      <MisSolicitudesIsla client:only="react" />
+    </main>
+
+    <script>
+      import { initToolsBackground } from '../../scripts/tools-background';
+      import { initThemeToggle } from '../../scripts/theme-toggle';
+      import { initNavAuth } from '../../scripts/nav-auth';
+      initToolsBackground();
+      initThemeToggle();
+      initNavAuth();
+    </script>
+  </body>
+</html>

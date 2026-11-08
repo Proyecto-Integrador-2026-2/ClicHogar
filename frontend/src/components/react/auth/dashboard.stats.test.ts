@@ -1,5 +1,5 @@
 /**
- * Pruebas de la lógica pura del dashboard. Sin Clerk ni red: solo
+ * Pruebas de la lógica pura del dashboard. Sin red: solo
  * `dashboard.stats.ts` con perfiles y tareas de juguete.
  */
 import { describe, expect, test } from 'bun:test';
@@ -28,6 +28,9 @@ function tareaBase(cambios: Partial<TareaTablero> = {}): TareaTablero {
     categoria: 'Pintura',
     estado: 'abierta',
     ubicacion: 'Chapinero',
+    latitud: null,
+    longitud: null,
+    autorId: 'u-1',
     autorNombre: 'Ana',
     creadoEn: '2026-02-01T00:00:00.000Z',
     ...cambios,

@@ -5,13 +5,13 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { clerkFalso, resetClerkFalso } from '../../../../test-setup';
+import { resetSesion } from '../../../../test-setup';
 import * as api from '../../../lib/usuarios-api';
 import DisponibilidadForm from './DisponibilidadForm';
 
 const AFILIADO = { rol: 'afiliado' } as api.UsuarioPublico;
 
-beforeEach(resetClerkFalso);
+beforeEach(resetSesion);
 
 afterEach(() => {
   cleanup();
@@ -93,7 +93,7 @@ describe('DisponibilidadForm: carga', () => {
     b.unmount();
 
     // Given: y por último una sesión sin token
-    clerkFalso.getToken = async () => null;
+    localStorage.removeItem('ch-token');
     // When: se renderiza el formulario
     render(<DisponibilidadForm />);
     // Then: muestra el error de sesión
@@ -221,7 +221,7 @@ describe('DisponibilidadForm: guardado', () => {
   test('sin token al guardar muestra el error de sesión', async () => {
     await cargado();
     // Given: un afiliado cargado y una sesión sin token
-    clerkFalso.getToken = async () => null;
+    localStorage.removeItem('ch-token');
     // When: se guarda el horario
     fireEvent.submit(
       screen.getByRole('button', { name: /Guardar horario/ }).closest('form')!

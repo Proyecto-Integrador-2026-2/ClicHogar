@@ -1,52 +1,31 @@
-import { Elysia } from 'elysia';
-import { sesionDesdeHeaders } from '../../../shared/auth/clerk';
+import { Elysia, t } from 'elysia';
+import { NotFoundError } from '../../../shared/errors/app-error';
+import { authService } from '../../auth/services/auth.service';
+import { tokenDesdeHeaders, usuarioDesdeHeaders } from '../../auth/token';
 import { ActualizarPerfilDto } from '../dto/actualizar-perfil.dto';
 import { DisponibilidadDto } from '../dto/disponibilidad.dto';
-import { SincronizarUsuarioDto } from '../dto/sincronizar-usuario.dto';
+import { toUsuarioPublico } from '../mappers/usuario.mapper';
+import { usuariosRepository } from '../repositories/usuarios.repository';
 import { disponibilidadService } from '../services/disponibilidad.service';
 import { perfilService } from '../services/perfil.service';
-import { registroService } from '../services/registro.service';
-import { exigirUsuario } from '../services/usuario-actual';
-import { toUsuarioPublico } from '../mappers/usuario.mapper';
+
+/** Parámetro `:id` (uuid del usuario): otro formato responde 400, no 500. */
+const ParamsUsuarioDto = t.Object({ id: t.String({ format: 'uuid' }) });
 
 /**
- * Módulo `usuarios` (US-001 con Clerk).
- * - POST /api/usuarios/sync: crea o devuelve el usuario local a partir del
- *   session token de Clerk (flujo principal US-001). La identidad se extrae
- *   del token verificado, nunca del body.
- * - GET /api/usuarios/yo: devuelve el perfil local del usuario autenticado.
- * - PATCH /api/usuarios/yo: actualización parcial del perfil (US-004:
- *   foto, descripción, ubicación; solo los campos enviados).
- * - PUT /api/usuarios/disponibilidad: reemplazo total de la matriz
- *   semanal del afiliado (US-005; arreglo vacío = limpiar). Solo rol
- *   afiliado (403 en otro caso).
- * - GET /api/usuarios/disponibilidad: matriz actual (prefill y vista).
+ * Módulo `usuarios`: perfil propio, disponibilidad y perfil público.
+ * Todo exige Bearer válido salvo `GET /api/usuarios/:id` (perfil público).
+ * `GET /api/usuarios/:id/disponibilidad` muestra el horario de un afiliado
+ * a cualquier usuario con sesión (US-012, perfil del postulante).
  */
 export const usuariosController = new Elysia({ prefix: '/api/usuarios' })
-  .post(
-    '/sync',
-    async ({ body, headers, set }) => {
-      const sesionClerk = await sesionDesdeHeaders(headers);
-      const { usuario, creado } = await registroService.sincronizarDesdeClerk(
-        sesionClerk,
-        body
-      );
-      set.status = creado ? 201 : 200;
-      return usuario;
-    },
-    { body: SincronizarUsuarioDto }
-  )
-  .get('/yo', async ({ headers }) => {
-    const sesionClerk = await sesionDesdeHeaders(headers);
-    const usuario = await exigirUsuario(sesionClerk.clerkId);
-    return toUsuarioPublico(usuario);
-  })
+  .get('/yo', ({ headers }) => authService.me(tokenDesdeHeaders(headers)))
   .patch(
     '/yo',
     async ({ body, headers }) => {
-      const sesionClerk = await sesionDesdeHeaders(headers);
+      const usuario = await usuarioDesdeHeaders(headers);
       return perfilService.actualizarPerfil({
-        clerkId: sesionClerk.clerkId,
+        usuarioId: usuario.id,
         descripcion: body.descripcion,
         ubicacion: body.ubicacion,
         foto: body.foto
@@ -63,12 +42,29 @@ export const usuariosController = new Elysia({ prefix: '/api/usuarios' })
   .put(
     '/disponibilidad',
     async ({ body, headers }) => {
-      const sesionClerk = await sesionDesdeHeaders(headers);
-      return disponibilidadService.guardar(sesionClerk.clerkId, body.slots);
+      const usuario = await usuarioDesdeHeaders(headers);
+      return disponibilidadService.guardar(usuario.id, body.slots);
     },
     { body: DisponibilidadDto }
   )
   .get('/disponibilidad', async ({ headers }) => {
-    const sesionClerk = await sesionDesdeHeaders(headers);
-    return disponibilidadService.obtener(sesionClerk.clerkId);
-  });
+    const usuario = await usuarioDesdeHeaders(headers);
+    return disponibilidadService.obtener(usuario.id);
+  })
+  .get(
+    '/:id/disponibilidad',
+    async ({ params, headers }) => {
+      await usuarioDesdeHeaders(headers);
+      return disponibilidadService.obtener(params.id);
+    },
+    { params: ParamsUsuarioDto }
+  )
+  .get(
+    '/:id',
+    async ({ params }) => {
+      const usuario = await usuariosRepository.buscarPorId(params.id);
+      if (!usuario) throw new NotFoundError('Usuario no encontrado.');
+      return toUsuarioPublico(usuario);
+    },
+    { params: ParamsUsuarioDto }
+  );

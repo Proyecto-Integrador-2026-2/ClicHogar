@@ -767,3 +767,186 @@ textarea.ch-field__input {
     border-top-color: rgb(255 255 255 / 0.4);
   }
 }
+
+/* Mapa de selección de ubicación (Leaflet) */
+.ch-map {
+  margin-top: 12px;
+}
+.ch-map__hint {
+  font-size: 0.85rem;
+  margin: 0 0 6px;
+  color: var(--ch-muted, #666);
+}
+.ch-map__canvas {
+  height: 260px;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ch-map-person {
+  background: transparent;
+  border: none;
+}
+.ch-map-person__pin {
+  font-size: 28px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+  transition: transform 180ms ease;
+}
+.ch-map-person__pin.is-lifting {
+  transform: translateY(-18px) scale(1.15);
+}
+
+/* Modal de detalle de tarea */
+.ch-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.ch-modal__card {
+  background: var(--ch-card, #fff);
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 520px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: auto;
+}
+.ch-tarea__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Detalle de tarea (US-009): autor de la solicitud */
+.ch-autor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--ch-border, rgba(127, 127, 127, 0.3));
+  border-radius: 12px;
+}
+.ch-autor__foto {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.ch-autor__nombre {
+  margin: 12px 0 4px;
+  font-size: 1rem;
+}
+
+/* Ofertas recibidas y perfil público del afiliado (US-012) */
+.ch-ofertas {
+  margin-top: 24px;
+}
+.ch-ofertas__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.ch-oferta {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--ch-border, rgba(127, 127, 127, 0.3));
+  border-radius: 12px;
+}
+.ch-oferta__perfil {
+  flex: none;
+}
+.ch-oferta__cuerpo {
+  min-width: 0;
+}
+.ch-oferta__mensaje {
+  margin: 6px 0;
+  font-style: italic;
+}
+.ch-autor__foto--vacia {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ch-border, rgba(127, 127, 127, 0.3));
+  font-weight: 700;
+}
+.ch-estrellas {
+  color: #f5a623;
+  font-weight: 600;
+}
+.ch-estrellas--vacio {
+  color: inherit;
+  font-weight: 400;
+  opacity: 0.7;
+}
+.ch-horario {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: center;
+}
+.ch-horario th,
+.ch-horario td {
+  padding: 6px;
+  border: 1px solid var(--ch-border, rgba(127, 127, 127, 0.3));
+}
+.ch-horario__si {
+  background: rgba(34, 197, 94, 0.25);
+}
+.ch-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* Servicio en curso de una tarea asignada (US-013 y US-014) */
+.ch-servicio {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--ch-border, rgba(127, 127, 127, 0.3));
+  border-radius: 12px;
+}
+
+/* Selector de estrellas de la calificación (US-016) */
+.ch-estrellas-input {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+}
+.ch-estrellas-input--error {
+  border-color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+.ch-estrella {
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  font-size: 2rem;
+  line-height: 1;
+  color: #9ca3af;
+  cursor: pointer;
+}
+.ch-estrella--llena {
+  color: #f5a623;
+}
+.ch-estrella:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Reputación en la cabecera del perfil público (US-017) */
+.ch-reputacion {
+  margin: 4px 0;
+}

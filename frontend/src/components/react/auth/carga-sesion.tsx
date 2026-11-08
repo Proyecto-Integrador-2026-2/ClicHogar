@@ -1,16 +1,16 @@
 /**
- * Piezas compartidas por las pantallas que cargan datos con la sesión de
- * Clerk (panel y tablero): el hook de carga y los estados visuales de
+ * Piezas compartidas por las pantallas que cargan datos con el token de
+ * sesión (panel y tablero): el hook de carga y los estados visuales de
  * "cargando", "sin sesión" y "error con reintento".
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useAuth, useUser } from '@clerk/clerk-react';
+import { obtenerToken, estaFirmado } from '../../../lib/auth';
 import { ErrorSesionExpirada } from '../../../lib/usuarios-api';
 import './auth.css';
 
 /**
- * Carga `cargarDatos(token)` cuando Clerk está listo y hay sesión.
+ * Carga `cargarDatos(token)` cuando hay sesión.
  * - Sin sesión no llama al backend (la pantalla invita a entrar).
  * - `ErrorSesionExpirada` redirige a `/login?expirada=1`.
  * - Cualquier otro fallo queda en `error` y `recargar` reintenta.
@@ -20,9 +20,6 @@ export function useCargaConSesion<T>(
   cargarDatos: (token: string) => Promise<T>,
   mensajeError: string
 ) {
-  const { isLoaded, isSignedIn } = useUser();
-  const { getToken } = useAuth();
-
   const [datos, setDatos] = useState<T | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -31,7 +28,7 @@ export function useCargaConSesion<T>(
     setCargando(true);
     setError('');
     try {
-      const token = await getToken();
+      const token = obtenerToken();
       if (!token) {
         throw new Error(
           'No se pudo obtener la sesión. Recarga e inténtalo de nuevo.'
@@ -47,23 +44,22 @@ export function useCargaConSesion<T>(
     } finally {
       setCargando(false);
     }
-  }, [getToken, cargarDatos, mensajeError]);
+  }, [cargarDatos, mensajeError]);
 
   useEffect(() => {
-    if (!isLoaded) return;
-    if (!isSignedIn) {
+    if (!estaFirmado()) {
       setCargando(false);
       return;
     }
     void recargar();
-  }, [isLoaded, isSignedIn, recargar]);
+  }, [recargar]);
 
   return {
     datos,
     error,
     recargar,
-    firmado: isLoaded && isSignedIn,
-    cargando: !isLoaded || cargando,
+    firmado: estaFirmado(),
+    cargando,
   };
 }
 

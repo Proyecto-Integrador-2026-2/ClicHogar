@@ -1,6 +1,6 @@
 /**
  * Pruebas del matcher de rutas protegidas (US-003, tarea #129).
- * Puras y sin Clerk: la decisión de guardia debe ser exacta para no
+ * Puras y sin red: la decisión de guardia debe ser exacta para no
  * bloquear páginas públicas ni dejar huecos.
  */
 import { describe, expect, test } from 'bun:test';

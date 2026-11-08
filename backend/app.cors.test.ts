@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
 process.env.DATABASE_URL ??= 'postgres://test';
-process.env.CLERK_SECRET_KEY ??= 'sk_test';
 
 const { buildApp } = await import('./app');
 

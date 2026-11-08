@@ -8,6 +8,7 @@ import {
   AppError,
   ConflictError,
   ForbiddenError,
+  GoneError,
   NotFoundError,
   TooManyRequestsError,
   UnauthorizedError,
@@ -24,6 +25,7 @@ describe('errores de dominio', () => {
     expect(new ForbiddenError().status).toBe(403);
     expect(new NotFoundError().status).toBe(404);
     expect(new ConflictError().status).toBe(409);
+    expect(new GoneError().status).toBe(410);
     expect(new TooManyRequestsError().status).toBe(429);
   });
 
@@ -36,6 +38,7 @@ describe('errores de dominio', () => {
     expect(new ForbiddenError().message).toContain('permisos');
     expect(new NotFoundError().message).toContain('no encontrado');
     expect(new ConflictError().message).toContain('ya existe');
+    expect(new GoneError().message).toContain('disponible');
     expect(new TooManyRequestsError().message).toContain('intentos');
   });
 

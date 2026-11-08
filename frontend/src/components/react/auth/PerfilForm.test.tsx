@@ -11,7 +11,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import React from 'react';
-import { clerkFalso, resetClerkFalso } from '../../../../test-setup';
+import { resetSesion } from '../../../../test-setup';
 import * as api from '../../../lib/usuarios-api';
 import PerfilForm from './PerfilForm';
 
@@ -30,7 +30,7 @@ const urlOriginal = { c: URL.createObjectURL, r: URL.revokeObjectURL };
 const revocadas: string[] = [];
 
 beforeEach(() => {
-  resetClerkFalso();
+  resetSesion();
   revocadas.length = 0;
   URL.createObjectURL = () => 'blob:preview';
   URL.revokeObjectURL = (u: string) => {
@@ -135,7 +135,7 @@ describe('PerfilForm: carga', () => {
 
   test('sin token de sesión muestra error', async () => {
     // Given: una sesión sin token
-    clerkFalso.getToken = async () => null;
+    localStorage.removeItem('ch-token');
     // When: se renderiza el formulario
     render(<PerfilForm />);
     // Then: muestra el error de sesión
@@ -236,7 +236,7 @@ describe('PerfilForm: edición', () => {
       ubicacion: 'Sabaneta',
     });
     // Then: viajan ubicación y foto, se libera la vista previa y se limpia la selección
-    expect(revocadas).toContain('blob:preview');
+    await waitFor(() => expect(revocadas).toContain('blob:preview'));
     expect(screen.queryByAltText(/Vista previa/)).toBeNull();
   });
 
@@ -270,7 +270,7 @@ describe('PerfilForm: edición', () => {
   test('sin token al guardar muestra el error de sesión', async () => {
     await cargado();
     // Given: un perfil cargado y una sesión que pierde el token
-    clerkFalso.getToken = async () => null;
+    localStorage.removeItem('ch-token');
     // When: se edita la descripción
     fireEvent.change(descripcion(), { target: { value: 'Cambio' } });
     // When: se envía el formulario

@@ -1,17 +1,13 @@
 /**
  * Formulario de inicio de sesión (US-002): orquesta estado, validación en
- * tiempo real (Esc 5-6), saneamiento (Esc 7/8), autenticación Clerk y
+ * tiempo real (Esc 5-6), saneamiento (Esc 7/8), autenticación propia (token en localStorage) y
  * redirección al panel principal. Errores genéricos sin revelar qué dato
  * falló (Esc 3-4) y alerta de bloqueo temporal (Esc 9). Primitivos
  * visuales en `fields.tsx`.
  */
 import React, { useMemo, useRef, useState } from 'react';
-import { useAuth, useSignIn } from '@clerk/clerk-react';
-import {
-  clasificarErrorSignIn,
-  mensajeErrorSignIn,
-} from '../../../lib/clerk-errors';
-import { obtenerPerfil } from '../../../lib/usuarios-api';
+import { iniciarSesion } from '../../../lib/usuarios-api';
+import { guardarToken } from '../../../lib/auth';
 import './auth.css';
 import {
   ErrorSummary,
@@ -30,9 +26,6 @@ import {
 } from './login.validation';
 
 export default function LoginForm() {
-  const { isLoaded, signIn, setActive } = useSignIn();
-  const { getToken } = useAuth();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -108,46 +101,16 @@ export default function LoginForm() {
       requestAnimationFrame(() => summaryRef.current?.focus());
       return;
     }
-    if (!isLoaded) return;
-
     setIsSubmitting(true);
     try {
-      // Saneamiento (Esc 7/8): sin espacios ni mayúsculas antes de enviar.
-      const resultado = await signIn.create({
-        identifier: sanearEmail(email),
-        password,
-      });
-
-      // Clerk puede pedir segundo factor u otros pasos: solo se avanza
-      // con sesión completa; el resto se informa en vez de quedarse mudo.
-      if (resultado.status !== 'complete') {
-        setGlobalError(
-          'No se pudo completar el inicio de sesión. Inténtalo de nuevo.'
-        );
-        return;
-      }
-      await setActive({ session: resultado.createdSessionId });
-
-      // Redirección post-login: al panel principal, que reúne todos
-      // los módulos. Se lee el perfil para exigir fila local
-      // sincronizada (404 → error visible, no redirect mudo).
+      const resp = await iniciarSesion({ email: sanearEmail(email), password });
+      guardarToken(resp.token);
       setIsRedirecting(true);
-      try {
-        const token = await getToken();
-        if (!token) {
-          throw new Error(
-            'No se pudo obtener la sesión. Recarga e inténtalo de nuevo.'
-          );
-        }
-        await obtenerPerfil(token);
-        window.location.href = '/dashboard';
-      } finally {
-        setIsRedirecting(false);
-      }
+      window.location.href = '/dashboard';
     } catch (err: unknown) {
-      // Genérico a propósito (Esc 3-4): jamás revela si falló el correo
-      // o la contraseña. El bloqueo temporal tiene mensaje propio (Esc 9).
-      setGlobalError(mensajeErrorSignIn(clasificarErrorSignIn(err)));
+      setGlobalError(
+        err instanceof Error ? err.message : 'No se pudo iniciar sesión.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -210,10 +173,14 @@ export default function LoginForm() {
                 autoComplete="current-password"
               />
 
+              <p className="ch-field__hint">
+                <a href="/olvide-contrasena">¿Olvidaste tu contraseña?</a>
+              </p>
+
               <button
                 type="submit"
                 className="ch-btn ch-btn--primary"
-                disabled={!isLoaded || ocupado}
+                disabled={ocupado}
                 aria-busy={ocupado}
               >
                 {ocupado && <span className="ch-spinner" aria-hidden="true" />}

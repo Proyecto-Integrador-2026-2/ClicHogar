@@ -7,8 +7,7 @@ import '../../styles/register-page.css';
 // Página de perfil público (US-004): misma composición y sistema visual
 // que login/register (fondo, temas, tokens `ch-`). Protegida por el
 // middleware: sin sesión redirige a `/login` (ver `src/middleware.ts`).
-// La isla se hidrata solo en el cliente por ClerkJS (ver PerfilIsla.tsx).
-const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
+// La isla se hidrata solo en el cliente en el navegador (ver PerfilIsla.tsx).
 ---
 <!doctype html>
 <html lang="es" data-theme="light">
@@ -46,7 +45,7 @@ const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
         <h1>Tu perfil público</h1>
         <p>Lo que verán otros miembros de la comunidad</p>
       </div>
-      <PerfilIsla client:only="react" publishableKey={publishableKey} />
+      <PerfilIsla client:only="react" />
     </main>
 
     <script>
@@ -56,6 +55,8 @@ const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
       initToolsBackground();
       initThemeToggle();
       initNavAuth();
+      import { initAuthGuard } from '../../scripts/auth-guard';
+      initAuthGuard();
     </script>
   </body>
 </html>

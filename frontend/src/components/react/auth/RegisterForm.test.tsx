@@ -1,6 +1,6 @@
 /**
- * Pruebas de RegisterForm: validación, alta en Clerk simulado, verificación
- * por código y sincronización del perfil con el backend.
+ * Pruebas de RegisterForm: validación, alta contra el backend (simulado),
+ * guardado del token y redirección según el rol.
  */
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import {
@@ -11,57 +11,28 @@ import {
   waitFor,
 } from '@testing-library/react';
 import React from 'react';
-import {
-  clerkFalso,
-  resetClerkFalso,
-  simularNavegacion,
-} from '../../../../test-setup';
+import { resetSesion, simularNavegacion } from '../../../../test-setup';
 import * as api from '../../../lib/usuarios-api';
 import RegisterForm from './RegisterForm';
 
 let nav: ReturnType<typeof simularNavegacion>;
 
-type Llamadas = { creado?: unknown; preparado?: unknown };
-let llamadas: Llamadas;
+const respuesta = (rol: api.RolBackend): api.RespuestaAuth => ({
+  token: 'token-nuevo',
+  usuario: { id: 'u1', rol } as api.UsuarioPublico,
+});
 
 beforeEach(() => {
-  resetClerkFalso();
+  localStorage.removeItem('ch-token');
   nav = simularNavegacion();
-  llamadas = {};
 });
 
 afterEach(() => {
   cleanup();
   nav.restaurar();
-  spyOn(api, 'sincronizarUsuarioConBackend').mockRestore();
+  spyOn(api, 'registrar').mockRestore();
+  resetSesion();
 });
-
-function configurarSignUp(extra: Record<string, unknown> = {}) {
-  clerkFalso.signUp = {
-    isLoaded: true,
-    signUp: {
-      create: async (datos: unknown) => {
-        llamadas.creado = datos;
-      },
-      prepareEmailAddressVerification: async (datos: unknown) => {
-        llamadas.preparado = datos;
-      },
-      attemptEmailAddressVerification: async () => ({
-        status: 'complete',
-        createdSessionId: 's1',
-      }),
-      ...extra,
-    },
-    setActive: async () => {},
-  };
-}
-
-/** Cambia en caliente la verificación del `signUp` que ya usa el componente. */
-function verificacionDevuelve(fn: () => Promise<unknown>) {
-  (
-    clerkFalso.signUp.signUp as Record<string, unknown>
-  ).attemptEmailAddressVerification = fn;
-}
 
 function llenar(rol = 'Afiliado') {
   const campo = (re: RegExp, valor: string) =>
@@ -84,43 +55,27 @@ function enviar() {
   );
 }
 
-async function hastaVerificacion(rol = 'Afiliado') {
-  configurarSignUp();
-  render(<RegisterForm />);
-  llenar(rol);
-  enviar();
-  await screen.findByText('Verifica tu correo');
-}
-
-function verificar(codigo = '123456') {
-  fireEvent.change(screen.getByLabelText(/Código de verificación/), {
-    target: { value: codigo },
-  });
-  fireEvent.submit(
-    screen.getByRole('button', { name: /Verificar cuenta/ }).closest('form')!
-  );
-}
-
-describe('RegisterForm: alta', () => {
-  test('envío vacío muestra resumen de errores y blur marca campos', async () => {
+describe('RegisterForm', () => {
+  test('envío vacío muestra el resumen de errores y blur marca campos', async () => {
     // Given: un formulario de registro vacío
-    configurarSignUp();
+    const registrar = spyOn(api, 'registrar');
     render(<RegisterForm />);
     const nombre = screen.getByLabelText(/Nombre completo/);
-    // When: se pierde el foco del nombre
+    // When: se pierde el foco del nombre (dos veces) y se envía
     fireEvent.blur(nombre);
     fireEvent.blur(nombre);
-    // When: se envía
     enviar();
-    // Then: muestra el resumen de errores
+    // Then: muestra el resumen de errores sin llamar al backend
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Hay un problema con tu registro'
     );
+    expect(registrar).not.toHaveBeenCalled();
+    // (el foco al resumen corre en el siguiente frame)
+    await new Promise((r) => setTimeout(r, 30));
   });
 
   test('un rol inválido se normaliza a vacío', () => {
     // Given: un formulario de registro
-    configurarSignUp();
     render(<RegisterForm />);
     const rol = screen.getByLabelText(
       /¿Cómo quieres usar/
@@ -135,188 +90,74 @@ describe('RegisterForm: alta', () => {
     expect(rol.value).toBe('');
   });
 
-  test('con Clerk sin cargar no envía', () => {
-    // Given: un Clerk que aún no cargó
-    clerkFalso.signUp = { isLoaded: false };
-    render(<RegisterForm />);
-    llenar();
-    // When: se llena el formulario y se envía
-    enviar();
-    // Then: no se crea ninguna cuenta
-    expect(llamadas.creado).toBeUndefined();
-  });
-
-  test('registro válido crea la cuenta y pasa a verificación', async () => {
-    // Given: un registro válido de afiliado
-    // When: se llena y se envía el formulario
-    await hastaVerificacion();
-    // Then: se crea la cuenta con el rol en la metadata y se pasa a verificación
-    expect(llamadas.creado).toMatchObject({
-      firstName: 'Ana Pérez',
-      emailAddress: 'ana@ejemplo.com',
-      unsafeMetadata: { rol: 'Afiliado' },
-    });
-    expect(llamadas.preparado).toEqual({ strategy: 'email_code' });
-    expect(
-      screen.getByText(/enviado un código a ana@ejemplo.com/)
-    ).toBeTruthy();
-  });
-
-  test('correo ya registrado', async () => {
-    // Given: un Clerk que rechaza con form_identifier_exists
-    configurarSignUp({
-      create: async () => {
-        throw { errors: [{ code: 'form_identifier_exists' }] };
-      },
-    });
-    render(<RegisterForm />);
-    llenar();
-    // When: se llena y se envía el formulario
-    enviar();
-    // Then: avisa que el correo ya existe
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'ya está asociado a una cuenta'
+  test('afiliado: registra, guarda el token y va a configurar el perfil', async () => {
+    // Given: un backend que crea la cuenta de un afiliado
+    const registrar = spyOn(api, 'registrar').mockResolvedValue(
+      respuesta('afiliado')
     );
-  });
-
-  test('otro error de Clerk usa su mensaje; uno desconocido, el genérico', async () => {
-    // Given: un Clerk que rechaza con un mensaje propio
-    configurarSignUp({
-      create: async () => {
-        throw { errors: [{ code: 'x', message: 'Contraseña filtrada' }] };
-      },
-    });
-    const { unmount } = render(<RegisterForm />);
-    llenar();
-    // When: se llena y se envía el formulario
-    enviar();
-    // Then: muestra el mensaje de Clerk
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'Contraseña filtrada'
-    );
-    unmount();
-
-    // Given: ahora un Clerk que lanza un Error plano
-    configurarSignUp({
-      create: async () => {
-        throw new Error('red');
-      },
-    });
     render(<RegisterForm />);
-    llenar();
-    // When: se llena y se envía el formulario
+    llenar('Afiliado');
+    // When: se envía
     enviar();
-    // Then: muestra el mensaje genérico
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'Ocurrió un error en el registro.'
-    );
-  });
-});
-
-describe('RegisterForm: verificación', () => {
-  test('afiliado verificado va a configurar el perfil', async () => {
-    // Given: un backend que responde con rol afiliado y un registro en la vista de verificación
-    const sync = spyOn(api, 'sincronizarUsuarioConBackend').mockResolvedValue({
-      rol: 'afiliado',
-    } as never);
-    await hastaVerificacion('Afiliado');
-    // When: se envía el código de verificación
-    verificar();
-    // Then: sincroniza el perfil y redirige a configurarlo
+    // Then: guarda el token y redirige a configurar el perfil
     await waitFor(() => expect(nav.destino()).toBe('/perfil/configurar'));
-    expect(sync).toHaveBeenCalledWith({
-      token: 'token-falso',
+    expect(localStorage.getItem('ch-token')).toBe('token-nuevo');
+    expect(registrar).toHaveBeenCalledWith({
       nombre: 'Ana Pérez',
+      email: 'ana@ejemplo.com',
+      password: 'Secreta123',
       rol: 'Afiliado',
     });
   });
 
-  test('usuario verificado va al dashboard', async () => {
-    // Given: un backend que responde con rol cliente y un registro en verificación
-    spyOn(api, 'sincronizarUsuarioConBackend').mockResolvedValue({
-      rol: 'cliente',
-    } as never);
-    await hastaVerificacion('Usuario');
-    // When: se envía el código de verificación
-    verificar();
+  test('usuario: registra y va al dashboard', async () => {
+    // Given: un backend que crea la cuenta de un cliente
+    spyOn(api, 'registrar').mockResolvedValue(respuesta('cliente'));
+    render(<RegisterForm />);
+    llenar('Usuario');
+    // When: se envía
+    enviar();
     // Then: redirige al dashboard
     await waitFor(() => expect(nav.destino()).toBe('/dashboard'));
   });
 
-  test('sin token no se puede crear el perfil', async () => {
-    await hastaVerificacion();
-    // Given: una verificación correcta pero sin token de sesión
-    clerkFalso.getToken = async () => null;
-    // When: se envía el código de verificación
-    verificar();
-    // Then: informa que la cuenta se verificó pero no se creó el perfil
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'no se pudo crear tu perfil'
+  test('error del backend: muestra su mensaje; otro valor, el genérico', async () => {
+    // Given: un backend que rechaza por correo repetido
+    const registrar = spyOn(api, 'registrar').mockRejectedValue(
+      new Error('Ya existe una cuenta con ese email.')
     );
-  });
-
-  test('registro incompleto informa los campos faltantes o un genérico', async () => {
-    await hastaVerificacion();
-    // Given: un Clerk que exige campos adicionales
-    verificacionDevuelve(async () => ({
-      status: 'missing_requirements',
-      missingFields: ['phone_number', 'username'],
-    }));
-    // When: se envía el código de verificación
-    verificar();
-    // Then: informa qué campos faltan
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'falta completar el registro: phone_number, username'
+    const { unmount } = render(<RegisterForm />);
+    llenar();
+    // When: se envía
+    enviar();
+    // Then: muestra el mensaje del backend y no guarda token
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Ya existe una cuenta con ese email.'
     );
+    expect(localStorage.getItem('ch-token')).toBeNull();
+    unmount();
 
-    // Given: ahora uno sin lista de campos faltantes
-    verificacionDevuelve(async () => ({
-      status: 'missing_requirements',
-    }));
-    // When: se envía de nuevo el código
-    verificar();
-    // Then: muestra el mensaje genérico de registro incompleto
-    await waitFor(() =>
-      expect(screen.getByRole('alert').textContent).toContain(
-        'quedó incompleto'
-      )
-    );
-  });
-
-  test('código incorrecto: mensaje de Clerk o genérico', async () => {
-    await hastaVerificacion();
-    // Given: un Clerk que rechaza con 'Código vencido'
-    verificacionDevuelve(async () => {
-      throw { errors: [{ message: 'Código vencido' }] };
-    });
-    // When: se envía el código de verificación
-    verificar();
-    // Then: muestra el mensaje de Clerk
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'Código vencido'
-    );
-
-    // Given: ahora un error sin mensaje
-    verificacionDevuelve(async () => {
-      throw { errors: [{}] };
-    });
-    // When: se envía de nuevo el código
-    verificar();
+    // Given: ahora un rechazo que no es Error
+    registrar.mockRejectedValue('boom');
+    render(<RegisterForm />);
+    llenar();
+    // When: se envía
+    enviar();
     // Then: muestra el mensaje genérico
-    await waitFor(() =>
-      expect(screen.getByRole('alert').textContent).toContain(
-        'Código de verificación incorrecto.'
-      )
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Ocurrió un error en el registro.'
     );
   });
 
-  test('con Clerk sin cargar la verificación no hace nada', async () => {
-    await hastaVerificacion();
-    // Given: un registro en verificación y un Clerk que deja de estar cargado
-    clerkFalso.signUp = { isLoaded: false };
-    // When: se envía el código de verificación
-    verificar();
-    // Then: no hace nada
-    expect(screen.queryByRole('alert')).toBeNull();
+  test('mientras registra deshabilita el formulario y avisa', async () => {
+    // Given: un backend que tarda en responder
+    spyOn(api, 'registrar').mockReturnValue(new Promise(() => {}));
+    render(<RegisterForm />);
+    llenar();
+    // When: se envía
+    enviar();
+    // Then: el botón cambia de texto y se informa el estado
+    expect(await screen.findByText('Creando tu cuenta...')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toContain('Contactando');
   });
 });

@@ -1,44 +1,61 @@
 /**
  * Pruebas HTTP del módulo `usuarios` contra la app real con `app.handle()`:
- * sin puerto, sin Postgres y sin Clerk. Cubre controllers, DTOs y el
- * mapeo de errores (401/403/404/400/500) del handler global.
+ * sin puerto ni Postgres. La sesión se simula con `authService` y los
+ * servicios con `spyOn`. Cubre controllers, DTOs y el mapeo de errores.
  */
 import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 
 process.env.DATABASE_URL ??= 'postgres://test';
-process.env.CLERK_SECRET_KEY ??= 'sk_test';
 
 import {
   ForbiddenError,
   NotFoundError,
   UnauthorizedError,
 } from '../../../shared/errors/app-error';
-import type { SesionClerk } from '../../../shared/auth/clerk';
+import { authService } from '../../auth/services/auth.service';
+import type { Usuario } from '../entities/usuario.entity';
+import { usuariosRepository } from '../repositories/usuarios.repository';
 import { disponibilidadService } from '../services/disponibilidad.service';
 import { perfilService } from '../services/perfil.service';
-import { registroService } from '../services/registro.service';
-import { usuariosRepository } from '../repositories/usuarios.repository';
-
-const SESION: SesionClerk = {
-  clerkId: 'clerk-1',
-  email: 'ana@ejemplo.com',
-  nombre: 'Ana',
-  rolClerk: undefined,
-};
-
-let comportamientoSesion: () => Promise<SesionClerk> = async () => SESION;
-
-mock.module('../../../shared/auth/clerk', () => ({
-  sesionDesdeHeaders: (...args: unknown[]) =>
-    comportamientoSesion(...(args as [])),
-}));
 
 const { buildApp } = await import('../../../app');
 
+const FECHA = new Date('2026-01-01T00:00:00.000Z');
+const OTRO_ID = '22222222-2222-4222-8222-222222222222';
+
+const USUARIO: Usuario = {
+  id: 'u-1',
+  nombre: 'Ana',
+  email: 'ana@ejemplo.com',
+  passwordHash: 'hash-secreto',
+  rol: 'cliente',
+  fotoUrl: null,
+  descripcion: null,
+  ubicacion: null,
+  activo: true,
+  creadoEn: FECHA,
+  actualizadoEn: FECHA,
+};
+
+const PERFIL_PUBLICO = {
+  id: 'u-1',
+  nombre: 'Ana',
+  email: 'ana@ejemplo.com',
+  rol: 'cliente' as const,
+  fotoUrl: null,
+  descripcion: null,
+  ubicacion: null,
+  creadoEn: FECHA,
+};
+
 afterEach(() => {
   mock.restore();
-  comportamientoSesion = async () => SESION;
 });
+
+/** Sesión válida de `USUARIO` para las rutas protegidas. */
+function conSesion() {
+  return spyOn(authService, 'resolverUsuario').mockResolvedValue(USUARIO);
+}
 
 function pedido(ruta: string, metodo: string, cuerpo?: unknown) {
   return buildApp().handle(
@@ -53,128 +70,108 @@ function pedido(ruta: string, metodo: string, cuerpo?: unknown) {
   );
 }
 
-const PERFIL_PUBLICO = {
-  id: 'u-1',
-  nombre: 'Ana',
-  email: 'ana@ejemplo.com',
-  rol: 'cliente',
-  fotoUrl: null,
-  descripcion: null,
-  ubicacion: null,
-  creadoEn: new Date('2026-01-01T00:00:00.000Z'),
-};
+/** PATCH multipart con un archivo `foto`. */
+function patchConFoto(bytes: Uint8Array, nombre: string, tipo: string) {
+  const forma = new FormData();
+  forma.append('foto', new File([bytes], nombre, { type: tipo }));
+  return buildApp().handle(
+    new Request('http://localhost/api/usuarios/yo', {
+      method: 'PATCH',
+      headers: { authorization: 'Bearer sesion-falsa' },
+      body: forma,
+    })
+  );
+}
 
-const FILA_USUARIO = {
-  ...PERFIL_PUBLICO,
-  clerkId: 'clerk-1',
-  passwordHash: null,
-  activo: true,
-  actualizadoEn: new Date('2026-01-01T00:00:00.000Z'),
-};
+describe('GET /api/usuarios/yo', () => {
+  test('devuelve el perfil público (sin hash) con 200', async () => {
+    // Given: una sesión válida
+    conSesion();
+    // When: se pide GET /api/usuarios/yo
+    const res = await pedido('/api/usuarios/yo', 'GET');
+    // Then: responde 200 con el correo y sin el hash de contraseña
+    expect(res.status).toBe(200);
+    const cuerpo = (await res.json()) as Record<string, unknown>;
+    expect(cuerpo.email).toBe('ana@ejemplo.com');
+    expect(cuerpo).not.toHaveProperty('passwordHash');
+  });
 
-describe('POST /api/usuarios/sync', () => {
-  test('nuevo devuelve 201, existente 200', async () => {
-    // Given: un servicio que primero crea el perfil y luego devuelve uno ya existente
-    const sincronizar = spyOn(registroService, 'sincronizarDesdeClerk');
-    sincronizar.mockResolvedValue({
-      usuario: PERFIL_PUBLICO,
-      creado: true,
-    });
-
-    // When: se envía POST /api/usuarios/sync
-    const creado = await pedido('/api/usuarios/sync', 'POST', {
-      nombre: 'Ana',
-    });
-    // Then: el perfil nuevo responde 201
-    expect(creado.status).toBe(201);
-
-    sincronizar.mockResolvedValue({
-      usuario: PERFIL_PUBLICO,
-      creado: false,
-    });
-    // When: se envía de nuevo con el perfil ya creado
-    const existente = await pedido('/api/usuarios/sync', 'POST', {});
-    // Then: el existente responde 200
-    expect(existente.status).toBe(200);
+  test('sin sesión responde 401', async () => {
+    // Given: una sesión que no existe
+    spyOn(authService, 'resolverUsuario').mockRejectedValue(
+      new UnauthorizedError('Sesión inválida o expirada.')
+    );
+    // When: se pide GET /api/usuarios/yo
+    const res = await pedido('/api/usuarios/yo', 'GET');
+    // Then: responde 401
+    expect(res.status).toBe(401);
   });
 });
 
-describe('GET /api/usuarios/yo', () => {
-  test('devuelve el perfil con 200', async () => {
-    // Given: un usuario existente en el repositorio
-    spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(
-      FILA_USUARIO
+describe('GET /api/usuarios/:id (perfil público)', () => {
+  test('200 sin sesión y sin datos sensibles', async () => {
+    // Given: un usuario existente
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(USUARIO);
+    // When: se pide sin cabecera Authorization
+    const res = await buildApp().handle(
+      new Request(`http://localhost/api/usuarios/${OTRO_ID}`)
     );
-
-    // When: se pide GET /api/usuarios/yo
-    const respuesta = await pedido('/api/usuarios/yo', 'GET');
-
-    // Then: responde 200 con el email del perfil
-    expect(respuesta.status).toBe(200);
-    const cuerpo = (await respuesta.json()) as { email: string };
-    expect(cuerpo.email).toBe('ana@ejemplo.com');
+    // Then: responde 200 con la forma pública
+    expect(res.status).toBe(200);
+    const cuerpo = (await res.json()) as Record<string, unknown>;
+    expect(cuerpo.nombre).toBe('Ana');
+    expect(cuerpo).not.toHaveProperty('passwordHash');
   });
 
-  test('sin fila local responde 404', async () => {
-    // Given: un repositorio sin fila para esa sesión
-    spyOn(usuariosRepository, 'buscarPorClerkId').mockResolvedValue(null);
-
-    // When: se pide GET /api/usuarios/yo
-    const respuesta = await pedido('/api/usuarios/yo', 'GET');
-
+  test('404 si no existe', async () => {
+    // Given: un usuario que no existe
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(undefined);
+    // When: se pide
+    const res = await pedido(`/api/usuarios/${OTRO_ID}`, 'GET');
     // Then: responde 404 NotFoundError
-    expect(respuesta.status).toBe(404);
-    const cuerpo = (await respuesta.json()) as { error: string };
-    expect(cuerpo.error).toBe('NotFoundError');
-  });
-
-  test('fallo inesperado responde 500 genérico', async () => {
-    // Given: un repositorio que lanza un error inesperado de base de datos
-    const consola = spyOn(console, 'error');
-    consola.mockImplementation(() => {});
-    spyOn(usuariosRepository, 'buscarPorClerkId').mockRejectedValue(
-      new Error('caída de BD')
+    expect(res.status).toBe(404);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      'NotFoundError'
     );
-
-    // When: se pide GET /api/usuarios/yo
-    const respuesta = await pedido('/api/usuarios/yo', 'GET');
-
-    // Then: responde 500 genérico, sin filtrar el detalle interno
-    expect(respuesta.status).toBe(500);
-    const cuerpo = (await respuesta.json()) as {
-      error: string;
-      message: string;
-    };
-    expect(cuerpo.error).toBe('InternalServerError');
-    expect(cuerpo.message).not.toContain('caída');
   });
 });
 
 describe('PATCH /api/usuarios/yo', () => {
-  test('actualiza parcial con 200', async () => {
-    // Given: un servicio que acepta el patch de descripción
-    const actualizar = spyOn(perfilService, 'actualizarPerfil');
-    actualizar.mockResolvedValue({
-      ...PERFIL_PUBLICO,
-      descripcion: 'Plomera',
-    });
-
-    // When: se envía PATCH /api/usuarios/yo
-    const respuesta = await pedido('/api/usuarios/yo', 'PATCH', {
-      descripcion: 'Plomera',
-    });
-
-    // Then: responde 200 y el servicio recibe el clerkId y la descripción
-    expect(respuesta.status).toBe(200);
+  test('actualiza parcial con 200 usando el usuario de la sesión', async () => {
+    // Given: una sesión válida y un servicio que acepta el patch
+    conSesion();
+    const actualizar = spyOn(
+      perfilService,
+      'actualizarPerfil'
+    ).mockResolvedValue({ ...PERFIL_PUBLICO, descripcion: 'Plomera' });
+    // When: se envía PATCH /api/usuarios/yo (multipart, sin foto)
+    const forma = new FormData();
+    forma.append('descripcion', 'Plomera');
+    const res = await buildApp().handle(
+      new Request('http://localhost/api/usuarios/yo', {
+        method: 'PATCH',
+        headers: { authorization: 'Bearer sesion-falsa' },
+        body: forma,
+      })
+    );
+    // Then: responde 200 y el servicio recibe el id de la sesión y no hay foto
+    expect(res.status).toBe(200);
     expect(actualizar).toHaveBeenCalledWith(
-      expect.objectContaining({ clerkId: 'clerk-1', descripcion: 'Plomera' })
+      expect.objectContaining({
+        usuarioId: 'u-1',
+        descripcion: 'Plomera',
+        foto: undefined,
+      })
     );
   });
 
-  test('acepta foto PNG multipart y la reenvía como bytes', async () => {
-    // Given: un servicio que acepta la foto y un PNG mínimo válido en multipart
-    const actualizar = spyOn(perfilService, 'actualizarPerfil');
-    actualizar.mockResolvedValue({
+  test('acepta una foto PNG y la reenvía como bytes', async () => {
+    // Given: una sesión válida y un servicio que acepta la foto
+    conSesion();
+    const actualizar = spyOn(
+      perfilService,
+      'actualizarPerfil'
+    ).mockResolvedValue({
       ...PERFIL_PUBLICO,
       fotoUrl: '/uploads/perfiles/falsa.jpg',
     });
@@ -184,23 +181,13 @@ describe('PATCH /api/usuarios/yo', () => {
       0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
       0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde,
     ]);
-    const forma = new FormData();
-    forma.append('foto', new File([png], 'foto.png', { type: 'image/png' }));
-
-    // When: se envía PATCH /api/usuarios/yo con la foto
-    const respuesta = await buildApp().handle(
-      new Request('http://localhost/api/usuarios/yo', {
-        method: 'PATCH',
-        headers: { authorization: 'Bearer sesion-falsa' },
-        body: forma,
-      })
-    );
-
+    // When: se envía PATCH con la foto
+    const res = await patchConFoto(png, 'foto.png', 'image/png');
     // Then: responde 200 y el servicio recibe la foto como bytes con su tamaño
-    expect(respuesta.status).toBe(200);
+    expect(res.status).toBe(200);
     expect(actualizar).toHaveBeenCalledWith(
       expect.objectContaining({
-        clerkId: 'clerk-1',
+        usuarioId: 'u-1',
         foto: expect.objectContaining({
           mimeDeclarado: 'image/png',
           tamano: png.length,
@@ -208,91 +195,130 @@ describe('PATCH /api/usuarios/yo', () => {
       })
     );
   });
+
+  test('un archivo que no es imagen responde 400, nunca 500', async () => {
+    // Given: un script renombrado como .jpg
+    conSesion();
+    const actualizar = spyOn(perfilService, 'actualizarPerfil');
+    const falso = new TextEncoder().encode('<script>alert(1)</script>');
+    // When: se envía como foto
+    const res = await patchConFoto(falso, 'foto.jpg', 'image/jpeg');
+    // Then: responde 400 con el mensaje genérico y no llega al servicio
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      'ValidationError'
+    );
+    expect(actualizar).not.toHaveBeenCalled();
+  });
 });
 
 describe('disponibilidad', () => {
   test('PUT reemplaza con 200', async () => {
-    // Given: un servicio que guarda y devuelve una franja
-    const slots = [{ diaSemana: 1, franjaHoraria: 'tarde' }];
-    spyOn(disponibilidadService, 'guardar').mockResolvedValue(slots);
-
-    // When: se envía PUT /api/usuarios/disponibilidad
-    const respuesta = await pedido('/api/usuarios/disponibilidad', 'PUT', {
-      slots: [{ dia: 1, franja: 'tarde' }],
-    });
-
-    // Then: responde 200 con la franja guardada
-    expect(respuesta.status).toBe(200);
-    expect(await respuesta.json()).toEqual([
+    // Given: una sesión válida y un servicio que guarda y devuelve una franja
+    conSesion();
+    const guardar = spyOn(disponibilidadService, 'guardar').mockResolvedValue([
       { diaSemana: 1, franjaHoraria: 'tarde' },
     ]);
+    // When: se envía PUT /api/usuarios/disponibilidad
+    const res = await pedido('/api/usuarios/disponibilidad', 'PUT', {
+      slots: [{ dia: 1, franja: 'tarde' }],
+    });
+    // Then: responde 200 con la franja y usa el id de la sesión
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([
+      { diaSemana: 1, franjaHoraria: 'tarde' },
+    ]);
+    expect(guardar).toHaveBeenCalledWith('u-1', [{ dia: 1, franja: 'tarde' }]);
   });
 
   test('PUT con cliente responde 403', async () => {
     // Given: un servicio que rechaza porque el rol es cliente
+    conSesion();
     spyOn(disponibilidadService, 'guardar').mockRejectedValue(
-      new ForbiddenError(
-        'Esta sección es exclusiva para perfiles de Afiliados.'
-      )
+      new ForbiddenError('Esta sección es exclusiva para Afiliados.')
     );
-
     // When: se envía PUT /api/usuarios/disponibilidad
-    const respuesta = await pedido('/api/usuarios/disponibilidad', 'PUT', {
+    const res = await pedido('/api/usuarios/disponibilidad', 'PUT', {
       slots: [],
     });
-
     // Then: responde 403
-    expect(respuesta.status).toBe(403);
+    expect(res.status).toBe(403);
   });
 
-  test('GET devuelve la matriz con 200', async () => {
-    // Given: un servicio con la matriz vacía
-    spyOn(disponibilidadService, 'obtener').mockResolvedValue([]);
+  test('PUT con cuerpo inválido responde 400', async () => {
+    // Given: una sesión válida
+    conSesion();
+    // When: se envía un cuerpo sin slots
+    const res = await pedido('/api/usuarios/disponibilidad', 'PUT', {});
+    // Then: responde 400
+    expect(res.status).toBe(400);
+  });
 
+  test('GET devuelve la matriz con 200 y propaga un 404 del servicio', async () => {
+    // Given: una sesión válida y un servicio con la matriz vacía
+    conSesion();
+    const obtener = spyOn(disponibilidadService, 'obtener').mockResolvedValue(
+      []
+    );
     // When: se pide GET /api/usuarios/disponibilidad
-    const respuesta = await pedido('/api/usuarios/disponibilidad', 'GET');
-
+    const ok = await pedido('/api/usuarios/disponibilidad', 'GET');
     // Then: responde 200 con un arreglo vacío
-    expect(respuesta.status).toBe(200);
-    expect(await respuesta.json()).toEqual([]);
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual([]);
+    // Given: ahora un servicio que lanza NotFoundError
+    obtener.mockRejectedValue(new NotFoundError('Sin perfil.'));
+    // When: se pide otra vez
+    const noEncontrado = await pedido('/api/usuarios/disponibilidad', 'GET');
+    // Then: el error de dominio se traduce a 404
+    expect(noEncontrado.status).toBe(404);
   });
 });
 
-describe('errores globales', () => {
-  test('sin sesión responde 401', async () => {
-    // Given: una sesión que Clerk rechaza
-    comportamientoSesion = async () => {
-      throw new UnauthorizedError('Sesión inválida.');
-    };
-
-    // When: se pide GET /api/usuarios/yo
-    const respuesta = await pedido('/api/usuarios/yo', 'GET');
-
-    // Then: responde 401
-    expect(respuesta.status).toBe(401);
+describe('GET /api/usuarios/:id/disponibilidad (perfil del postulante)', () => {
+  test('200 con la matriz del afiliado para cualquier usuario con sesión', async () => {
+    // Given: una sesión válida y un afiliado con una franja
+    conSesion();
+    const obtener = spyOn(disponibilidadService, 'obtener').mockResolvedValue([
+      { diaSemana: 1, franjaHoraria: 'tarde' },
+    ]);
+    // When: se pide su disponibilidad
+    const res = await pedido(`/api/usuarios/${OTRO_ID}/disponibilidad`, 'GET');
+    // Then: responde 200 con su matriz (la del id pedido, no la de la sesión)
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([
+      { diaSemana: 1, franjaHoraria: 'tarde' },
+    ]);
+    expect(obtener).toHaveBeenCalledWith(OTRO_ID);
   });
 
-  test('ruta inexistente responde 404', async () => {
-    // Given: una ruta que no existe en la app
-    // When: se pide GET /api/no-existe
-    const respuesta = await pedido('/api/no-existe', 'GET');
-
-    // Then: responde 404 NotFoundError
-    expect(respuesta.status).toBe(404);
-    const cuerpo = (await respuesta.json()) as { error: string };
-    expect(cuerpo.error).toBe('NotFoundError');
-  });
-
-  test('NotFoundError del servicio se traduce', async () => {
-    // Given: un servicio que lanza NotFoundError
-    spyOn(disponibilidadService, 'obtener').mockRejectedValue(
-      new NotFoundError('Sin perfil.')
+  test('401 sin sesión y 404 si el usuario no existe', async () => {
+    // Given: una sesión que no existe
+    spyOn(authService, 'resolverUsuario').mockRejectedValue(
+      new UnauthorizedError('Sesión inválida o expirada.')
     );
+    // When / Then: 401
+    expect(
+      (await pedido(`/api/usuarios/${OTRO_ID}/disponibilidad`, 'GET')).status
+    ).toBe(401);
+    // Given: una sesión válida y un usuario inexistente
+    mock.restore();
+    conSesion();
+    spyOn(disponibilidadService, 'obtener').mockRejectedValue(
+      new NotFoundError('Usuario no encontrado.')
+    );
+    // When / Then: 404
+    expect(
+      (await pedido(`/api/usuarios/${OTRO_ID}/disponibilidad`, 'GET')).status
+    ).toBe(404);
+  });
 
-    // When: se pide GET /api/usuarios/disponibilidad
-    const respuesta = await pedido('/api/usuarios/disponibilidad', 'GET');
-
-    // Then: el error de dominio se traduce a 404
-    expect(respuesta.status).toBe(404);
+  test('400 si el id no es uuid (en este y en el perfil público)', async () => {
+    // Given: una sesión válida
+    conSesion();
+    // When / Then: ambos responden 400 en vez de reventar la consulta
+    expect(
+      (await pedido('/api/usuarios/abc/disponibilidad', 'GET')).status
+    ).toBe(400);
+    expect((await pedido('/api/usuarios/abc', 'GET')).status).toBe(400);
   });
 });
