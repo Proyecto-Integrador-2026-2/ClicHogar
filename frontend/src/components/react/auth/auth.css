@@ -843,3 +843,68 @@ textarea.ch-field__input {
   margin: 12px 0 4px;
   font-size: 1rem;
 }
+
+/* Ofertas recibidas y perfil público del afiliado (US-012) */
+.ch-ofertas {
+  margin-top: 24px;
+}
+.ch-ofertas__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.ch-oferta {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--ch-border, rgba(127, 127, 127, 0.3));
+  border-radius: 12px;
+}
+.ch-oferta__perfil {
+  flex: none;
+}
+.ch-oferta__cuerpo {
+  min-width: 0;
+}
+.ch-oferta__mensaje {
+  margin: 6px 0;
+  font-style: italic;
+}
+.ch-autor__foto--vacia {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ch-border, rgba(127, 127, 127, 0.3));
+  font-weight: 700;
+}
+.ch-estrellas {
+  color: #f5a623;
+  font-weight: 600;
+}
+.ch-estrellas--vacio {
+  color: inherit;
+  font-weight: 400;
+  opacity: 0.7;
+}
+.ch-horario {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: center;
+}
+.ch-horario th,
+.ch-horario td {
+  padding: 6px;
+  border: 1px solid var(--ch-border, rgba(127, 127, 127, 0.3));
+}
+.ch-horario__si {
+  background: rgba(34, 197, 94, 0.25);
+}
+.ch-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

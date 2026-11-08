@@ -97,6 +97,34 @@ export const tareasRepository = {
   },
 
   /**
+   * "Mis solicitudes" (US-012): las tareas de un usuario, la más reciente
+   * primero, con cuántas ofertas lleva cada una. Tope de 100.
+   */
+  async listarPorAutor(
+    usuarioId: string
+  ): Promise<
+    Array<{ tarea: Tarea; autorNombre: string; totalOfertas: number }>
+  > {
+    const filas = await sql<
+      (TareaRow & { autor_nombre: string; total_ofertas: number })[]
+    >`
+      SELECT t.id, t.usuario_id, t.titulo, t.descripcion, t.categoria, t.estado, t.ubicacion, t.latitud, t.longitud, t.creado_en, t.actualizado_en,
+             u.nombre AS autor_nombre,
+             (SELECT COUNT(*)::int FROM ofertas o WHERE o.tarea_id = t.id) AS total_ofertas
+      FROM tareas t
+      JOIN usuarios u ON u.id = t.usuario_id
+      WHERE t.usuario_id = ${usuarioId}
+      ORDER BY t.creado_en DESC, t.id DESC
+      LIMIT 100
+    `;
+    return filas.map((fila) => ({
+      tarea: aTarea(fila),
+      autorNombre: fila.autor_nombre,
+      totalOfertas: fila.total_ofertas,
+    }));
+  },
+
+  /**
    * Tablero de afiliados (US-008): solo solicitudes `abierta` (las
    * asignadas o finalizadas quedan fuera), recientes primero, con el
    * nombre del autor. Paginado por `limite`/`desplazamiento`; el

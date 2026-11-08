@@ -6,6 +6,11 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import {
   ErrorSesionExpirada,
+  ErrorSinPermisoOfertas,
+  listarMisTareas,
+  listarOfertasRecibidas,
+  obtenerDisponibilidadDe,
+  obtenerPerfilPublico,
   ErrorTareaNoAceptaOfertas,
   ErrorYaPostulado,
   enviarOferta,
@@ -292,6 +297,85 @@ describe('enviarOferta (US-011)', () => {
     simular(new Error('offline'));
     // When / Then: mensaje de falta de conexión
     await expect(enviarOferta('tk', 't1')).rejects.toThrow(SIN_RED);
+  });
+});
+
+describe('listarOfertasRecibidas (US-012)', () => {
+  test('llama a /ofertas con el token y devuelve la lista', async () => {
+    // Given: un backend que responde con una oferta
+    simular(json([{ id: 'o1' }]));
+    // When: se piden las ofertas (el id se codifica)
+    const lista = await listarOfertasRecibidas('tk', 't 1');
+    // Then: llama a la ruta con Bearer y timeout
+    expect(lista).toEqual([{ id: 'o1' } as never]);
+    expect(ultima?.url).toBe('http://api.test/api/tareas/t%201/ofertas');
+    expect(
+      (ultima?.init?.headers as Record<string, string>).Authorization
+    ).toBe('Bearer tk');
+    expect(ultima?.init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  test('403 es sin permiso, 404 tarea no disponible, 401 sesión expirada', async () => {
+    // Given / When / Then: un 403
+    simular(json({ message: 'No tienes los permisos' }, 403));
+    await expect(listarOfertasRecibidas('tk', 't1')).rejects.toBeInstanceOf(
+      ErrorSinPermisoOfertas
+    );
+    await expect(listarOfertasRecibidas('tk', 't1')).rejects.toThrow(
+      'No tienes los permisos necesarios para ver las ofertas de esta tarea'
+    );
+    // Given / When / Then: un 404
+    simular(json({}, 404));
+    await expect(listarOfertasRecibidas('tk', 't1')).rejects.toBeInstanceOf(
+      ErrorTareaNoDisponible
+    );
+    // Given / When / Then: un 401
+    simular(json({}, 401));
+    await expect(listarOfertasRecibidas('tk', 't1')).rejects.toBeInstanceOf(
+      ErrorSesionExpirada
+    );
+  });
+});
+
+describe('listarMisTareas, obtenerPerfilPublico y obtenerDisponibilidadDe (US-012)', () => {
+  test('listarMisTareas pide /tareas/mias con el token', async () => {
+    // Given: un backend con una tarea propia
+    simular(json([{ id: 't1', totalOfertas: 2 }]));
+    // When: se piden mis solicitudes
+    const lista = await listarMisTareas('tk');
+    // Then: llama a la ruta con Bearer
+    expect(lista[0]?.totalOfertas).toBe(2);
+    expect(ultima?.url).toBe('http://api.test/api/tareas/mias');
+    expect(
+      (ultima?.init?.headers as Record<string, string>).Authorization
+    ).toBe('Bearer tk');
+  });
+
+  test('obtenerPerfilPublico no manda token y avisa si no hay red', async () => {
+    // Given: un backend con un perfil
+    simular(json({ id: 'u9', nombre: 'José' }));
+    // When: se lee el perfil público (id codificado)
+    expect((await obtenerPerfilPublico('u 9')).id).toBe('u9');
+    // Then: llama a /api/usuarios/:id sin Authorization
+    expect(ultima?.url).toBe('http://api.test/api/usuarios/u%209');
+    expect(ultima?.init?.headers).toBeUndefined();
+    // Given: un fallo de red
+    simular(new Error('offline'));
+    // When / Then: mensaje de falta de conexión
+    await expect(obtenerPerfilPublico('u9')).rejects.toThrow(SIN_RED);
+  });
+
+  test('obtenerDisponibilidadDe pide la matriz de otro usuario con el token', async () => {
+    // Given: un backend con una franja
+    simular(json([{ diaSemana: 1, franjaHoraria: 'tarde' }]));
+    // When: se pide la disponibilidad de u9
+    const slots = await obtenerDisponibilidadDe('tk', 'u9');
+    // Then: llama a /api/usuarios/:id/disponibilidad con Bearer
+    expect(slots).toEqual([{ diaSemana: 1, franjaHoraria: 'tarde' }]);
+    expect(ultima?.url).toBe('http://api.test/api/usuarios/u9/disponibilidad');
+    expect(
+      (ultima?.init?.headers as Record<string, string>).Authorization
+    ).toBe('Bearer tk');
   });
 });
 

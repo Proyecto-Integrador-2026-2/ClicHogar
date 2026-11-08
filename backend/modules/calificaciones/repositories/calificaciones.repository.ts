@@ -33,12 +33,17 @@ export const calificacionesRepository = {
   },
 
   /** Calificaciones recibidas por un usuario, la más reciente primero. */
-  listarPorDestinatario(destinatarioId: string): Promise<CalificacionFila[]> {
-    return sql<CalificacionFila[]>`
+  async listarPorDestinatario(
+    destinatarioId: string
+  ): Promise<CalificacionFila[]> {
+    const filas = await sql<CalificacionFila[]>`
       SELECT id, tarea_id, autor_id, destinatario_id, puntuacion, comentario, creado_en
       FROM calificaciones
       WHERE destinatario_id = ${destinatarioId}
       ORDER BY creado_en DESC
     `;
+    // Array plano: el resultado de Bun SQL es una subclase que Elysia no
+    // trata como JSON y por eso la respuesta salía sin cabeceras CORS.
+    return [...filas];
   },
 };

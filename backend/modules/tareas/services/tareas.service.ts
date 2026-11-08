@@ -10,8 +10,10 @@ import { crearExigirUsuario } from '../../usuarios/services/usuario-actual';
 import { ESTADO_INICIAL_TAREA } from '../categorias';
 import {
   toDetalleTarea,
+  toTareaPropia,
   toTareaPublica,
   type DetalleTarea,
+  type TareaPropia,
   type TareaPublica,
 } from '../mappers/tarea.mapper';
 import type { FiltroCercania, TareasRepositorio } from '../ports';
@@ -98,6 +100,14 @@ export function crearTareasService({ usuarios, tareas }: Dependencias) {
         estado: ESTADO_INICIAL_TAREA,
       });
       return toTareaPublica(tarea, autor.nombre);
+    },
+
+    /** "Mis solicitudes" (US-012): las tareas del usuario con sus ofertas. */
+    async listarPropias(usuarioId: string): Promise<TareaPropia[]> {
+      const filas = await tareas.listarPorAutor(usuarioId);
+      return filas.map(({ tarea, autorNombre, totalOfertas }) =>
+        toTareaPropia(tarea, autorNombre, totalOfertas)
+      );
     },
 
     /**

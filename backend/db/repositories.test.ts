@@ -509,3 +509,113 @@ describe('ofertasRepository (US-011)', () => {
     });
   });
 });
+
+describe('ofertasRepository.listarPorTarea (US-012)', () => {
+  const FILA = {
+    id: 'o1',
+    tarea_id: 't1',
+    afiliado_id: 'a1',
+    mensaje: 'Tengo experiencia',
+    estado: 'pendiente',
+    creado_en: FECHA,
+    afiliado_nombre: 'José',
+    afiliado_foto_url: '/f.jpg',
+    afiliado_descripcion: 'Plomero',
+    afiliado_ubicacion: 'Envigado',
+    promedio: 4.5,
+    total_calificaciones: 2,
+  };
+
+  test('devuelve las ofertas con el afiliado y su reputación', async () => {
+    // Given: una fila con el afiliado y su promedio
+    respuestas = [[FILA]];
+    // When: se listan las ofertas de la tarea
+    const lista = await ofertasRepository.listarPorTarea('t1');
+    // Then: mapea la oferta y el afiliado, y consulta con orden por reputación
+    expect(lista).toEqual([
+      {
+        id: 'o1',
+        mensaje: 'Tengo experiencia',
+        estado: 'pendiente',
+        creadoEn: FECHA,
+        afiliado: {
+          id: 'a1',
+          nombre: 'José',
+          fotoUrl: '/f.jpg',
+          descripcion: 'Plomero',
+          ubicacion: 'Envigado',
+          promedio: 4.5,
+          totalCalificaciones: 2,
+        },
+      },
+    ]);
+    expect(llamadas[0]?.texto).toContain('NULLS LAST');
+    expect(llamadas[0]?.valores).toEqual(['t1']);
+  });
+
+  test('un afiliado sin calificaciones llega con promedio null', async () => {
+    // Given: una fila sin promedio
+    respuestas = [[{ ...FILA, promedio: null, total_calificaciones: 0 }]];
+    // When: se listan
+    const [oferta] = await ofertasRepository.listarPorTarea('t1');
+    // Then: promedio null y 0 calificaciones
+    expect(oferta?.afiliado.promedio).toBeNull();
+    expect(oferta?.afiliado.totalCalificaciones).toBe(0);
+  });
+});
+
+describe('tareasRepository.listarPorAutor (US-012)', () => {
+  test('devuelve las tareas del usuario con su número de ofertas', async () => {
+    // Given: una fila de tarea con 3 ofertas
+    respuestas = [[{ ...FILA_TAREA, autor_nombre: 'Ana', total_ofertas: 3 }]];
+    // When: se listan las del usuario
+    const lista = await tareasRepository.listarPorAutor('u1');
+    // Then: mapea tarea, autor y total, y filtra por el usuario
+    expect(lista).toHaveLength(1);
+    expect(lista[0]?.tarea.id).toBe('t1');
+    expect(lista[0]?.autorNombre).toBe('Ana');
+    expect(lista[0]?.totalOfertas).toBe(3);
+    expect(llamadas[0]?.valores).toEqual(['u1']);
+  });
+});
+
+describe('listados de chat y calificaciones devuelven arrays planos', () => {
+  /** Imita el resultado de Bun SQL: una subclase de Array con filas dentro. */
+  class ResultadoSql<T> extends Array<T> {}
+  const comoResultadoSql = <T>(filas: T[]) => ResultadoSql.from(filas);
+
+  test('listarConversacion y listarPorDestinatario no filtran la subclase de SQL', async () => {
+    // Given: consultas que devuelven la subclase de Array de Bun SQL
+    respuestas = [
+      comoResultadoSql([
+        {
+          id: 'm1',
+          remitente_id: 'u1',
+          destinatario_id: 'u2',
+          contenido: 'Hola',
+          creado_en: FECHA,
+        },
+      ]),
+      comoResultadoSql([
+        {
+          id: 'c1',
+          tarea_id: null,
+          autor_id: 'u1',
+          destinatario_id: 'u2',
+          puntuacion: 5,
+          comentario: null,
+          creado_en: FECHA,
+        },
+      ]),
+    ];
+    // When: se listan la conversación y las calificaciones
+    const mensajes = await chatRepository.listarConversacion('u1', 'u2');
+    const calificaciones =
+      await calificacionesRepository.listarPorDestinatario('u2');
+    // Then: son arrays planos (Elysia solo añade CORS a respuestas JSON normales)
+    expect(Object.getPrototypeOf(mensajes)).toBe(Array.prototype);
+    expect(Object.getPrototypeOf(calificaciones)).toBe(Array.prototype);
+    expect(mensajes).toHaveLength(1);
+    expect(calificaciones).toHaveLength(1);
+  });
+});

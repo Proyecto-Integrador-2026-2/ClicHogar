@@ -397,3 +397,43 @@ describe('tareasService.obtenerDetalle (US-009)', () => {
     expect(buscar).toHaveBeenCalledWith('t-1', AFILIADO.id);
   });
 });
+
+describe('tareasService.listarPropias (US-012)', () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  test('mapea las tareas del usuario con su número de ofertas', async () => {
+    // Given: un repositorio con una tarea del usuario con 2 ofertas
+    const listar = spyOn(tareasRepository, 'listarPorAutor').mockResolvedValue([
+      {
+        tarea: {
+          id: 't-1',
+          usuarioId: 'u-1',
+          titulo: 'Arreglar grifo',
+          descripcion:
+            'El grifo de la cocina gotea día y noche, hay que repararlo.',
+          categoria: 'Plomería',
+          estado: 'abierta',
+          ubicacion: 'Belén',
+          latitud: null,
+          longitud: null,
+          creadoEn: new Date('2026-02-01T00:00:00.000Z'),
+          actualizadoEn: new Date('2026-02-01T00:00:00.000Z'),
+        },
+        autorNombre: 'Ana',
+        totalOfertas: 2,
+      },
+    ]);
+    // When: se listan sus solicitudes
+    const resultado = await tareasService.listarPropias('u-1');
+    // Then: llegan en forma pública con el total de ofertas
+    expect(listar).toHaveBeenCalledWith('u-1');
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0]).toMatchObject({
+      id: 't-1',
+      autorNombre: 'Ana',
+      totalOfertas: 2,
+    });
+  });
+});

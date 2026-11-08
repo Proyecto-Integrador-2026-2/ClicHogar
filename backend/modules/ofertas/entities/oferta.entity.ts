@@ -12,6 +12,27 @@ export type Oferta = {
   creadoEn: Date;
 };
 
+/**
+ * Oferta tal como la ve el creador de la tarea (US-012): con los datos
+ * públicos del afiliado y su reputación (promedio de calificaciones).
+ */
+export type OfertaRecibida = {
+  id: string;
+  mensaje: string | null;
+  estado: string;
+  creadoEn: Date;
+  afiliado: {
+    id: string;
+    nombre: string;
+    fotoUrl: string | null;
+    descripcion: string | null;
+    ubicacion: string | null;
+    /** Promedio de 1 a 5 (null si aún no tiene calificaciones). */
+    promedio: number | null;
+    totalCalificaciones: number;
+  };
+};
+
 /** Resultado de intentar registrar una oferta de forma atómica. */
 export type ResultadoOferta =
   | { tipo: 'creada'; oferta: Oferta }

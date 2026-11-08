@@ -27,16 +27,19 @@ export const chatRepository = {
   },
 
   /** Mensajes entre dos usuarios (en ambos sentidos), del más antiguo al más nuevo. */
-  listarConversacion(
+  async listarConversacion(
     usuarioId: string,
     otroId: string
   ): Promise<MensajeFila[]> {
-    return sql<MensajeFila[]>`
+    const filas = await sql<MensajeFila[]>`
       SELECT id, remitente_id, destinatario_id, contenido, creado_en
       FROM mensajes
       WHERE (remitente_id = ${usuarioId} AND destinatario_id = ${otroId})
          OR (remitente_id = ${otroId} AND destinatario_id = ${usuarioId})
       ORDER BY creado_en ASC
     `;
+    // Array plano: el resultado de Bun SQL es una subclase que Elysia no
+    // trata como JSON y por eso la respuesta salía sin cabeceras CORS.
+    return [...filas];
   },
 };

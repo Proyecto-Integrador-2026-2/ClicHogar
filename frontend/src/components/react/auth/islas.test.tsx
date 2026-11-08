@@ -13,7 +13,9 @@ import DashboardIsla from './DashboardIsla';
 import DetalleTareaIsla from './DetalleTareaIsla';
 import DisponibilidadIsla from './DisponibilidadIsla';
 import LoginIsla from './LoginIsla';
+import MisSolicitudesIsla from './MisSolicitudesIsla';
 import PerfilIsla from './PerfilIsla';
+import PerfilPublicoIsla from './PerfilPublicoIsla';
 import RegisterIsla from './RegisterIsla';
 import TableroIsla from './TableroIsla';
 import TareaIsla from './TareaIsla';
@@ -39,7 +41,9 @@ describe('islas', () => {
     DetalleTareaIsla,
     DisponibilidadIsla,
     LoginIsla,
+    MisSolicitudesIsla,
     PerfilIsla,
+    PerfilPublicoIsla,
     RegisterIsla,
     TableroIsla,
     TareaIsla,

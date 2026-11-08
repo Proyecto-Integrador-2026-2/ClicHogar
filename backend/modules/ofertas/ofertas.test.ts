@@ -10,10 +10,11 @@ import { authService } from '../auth/services/auth.service';
 import type { Tarea } from '../tareas/entities/tarea.entity';
 import { tareasRepository } from '../tareas/repositories/tareas.repository';
 import type { Usuario } from '../usuarios/entities/usuario.entity';
-import type { Oferta } from './entities/oferta.entity';
+import type { Oferta, OfertaRecibida } from './entities/oferta.entity';
 import { ofertasRepository } from './repositories/ofertas.repository';
 import {
   MENSAJE_NO_ACEPTA_OFERTAS,
+  MENSAJE_SIN_PERMISO_OFERTAS,
   MENSAJE_YA_POSTULADO,
   ofertasService,
 } from './services/ofertas.service';
@@ -276,5 +277,138 @@ describe('POST /api/tareas/:id/ofertas', () => {
     );
     // Then: responde 401
     expect(res.status).toBe(401);
+  });
+});
+
+const recibida = (
+  id: string,
+  promedio: number | null,
+  total = promedio === null ? 0 : 1
+): OfertaRecibida => ({
+  id,
+  mensaje: 'Tengo experiencia',
+  estado: 'pendiente',
+  creadoEn: FECHA,
+  afiliado: {
+    id: `a-${id}`,
+    nombre: `Afiliado ${id}`,
+    fotoUrl: null,
+    descripcion: null,
+    ubicacion: null,
+    promedio,
+    totalCalificaciones: total,
+  },
+});
+
+describe('ofertasService.listarRecibidas (US-012)', () => {
+  const AUTOR = { id: 'u-autor' };
+
+  test('Esc 1 y 5: el creador ve las ofertas con el promedio a 1 decimal', async () => {
+    // Given: el creador de la tarea y dos ofertas (una sin calificaciones)
+    const buscar = tareaEncontrada();
+    const listar = spyOn(ofertasRepository, 'listarPorTarea').mockResolvedValue(
+      [recibida('o-1', 4.333333), recibida('o-2', null)]
+    );
+    // When: pide las ofertas recibidas
+    const lista = await ofertasService.listarRecibidas(AUTOR, TAREA_ID);
+    // Then: conserva el orden del repositorio y redondea el promedio a 1 decimal
+    expect(lista.map((o) => o.id)).toEqual(['o-1', 'o-2']);
+    expect(lista[0]?.afiliado.promedio).toBe(4.3);
+    expect(lista[1]?.afiliado.promedio).toBeNull();
+    expect(buscar).toHaveBeenCalledWith(TAREA_ID, AUTOR.id);
+    expect(listar).toHaveBeenCalledWith(TAREA_ID);
+  });
+
+  test('Esc 3: sin ofertas devuelve una lista vacía', async () => {
+    // Given: una tarea propia sin postulaciones
+    tareaEncontrada();
+    spyOn(ofertasRepository, 'listarPorTarea').mockResolvedValue([]);
+    // When / Then: lista vacía
+    expect(await ofertasService.listarRecibidas(AUTOR, TAREA_ID)).toEqual([]);
+  });
+
+  test('Esc 4: otro usuario o afiliado recibe 403 sin ver a los postulantes', async () => {
+    // Given: una tarea de otra persona
+    tareaEncontrada();
+    const listar = spyOn(ofertasRepository, 'listarPorTarea');
+    // When / Then: tanto un afiliado como un cliente reciben 403 con el mensaje
+    for (const visitante of [AFILIADO, CLIENTE]) {
+      await expect(
+        ofertasService.listarRecibidas(visitante, TAREA_ID)
+      ).rejects.toThrow(MENSAJE_SIN_PERMISO_OFERTAS);
+    }
+    // Then: nunca se consultaron las ofertas
+    expect(listar).not.toHaveBeenCalled();
+  });
+
+  test('una tarea inexistente responde 404', async () => {
+    // Given: un repositorio sin esa tarea
+    spyOn(tareasRepository, 'buscarPorId').mockResolvedValue(undefined);
+    // When / Then: NotFoundError
+    await expect(
+      ofertasService.listarRecibidas(AUTOR, TAREA_ID)
+    ).rejects.toThrow('Tarea no encontrada.');
+  });
+});
+
+describe('GET /api/tareas/:id/ofertas', () => {
+  function pedir(ruta: string) {
+    return buildApp().handle(
+      new Request(`http://localhost${ruta}`, {
+        headers: { authorization: 'Bearer tok' },
+      })
+    );
+  }
+
+  test('200 con las ofertas; el visitante sale de la sesión', async () => {
+    // Given: una sesión válida y un servicio con una oferta
+    spyOn(authService, 'resolverUsuario').mockResolvedValue({
+      id: 'u-autor',
+    } as Usuario);
+    const listar = spyOn(ofertasService, 'listarRecibidas').mockResolvedValue([
+      recibida('o-1', 5),
+    ]);
+    // When: se piden las ofertas
+    const res = await pedir(`/api/tareas/${TAREA_ID}/ofertas`);
+    // Then: responde 200 y el servicio recibe al visitante y la tarea
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as OfertaRecibida[])[0]?.afiliado.promedio).toBe(
+      5
+    );
+    expect(listar).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'u-autor' }),
+      TAREA_ID
+    );
+  });
+
+  test('403 con el mensaje de permisos para quien no es el creador', async () => {
+    // Given: una sesión de otra persona (el servicio real decide)
+    spyOn(authService, 'resolverUsuario').mockResolvedValue(
+      AFILIADO as Usuario
+    );
+    tareaEncontrada();
+    // When: se piden las ofertas
+    const res = await pedir(`/api/tareas/${TAREA_ID}/ofertas`);
+    // Then: responde 403 con el mensaje de la historia y sin datos de postulantes
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { message: string }).message).toBe(
+      MENSAJE_SIN_PERMISO_OFERTAS
+    );
+  });
+
+  test('400 si el id no es uuid y 401 sin sesión', async () => {
+    // Given: una sesión válida
+    spyOn(authService, 'resolverUsuario').mockResolvedValue(
+      AFILIADO as Usuario
+    );
+    // When / Then: id inválido
+    expect((await pedir('/api/tareas/abc/ofertas')).status).toBe(400);
+    // Given: sin cabecera Authorization
+    mock.restore();
+    // When / Then: 401
+    const sin = await buildApp().handle(
+      new Request(`http://localhost/api/tareas/${TAREA_ID}/ofertas`)
+    );
+    expect(sin.status).toBe(401);
   });
 });

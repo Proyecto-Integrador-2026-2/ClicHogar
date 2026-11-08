@@ -63,6 +63,7 @@ function conId(id: string | null = ID) {
 
 beforeEach(() => {
   resetSesion();
+  spyOn(api, 'listarOfertasRecibidas').mockResolvedValue([]);
   process.env.PUBLIC_API_URL = 'http://api.test';
   nav = simularNavegacion(`?id=${ID}`);
 });
@@ -72,6 +73,7 @@ afterEach(() => {
   nav.restaurar();
   spyOn(api, 'obtenerTarea').mockRestore();
   spyOn(api, 'enviarOferta').mockRestore();
+  spyOn(api, 'listarOfertasRecibidas').mockRestore();
 });
 
 describe('DetalleTarea', () => {
@@ -230,6 +232,34 @@ describe('DetalleTarea', () => {
     expect(
       screen.getByText(/no puedes enviar una oferta a tu propia tarea/)
     ).toBeTruthy();
+  });
+
+  test('US-012: el creador ve las ofertas recibidas; un afiliado ajeno no', async () => {
+    // Given: una tarea propia
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({ esPropia: true, puedeOfertar: false })
+    );
+    // When: el creador abre el detalle
+    const { unmount } = render(<DetalleTarea />);
+    // Then: aparece la sección de ofertas recibidas y se pidió su lista
+    expect(
+      await screen.findByRole('region', { name: 'Ofertas recibidas' })
+    ).toBeTruthy();
+    expect(api.listarOfertasRecibidas).toHaveBeenCalledWith('token-falso', ID);
+    unmount();
+    // Given: una tarea ajena
+    spyOn(api, 'obtenerTarea').mockResolvedValue(detalle());
+    (
+      api.listarOfertasRecibidas as unknown as ReturnType<typeof spyOn>
+    ).mockClear();
+    // When: un afiliado abre el detalle
+    render(<DetalleTarea />);
+    await screen.findByRole('heading', { name: 'Arreglar grifo' });
+    // Then: no hay sección de ofertas ni se piden
+    expect(
+      screen.queryByRole('region', { name: 'Ofertas recibidas' })
+    ).toBeNull();
+    expect(api.listarOfertasRecibidas).not.toHaveBeenCalled();
   });
 
   test('sin foto ni datos opcionales del autor, solo muestra su nombre', async () => {

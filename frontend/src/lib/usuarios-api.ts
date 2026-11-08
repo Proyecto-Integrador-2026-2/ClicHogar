@@ -62,6 +62,19 @@ export class ErrorTareaNoAceptaOfertas extends Error {
   }
 }
 
+/**
+ * Quien pide las ofertas de una tarea no es su creador (US-012, Escenario
+ * 4): el backend responde 403 y no entrega ningún dato de los postulantes.
+ */
+export class ErrorSinPermisoOfertas extends Error {
+  constructor() {
+    super(
+      'No tienes los permisos necesarios para ver las ofertas de esta tarea'
+    );
+    this.name = 'ErrorSinPermisoOfertas';
+  }
+}
+
 type OpcionesPedir = {
   /** Convierte un fallo de `fetch` (sin red) en un mensaje amigable. */
   mensajeSinRed?: boolean;
@@ -432,6 +445,85 @@ export function enviarOferta(
         410: tareaNoAceptaOfertas,
       },
     }
+  );
+}
+
+/** Oferta recibida con el afiliado y su reputación (US-012). */
+export type OfertaRecibidaApi = {
+  id: string;
+  mensaje: string | null;
+  estado: string;
+  creadoEn: string;
+  afiliado: {
+    id: string;
+    nombre: string;
+    fotoUrl: string | null;
+    descripcion: string | null;
+    ubicacion: string | null;
+    /** Promedio de 1 a 5 con un decimal; null si no tiene calificaciones. */
+    promedio: number | null;
+    totalCalificaciones: number;
+  };
+};
+
+/**
+ * Ofertas que recibió una tarea, ordenadas por reputación y recencia (solo
+ * su creador). Lanza `ErrorSinPermisoOfertas` (403) o
+ * `ErrorTareaNoDisponible` (404).
+ */
+export function listarOfertasRecibidas(
+  token: string,
+  tareaId: string
+): Promise<OfertaRecibidaApi[]> {
+  return pedir(
+    `/api/tareas/${encodeURIComponent(tareaId)}/ofertas`,
+    token,
+    { signal: AbortSignal.timeout(TIMEOUT_TABLERO_MS) },
+    {
+      ...OPCIONES_TAREAS,
+      traducirEstados: {
+        403: () => new ErrorSinPermisoOfertas(),
+        404: tareaNoDisponible,
+      },
+    }
+  );
+}
+
+/** Una tarea propia con el número de ofertas que lleva (US-012). */
+export type TareaPropiaApi = TareaTablero & { totalOfertas: number };
+
+/** "Mis solicitudes": las tareas del usuario, la más reciente primero. */
+export function listarMisTareas(token: string): Promise<TareaPropiaApi[]> {
+  return pedir(
+    '/api/tareas/mias',
+    token,
+    { signal: AbortSignal.timeout(TIMEOUT_TABLERO_MS) },
+    OPCIONES_TAREAS
+  );
+}
+
+/** Perfil público de un usuario (lectura abierta). */
+export function obtenerPerfilPublico(id: string): Promise<UsuarioPublico> {
+  return pedir(
+    `/api/usuarios/${encodeURIComponent(id)}`,
+    null,
+    {},
+    {
+      mensajeSinRed: true,
+    }
+  );
+}
+
+/** Disponibilidad semanal de otro usuario (requiere sesión). */
+export function obtenerDisponibilidadDe(
+  token: string,
+  id: string
+): Promise<SlotApi[]> {
+  return pedir(
+    `/api/usuarios/${encodeURIComponent(id)}/disponibilidad`,
+    token,
+    {},
+    OPCIONES_TAREAS
   );
 }
 

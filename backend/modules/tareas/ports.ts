@@ -22,6 +22,11 @@ export interface TareasRepositorio {
   ): Promise<
     { tarea: Tarea; autor: AutorTarea; yaPostulado: boolean } | undefined
   >;
+  listarPorAutor(
+    usuarioId: string
+  ): Promise<
+    Array<{ tarea: Tarea; autorNombre: string; totalOfertas: number }>
+  >;
   listarAbiertas(
     opciones: OpcionesListado
   ): Promise<Array<{ tarea: Tarea; autorNombre: string }>>;

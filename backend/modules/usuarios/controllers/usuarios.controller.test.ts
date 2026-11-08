@@ -21,6 +21,7 @@ import { perfilService } from '../services/perfil.service';
 const { buildApp } = await import('../../../app');
 
 const FECHA = new Date('2026-01-01T00:00:00.000Z');
+const OTRO_ID = '22222222-2222-4222-8222-222222222222';
 
 const USUARIO: Usuario = {
   id: 'u-1',
@@ -113,7 +114,7 @@ describe('GET /api/usuarios/:id (perfil público)', () => {
     spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(USUARIO);
     // When: se pide sin cabecera Authorization
     const res = await buildApp().handle(
-      new Request('http://localhost/api/usuarios/u-1')
+      new Request(`http://localhost/api/usuarios/${OTRO_ID}`)
     );
     // Then: responde 200 con la forma pública
     expect(res.status).toBe(200);
@@ -126,7 +127,7 @@ describe('GET /api/usuarios/:id (perfil público)', () => {
     // Given: un usuario que no existe
     spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(undefined);
     // When: se pide
-    const res = await pedido('/api/usuarios/no-existe', 'GET');
+    const res = await pedido(`/api/usuarios/${OTRO_ID}`, 'GET');
     // Then: responde 404 NotFoundError
     expect(res.status).toBe(404);
     expect(((await res.json()) as { error: string }).error).toBe(
@@ -270,5 +271,54 @@ describe('disponibilidad', () => {
     const noEncontrado = await pedido('/api/usuarios/disponibilidad', 'GET');
     // Then: el error de dominio se traduce a 404
     expect(noEncontrado.status).toBe(404);
+  });
+});
+
+describe('GET /api/usuarios/:id/disponibilidad (perfil del postulante)', () => {
+  test('200 con la matriz del afiliado para cualquier usuario con sesión', async () => {
+    // Given: una sesión válida y un afiliado con una franja
+    conSesion();
+    const obtener = spyOn(disponibilidadService, 'obtener').mockResolvedValue([
+      { diaSemana: 1, franjaHoraria: 'tarde' },
+    ]);
+    // When: se pide su disponibilidad
+    const res = await pedido(`/api/usuarios/${OTRO_ID}/disponibilidad`, 'GET');
+    // Then: responde 200 con su matriz (la del id pedido, no la de la sesión)
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([
+      { diaSemana: 1, franjaHoraria: 'tarde' },
+    ]);
+    expect(obtener).toHaveBeenCalledWith(OTRO_ID);
+  });
+
+  test('401 sin sesión y 404 si el usuario no existe', async () => {
+    // Given: una sesión que no existe
+    spyOn(authService, 'resolverUsuario').mockRejectedValue(
+      new UnauthorizedError('Sesión inválida o expirada.')
+    );
+    // When / Then: 401
+    expect(
+      (await pedido(`/api/usuarios/${OTRO_ID}/disponibilidad`, 'GET')).status
+    ).toBe(401);
+    // Given: una sesión válida y un usuario inexistente
+    mock.restore();
+    conSesion();
+    spyOn(disponibilidadService, 'obtener').mockRejectedValue(
+      new NotFoundError('Usuario no encontrado.')
+    );
+    // When / Then: 404
+    expect(
+      (await pedido(`/api/usuarios/${OTRO_ID}/disponibilidad`, 'GET')).status
+    ).toBe(404);
+  });
+
+  test('400 si el id no es uuid (en este y en el perfil público)', async () => {
+    // Given: una sesión válida
+    conSesion();
+    // When / Then: ambos responden 400 en vez de reventar la consulta
+    expect(
+      (await pedido('/api/usuarios/abc/disponibilidad', 'GET')).status
+    ).toBe(400);
+    expect((await pedido('/api/usuarios/abc', 'GET')).status).toBe(400);
   });
 });

@@ -40,6 +40,17 @@ export function toTareaPublica(
   };
 }
 
+/** Tarea del propio usuario con el número de ofertas recibidas (US-012). */
+export type TareaPropia = TareaPublica & { totalOfertas: number };
+
+export function toTareaPropia(
+  tarea: Tarea,
+  autorNombre: string,
+  totalOfertas: number
+): TareaPropia {
+  return { ...toTareaPublica(tarea, autorNombre), totalOfertas };
+}
+
 /**
  * Detalle de una tarea (US-009): la tarea pública, los datos públicos de su
  * autor y las banderas que decide el servidor (`esPropia`, `puedeOfertar`)

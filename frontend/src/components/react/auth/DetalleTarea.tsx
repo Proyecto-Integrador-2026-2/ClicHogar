@@ -6,7 +6,8 @@
  *   (el envío vive en `OfertaForm`, US-011).
  * - Esc 3: si la tarea ya no está disponible no se muestra el detalle: se
  *   avisa y se vuelve solo al tablero.
- * - Esc 4: en una tarea propia se ve todo, pero no se ofrece ofertar.
+ * - Esc 4: en una tarea propia se ve todo, pero no se ofrece ofertar; en
+ *   su lugar aparecen las ofertas recibidas (US-012).
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { estaFirmado, obtenerToken } from '../../../lib/auth';
@@ -25,6 +26,7 @@ import {
 } from './carga-sesion';
 import MapaUbicacion from './MapaUbicacion';
 import OfertaForm from './OfertaForm';
+import OfertasRecibidas from './OfertasRecibidas';
 
 export const MENSAJE_NO_DISPONIBLE =
   'Lo sentimos, esta tarea ya no se encuentra disponible';
@@ -255,6 +257,7 @@ export default function DetalleTarea() {
         )}
 
         <Autor autor={tarea.autor} />
+        {tarea.esPropia && <OfertasRecibidas tareaId={tarea.id} />}
         <ZonaOferta
           tarea={tarea}
           onNoAcepta={() =>

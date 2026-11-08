@@ -7,14 +7,48 @@ import {
 import { ESTADO_INICIAL_TAREA } from '../../tareas/categorias';
 import { tareasRepository } from '../../tareas/repositories/tareas.repository';
 import type { Usuario } from '../../usuarios/entities/usuario.entity';
-import type { Oferta } from '../entities/oferta.entity';
+import type { Oferta, OfertaRecibida } from '../entities/oferta.entity';
 import { ofertasRepository } from '../repositories/ofertas.repository';
 
 export const MENSAJE_YA_POSTULADO = 'Ya te has postulado a esta tarea.';
+export const MENSAJE_SIN_PERMISO_OFERTAS =
+  'No tienes los permisos necesarios para ver las ofertas de esta tarea.';
 export const MENSAJE_NO_ACEPTA_OFERTAS =
   'Lo sentimos, esta tarea ya no acepta nuevas ofertas en este momento';
 
+/** Redondea el promedio a 1 decimal (4.333 -> 4.3); null se conserva. */
+function redondear(promedio: number | null): number | null {
+  return promedio === null ? null : Math.round(promedio * 10) / 10;
+}
+
 export const ofertasService = {
+  /**
+   * Ofertas recibidas por una tarea (US-012). Solo las ve su creador
+   * (Esc 4): cualquier otra persona, sea usuario o afiliado, recibe 403 sin
+   * ningún dato de los postulantes. El promedio se redondea a 1 decimal.
+   */
+  async listarRecibidas(
+    visitante: Pick<Usuario, 'id'>,
+    tareaId: string
+  ): Promise<OfertaRecibida[]> {
+    const encontrada = await tareasRepository.buscarPorId(
+      tareaId,
+      visitante.id
+    );
+    if (!encontrada) throw new NotFoundError('Tarea no encontrada.');
+    if (encontrada.tarea.usuarioId !== visitante.id) {
+      throw new ForbiddenError(MENSAJE_SIN_PERMISO_OFERTAS);
+    }
+    const ofertas = await ofertasRepository.listarPorTarea(tareaId);
+    return ofertas.map((oferta) => ({
+      ...oferta,
+      afiliado: {
+        ...oferta.afiliado,
+        promedio: redondear(oferta.afiliado.promedio),
+      },
+    }));
+  },
+
   /**
    * Envía la oferta de un afiliado a una tarea (US-011). Reglas: solo
    * afiliados (Esc 4), no en la propia tarea, una sola vez por tarea (Esc 3)

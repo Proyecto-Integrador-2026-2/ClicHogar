@@ -11,6 +11,7 @@ const ParamsTareaDto = t.Object({ id: t.String({ format: 'uuid' }) });
  * - GET /api/tareas: tablero paginado de solicitudes abiertas, recientes
  *   primero. Query opcional: `pagina`, `limite` y, juntos, `lat`, `lng`,
  *   `radio` (km). Responde `{ tareas, pagina, limite, hayMas }`.
+ * - GET /api/tareas/mias: "Mis solicitudes" con el número de ofertas (US-012).
  * - GET /api/tareas/:id: detalle de una tarea (US-009): 404 si no existe,
  *   410 si ya no está abierta (salvo para su autor).
  * Todos exigen Bearer válido (401 si falta o expiró).
@@ -42,6 +43,10 @@ export const tareasController = new Elysia({ prefix: '/api/tareas' })
       }),
     }
   )
+  .get('/mias', async ({ headers }) => {
+    const usuario = await usuarioDesdeHeaders(headers);
+    return tareasService.listarPropias(usuario.id);
+  })
   .get(
     '/:id',
     async ({ headers, params }) => {

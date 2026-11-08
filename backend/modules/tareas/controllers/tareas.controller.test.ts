@@ -263,3 +263,32 @@ describe('GET /api/tareas/:id (detalle, US-009)', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('GET /api/tareas/mias (Mis solicitudes, US-012)', () => {
+  test('200 con las tareas del usuario de la sesión', async () => {
+    // Given: una sesión válida y un servicio con una tarea propia
+    conSesion();
+    const propias = spyOn(tareasService, 'listarPropias').mockResolvedValue([
+      { ...TAREA, totalOfertas: 2 },
+    ]);
+    // When: se pide la lista
+    const res = await pedido('/api/tareas/mias', 'GET');
+    // Then: responde 200 con las tareas y el servicio recibe el id de la sesión
+    expect(res.status).toBe(200);
+    expect(
+      ((await res.json()) as Array<{ totalOfertas: number }>)[0]?.totalOfertas
+    ).toBe(2);
+    expect(propias).toHaveBeenCalledWith('u-1');
+  });
+
+  test('401 sin sesión válida (y no se confunde con /:id)', async () => {
+    // Given: una sesión que no existe
+    spyOn(authService, 'resolverUsuario').mockRejectedValue(
+      new UnauthorizedError('Sesión inválida o expirada.')
+    );
+    // When: se pide
+    const res = await pedido('/api/tareas/mias', 'GET');
+    // Then: responde 401
+    expect(res.status).toBe(401);
+  });
+});
