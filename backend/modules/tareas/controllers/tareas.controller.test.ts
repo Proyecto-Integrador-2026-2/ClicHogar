@@ -203,6 +203,7 @@ describe('GET /api/tareas/:id (detalle, US-009)', () => {
     },
     esPropia: false,
     puedeOfertar: true,
+    yaPostulado: false,
   };
 
   test('200 con el detalle; el visitante sale de la sesión', async () => {

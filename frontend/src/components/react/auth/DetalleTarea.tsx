@@ -2,7 +2,8 @@
  * Detalle de una tarea (US-009).
  * - Esc 1: título, descripción completa, categoría, ubicación aproximada y
  *   datos del autor.
- * - Esc 2: acción de ofertar si la tarea está abierta y el visitante puede.
+ * - Esc 2: acción de ofertar si la tarea está abierta y el visitante puede
+ *   (el envío vive en `OfertaForm`, US-011).
  * - Esc 3: si la tarea ya no está disponible no se muestra el detalle: se
  *   avisa y se vuelve solo al tablero.
  * - Esc 4: en una tarea propia se ve todo, pero no se ofrece ofertar.
@@ -23,13 +24,17 @@ import {
   PantallaSinSesion,
 } from './carga-sesion';
 import MapaUbicacion from './MapaUbicacion';
+import OfertaForm from './OfertaForm';
 
 export const MENSAJE_NO_DISPONIBLE =
   'Lo sentimos, esta tarea ya no se encuentra disponible';
 export const MENSAJE_ERROR_DETALLE =
   'No pudimos cargar la tarea. Por favor, verifica tu conexión e intenta nuevamente';
-export const MENSAJE_OFERTA_PENDIENTE =
-  'El envío de ofertas estará disponible próximamente.';
+export const MENSAJE_OFERTA_ENVIADA =
+  'Tu oferta ha sido enviada exitosamente al creador de la tarea';
+export const MENSAJE_YA_POSTULADO = 'Ya te has postulado a esta tarea';
+export const MENSAJE_NO_ACEPTA_OFERTAS =
+  'Lo sentimos, esta tarea ya no acepta nuevas ofertas en este momento';
 
 /** Espera antes de volver al tablero tras avisar que la tarea no está disponible. */
 export const REDIRECCION_MS = 3000;
@@ -37,7 +42,7 @@ export const REDIRECCION_MS = 3000;
 type Estado =
   | { tipo: 'cargando' }
   | { tipo: 'listo'; tarea: DetalleTareaApi }
-  | { tipo: 'no-disponible' }
+  | { tipo: 'no-disponible'; mensaje: string }
   | { tipo: 'error' };
 
 /** Id de la tarea en `?id=` (cadena vacía si falta o no se puede leer). */
@@ -59,15 +64,36 @@ function fechaLarga(iso: string): string {
   });
 }
 
-/** Aviso bajo el título que explica por qué no se puede ofertar. */
-function NotaOferta({ tarea }: Readonly<{ tarea: DetalleTareaApi }>) {
-  const [aviso, setAviso] = useState('');
+type PropsOferta = {
+  tarea: DetalleTareaApi;
+  onNoAcepta: () => void;
+};
+
+/** Zona de la oferta: formulario, bloqueo si ya se postuló o la explicación. */
+function ZonaOferta({ tarea, onNoAcepta }: Readonly<PropsOferta>) {
+  const [postulado, setPostulado] = useState(tarea.yaPostulado);
+  const [exito, setExito] = useState(false);
 
   if (tarea.esPropia) {
     return (
       <p className="ch-field__hint">
         Esta es tu solicitud: no puedes enviar una oferta a tu propia tarea.
       </p>
+    );
+  }
+  if (postulado) {
+    return (
+      <div className="ch-tarea__actions">
+        <button type="button" className="ch-btn ch-btn--primary" disabled>
+          Enviar oferta
+        </button>
+        {exito && (
+          <p className="ch-alert" role="status">
+            {MENSAJE_OFERTA_ENVIADA}
+          </p>
+        )}
+        <p className="ch-field__hint">{MENSAJE_YA_POSTULADO}</p>
+      </div>
     );
   }
   if (!tarea.puedeOfertar) {
@@ -78,20 +104,15 @@ function NotaOferta({ tarea }: Readonly<{ tarea: DetalleTareaApi }>) {
     );
   }
   return (
-    <div className="ch-tarea__actions">
-      <button
-        type="button"
-        className="ch-btn ch-btn--primary"
-        onClick={() => setAviso(MENSAJE_OFERTA_PENDIENTE)}
-      >
-        Enviar oferta
-      </button>
-      {aviso && (
-        <p className="ch-field__hint" role="status">
-          {aviso}
-        </p>
-      )}
-    </div>
+    <OfertaForm
+      tareaId={tarea.id}
+      onEnviada={() => {
+        setExito(true);
+        setPostulado(true);
+      }}
+      onYaPostulado={() => setPostulado(true)}
+      onNoAcepta={onNoAcepta}
+    />
   );
 }
 
@@ -122,7 +143,7 @@ export default function DetalleTarea() {
   const cargar = useCallback(async () => {
     const id = idDeLaUrl();
     if (!id) {
-      setEstado({ tipo: 'no-disponible' });
+      setEstado({ tipo: 'no-disponible', mensaje: MENSAJE_NO_DISPONIBLE });
       return;
     }
     setEstado({ tipo: 'cargando' });
@@ -135,9 +156,11 @@ export default function DetalleTarea() {
         window.location.href = '/login?expirada=1';
         return;
       }
-      setEstado({
-        tipo: err instanceof ErrorTareaNoDisponible ? 'no-disponible' : 'error',
-      });
+      setEstado(
+        err instanceof ErrorTareaNoDisponible
+          ? { tipo: 'no-disponible', mensaje: MENSAJE_NO_DISPONIBLE }
+          : { tipo: 'error' }
+      );
     }
   }, []);
 
@@ -172,7 +195,7 @@ export default function DetalleTarea() {
       <div className="ch-auth">
         <div className="ch-card">
           <div className="ch-alert ch-alert--error" role="alert">
-            <p style={{ margin: '0 0 8px' }}>{MENSAJE_NO_DISPONIBLE}</p>
+            <p style={{ margin: '0 0 8px' }}>{estado.mensaje}</p>
             <p className="ch-field__hint">Te llevamos de vuelta al tablero…</p>
           </div>
           <a className="ch-btn ch-btn--primary" href="/tareas">
@@ -232,7 +255,15 @@ export default function DetalleTarea() {
         )}
 
         <Autor autor={tarea.autor} />
-        <NotaOferta tarea={tarea} />
+        <ZonaOferta
+          tarea={tarea}
+          onNoAcepta={() =>
+            setEstado({
+              tipo: 'no-disponible',
+              mensaje: MENSAJE_NO_ACEPTA_OFERTAS,
+            })
+          }
+        />
       </div>
     </div>
   );

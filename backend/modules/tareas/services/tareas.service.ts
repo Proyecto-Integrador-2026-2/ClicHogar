@@ -104,16 +104,16 @@ export function crearTareasService({ usuarios, tareas }: Dependencias) {
      * Detalle de una tarea (US-009). Solo es visible si está abierta (si
      * se asignó o cerró mientras el afiliado miraba el tablero: 410) salvo
      * para su propio autor, que siempre puede verla. Marca `esPropia`
-     * (Esc 4: sin auto-postulación) y `puedeOfertar` (abierta, ajena y el
-     * visitante es afiliado).
+     * (Esc 4: sin auto-postulación), `yaPostulado` y `puedeOfertar` (abierta,
+     * ajena, el visitante es afiliado y aún no se postuló).
      */
     async obtenerDetalle(
       visitante: Pick<Usuario, 'id' | 'rol'>,
       id: string
     ): Promise<DetalleTarea> {
-      const encontrada = await tareas.buscarPorId(id);
+      const encontrada = await tareas.buscarPorId(id, visitante.id);
       if (!encontrada) throw new NotFoundError('Tarea no encontrada.');
-      const { tarea, autor } = encontrada;
+      const { tarea, autor, yaPostulado } = encontrada;
       const esPropia = tarea.usuarioId === visitante.id;
       const abierta = tarea.estado === ESTADO_INICIAL_TAREA;
       if (!abierta && !esPropia) {
@@ -121,7 +121,9 @@ export function crearTareasService({ usuarios, tareas }: Dependencias) {
       }
       return toDetalleTarea(tarea, autor, {
         esPropia,
-        puedeOfertar: abierta && !esPropia && visitante.rol === 'afiliado',
+        yaPostulado,
+        puedeOfertar:
+          abierta && !esPropia && !yaPostulado && visitante.rol === 'afiliado',
       });
     },
 

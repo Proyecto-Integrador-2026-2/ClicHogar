@@ -6,6 +6,9 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import {
   ErrorSesionExpirada,
+  ErrorTareaNoAceptaOfertas,
+  ErrorYaPostulado,
+  enviarOferta,
   ErrorTareaNoDisponible,
   actualizarPerfil,
   crearTarea,
@@ -217,6 +220,78 @@ describe('obtenerTarea (US-009)', () => {
     simular(new Error('offline'));
     // When / Then: mensaje de falta de conexión
     await expect(obtenerTarea('tk', 't1')).rejects.toThrow(SIN_RED);
+  });
+});
+
+describe('enviarOferta (US-011)', () => {
+  test('hace POST a /ofertas con el mensaje recortado y Bearer', async () => {
+    // Given: un backend que registra la oferta
+    simular(json({ id: 'o1', estado: 'pendiente' }, 201));
+    // When: se envía con un mensaje con espacios
+    const oferta = await enviarOferta('tk', 't 1', '  Tengo experiencia  ');
+    // Then: llama a la ruta con el id codificado, el cuerpo y el token
+    expect(oferta.id).toBe('o1');
+    expect(ultima?.url).toBe('http://api.test/api/tareas/t%201/ofertas');
+    expect(ultima?.init?.method).toBe('POST');
+    expect(JSON.parse(String(ultima?.init?.body))).toEqual({
+      mensaje: 'Tengo experiencia',
+    });
+    expect(
+      (ultima?.init?.headers as Record<string, string>).Authorization
+    ).toBe('Bearer tk');
+    expect(ultima?.init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  test('sin mensaje o en blanco envía null', async () => {
+    // Given: un backend que registra la oferta
+    simular(json({ id: 'o1' }, 201));
+    // When: se envía sin mensaje y con solo espacios
+    await enviarOferta('tk', 't1');
+    // Then: viaja null
+    expect(JSON.parse(String(ultima?.init?.body))).toEqual({ mensaje: null });
+    await enviarOferta('tk', 't1', '   ');
+    expect(JSON.parse(String(ultima?.init?.body))).toEqual({ mensaje: null });
+  });
+
+  test('409 es ya postulado; 404 y 410, la tarea no acepta ofertas', async () => {
+    // Given: un 409
+    simular(json({ message: 'Ya te has postulado a esta tarea.' }, 409));
+    // When / Then: ErrorYaPostulado
+    await expect(enviarOferta('tk', 't1')).rejects.toBeInstanceOf(
+      ErrorYaPostulado
+    );
+    // Given: un 410 y un 404
+    for (const estado of [410, 404]) {
+      simular(json({ message: 'x' }, estado));
+      // When / Then: ErrorTareaNoAceptaOfertas con el mensaje de la historia
+      await expect(enviarOferta('tk', 't1')).rejects.toBeInstanceOf(
+        ErrorTareaNoAceptaOfertas
+      );
+    }
+    await expect(enviarOferta('tk', 't1')).rejects.toThrow(
+      'Lo sentimos, esta tarea ya no acepta nuevas ofertas en este momento'
+    );
+  });
+
+  test('401, 403 y fallos de red tienen su propio tratamiento', async () => {
+    // Given: un 401
+    simular(json({}, 401));
+    // When / Then: sesión expirada
+    await expect(enviarOferta('tk', 't1')).rejects.toBeInstanceOf(
+      ErrorSesionExpirada
+    );
+    // Given: un 403 con mensaje
+    simular(
+      json({ message: 'Solo los afiliados pueden enviar ofertas.' }, 403)
+    );
+    // When / Then: llega el mensaje del backend
+    await expect(enviarOferta('tk', 't1')).rejects.toThrow(
+      'Solo los afiliados'
+    );
+    // Given: un fallo de red
+    simular(new Error('offline'));
+    // When / Then: mensaje de falta de conexión
+    await expect(enviarOferta('tk', 't1')).rejects.toThrow(SIN_RED);
   });
 });
 

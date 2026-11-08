@@ -49,6 +49,8 @@ export type DetalleTarea = TareaPublica & {
   autor: AutorTarea;
   esPropia: boolean;
   puedeOfertar: boolean;
+  /** El visitante ya envió una oferta a esta tarea (US-011). */
+  yaPostulado: boolean;
 };
 
 /** Redondea a 2 decimales (~1 km): ubicación aproximada para terceros. */
@@ -59,7 +61,11 @@ function aproximar(valor: number | null): number | null {
 export function toDetalleTarea(
   tarea: Tarea,
   autor: AutorTarea,
-  banderas: { esPropia: boolean; puedeOfertar: boolean }
+  banderas: {
+    esPropia: boolean;
+    puedeOfertar: boolean;
+    yaPostulado: boolean;
+  }
 ): DetalleTarea {
   const publica = toTareaPublica(tarea, autor.nombre);
   return {

@@ -306,10 +306,11 @@ describe('tareasService.obtenerDetalle (US-009)', () => {
     ubicacion: null,
     fotoUrl: null,
   };
-  const encontrada = (cambios: Partial<Tarea> = {}) =>
+  const encontrada = (cambios: Partial<Tarea> = {}, yaPostulado = false) =>
     spyOn(tareasRepository, 'buscarPorId').mockResolvedValue({
       tarea: tarea(cambios),
       autor: AUTOR,
+      yaPostulado,
     });
   const AFILIADO = { id: 'u-afiliado', rol: 'afiliado' as const };
   const CLIENTE = { id: 'u-cliente', rol: 'cliente' as const };
@@ -384,5 +385,15 @@ describe('tareasService.obtenerDetalle (US-009)', () => {
     await expect(
       tareasService.obtenerDetalle(AFILIADO, 'no-existe')
     ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  test('US-011 Esc 3: si ya se postuló, queda marcado y no puede ofertar de nuevo', async () => {
+    // Given: una tarea abierta ajena a la que el afiliado ya se postuló
+    const buscar = encontrada({}, true);
+    // When: el afiliado pide el detalle
+    const detalle = await tareasService.obtenerDetalle(AFILIADO, 't-1');
+    // Then: yaPostulado y sin oferta; el repositorio recibió al visitante
+    expect(detalle).toMatchObject({ yaPostulado: true, puedeOfertar: false });
+    expect(buscar).toHaveBeenCalledWith('t-1', AFILIADO.id);
   });
 });

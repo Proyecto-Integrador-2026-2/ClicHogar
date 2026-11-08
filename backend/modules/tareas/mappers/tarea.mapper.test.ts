@@ -70,6 +70,7 @@ describe('toDetalleTarea (US-009)', () => {
     const detalle = toDetalleTarea(TAREA, AUTOR, {
       esPropia: false,
       puedeOfertar: true,
+      yaPostulado: false,
     });
     // Then: trae la tarea pública, el autor y las banderas
     expect(detalle).toMatchObject({
@@ -79,6 +80,7 @@ describe('toDetalleTarea (US-009)', () => {
       autor: AUTOR,
       esPropia: false,
       puedeOfertar: true,
+      yaPostulado: false,
     });
   });
 
@@ -88,6 +90,7 @@ describe('toDetalleTarea (US-009)', () => {
     const detalle = toDetalleTarea(CON_COORDENADAS, AUTOR, {
       esPropia: false,
       puedeOfertar: true,
+      yaPostulado: false,
     });
     // Then: las coordenadas se redondean a ~1 km
     expect(detalle.latitud).toBe(6.24);
@@ -100,6 +103,7 @@ describe('toDetalleTarea (US-009)', () => {
     const detalle = toDetalleTarea(CON_COORDENADAS, AUTOR, {
       esPropia: true,
       puedeOfertar: false,
+      yaPostulado: false,
     });
     // Then: las coordenadas no se alteran
     expect(detalle.latitud).toBe(6.244203);
@@ -112,6 +116,7 @@ describe('toDetalleTarea (US-009)', () => {
     const detalle = toDetalleTarea(TAREA, AUTOR, {
       esPropia: false,
       puedeOfertar: true,
+      yaPostulado: false,
     });
     // Then: siguen en null
     expect(detalle.latitud).toBeNull();

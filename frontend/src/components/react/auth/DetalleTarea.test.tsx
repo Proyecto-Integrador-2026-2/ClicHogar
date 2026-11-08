@@ -17,7 +17,9 @@ import * as api from '../../../lib/usuarios-api';
 import DetalleTarea, {
   MENSAJE_ERROR_DETALLE,
   MENSAJE_NO_DISPONIBLE,
-  MENSAJE_OFERTA_PENDIENTE,
+  MENSAJE_NO_ACEPTA_OFERTAS,
+  MENSAJE_OFERTA_ENVIADA,
+  MENSAJE_YA_POSTULADO,
   REDIRECCION_MS,
 } from './DetalleTarea';
 
@@ -47,6 +49,7 @@ const detalle = (
   },
   esPropia: false,
   puedeOfertar: true,
+  yaPostulado: false,
   ...cambios,
 });
 
@@ -68,6 +71,7 @@ afterEach(() => {
   cleanup();
   nav.restaurar();
   spyOn(api, 'obtenerTarea').mockRestore();
+  spyOn(api, 'enviarOferta').mockRestore();
 });
 
 describe('DetalleTarea', () => {
@@ -101,11 +105,102 @@ describe('DetalleTarea', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: 'Enviar oferta' })
     );
-    // Then: recibe el aviso (el envío real llega con la US de ofertas)
-    expect((await screen.findByRole('status')).textContent).toBe(
-      MENSAJE_OFERTA_PENDIENTE
-    );
+    // Then: se abre el formulario con el mensaje opcional
+    expect(screen.getByLabelText(/Mensaje para el creador/)).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Confirmar postulación' })
+    ).toBeTruthy();
   });
+
+  test('US-011 Esc 1: al confirmar muestra el éxito y bloquea nuevas ofertas', async () => {
+    // Given: una tarea abierta y un backend que acepta la oferta
+    spyOn(api, 'obtenerTarea').mockResolvedValue(detalle());
+    const enviar = spyOn(api, 'enviarOferta').mockResolvedValue(
+      {} as api.OfertaApi
+    );
+    render(<DetalleTarea />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Enviar oferta' })
+    );
+    // When: confirma la postulación
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirmar postulación' })
+    );
+    // Then: ve el mensaje de éxito, el botón queda bloqueado y se avisa que ya se postuló
+    expect((await screen.findByRole('status')).textContent).toBe(
+      MENSAJE_OFERTA_ENVIADA
+    );
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Enviar oferta',
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true);
+    expect(screen.getByText(MENSAJE_YA_POSTULADO)).toBeTruthy();
+    expect(enviar).toHaveBeenCalledWith('token-falso', ID, '');
+  });
+
+  test('US-011 Esc 3: si ya se postuló, el envío queda bloqueado con el aviso', async () => {
+    // Given: una tarea a la que el afiliado ya se postuló
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({ yaPostulado: true, puedeOfertar: false })
+    );
+    // When: vuelve a visitar el detalle
+    render(<DetalleTarea />);
+    // Then: el botón está deshabilitado y aparece "Ya te has postulado a esta tarea"
+    await screen.findByRole('heading', { name: 'Arreglar grifo' });
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Enviar oferta',
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true);
+    expect(screen.getByText(MENSAJE_YA_POSTULADO)).toBeTruthy();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  test('US-011 Esc 3: un 409 al confirmar también bloquea el envío', async () => {
+    // Given: un backend que dice que ya existe una oferta
+    spyOn(api, 'obtenerTarea').mockResolvedValue(detalle());
+    spyOn(api, 'enviarOferta').mockRejectedValue(new api.ErrorYaPostulado());
+    render(<DetalleTarea />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Enviar oferta' })
+    );
+    // When: confirma
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirmar postulación' })
+    );
+    // Then: queda bloqueado con el aviso y sin mensaje de éxito
+    expect(await screen.findByText(MENSAJE_YA_POSTULADO)).toBeTruthy();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  test('US-011 Esc 5: si la tarea ya no acepta ofertas avisa y vuelve al tablero', async () => {
+    // Given: una tarea que se cerró justo al confirmar
+    spyOn(api, 'obtenerTarea').mockResolvedValue(detalle());
+    spyOn(api, 'enviarOferta').mockRejectedValue(
+      new api.ErrorTareaNoAceptaOfertas()
+    );
+    render(<DetalleTarea />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Enviar oferta' })
+    );
+    // When: confirma
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirmar postulación' })
+    );
+    // Then: alerta clara y, tras la espera, regreso al tablero
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      MENSAJE_NO_ACEPTA_OFERTAS
+    );
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, REDIRECCION_MS + 200));
+    });
+    expect(nav.destino()).toBe('/tareas');
+  }, 10000);
 
   test('un visitante que no es afiliado ve la tarea pero no puede ofertar', async () => {
     // Given: un detalle que el servidor marca como no ofertable

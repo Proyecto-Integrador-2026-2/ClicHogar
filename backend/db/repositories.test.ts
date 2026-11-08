@@ -39,6 +39,8 @@ const { disponibilidadRepository } =
   await import('../modules/usuarios/repositories/disponibilidad.repository');
 const { sesionesRepository } =
   await import('../modules/auth/repositories/sesiones.repository');
+const { ofertasRepository } =
+  await import('../modules/ofertas/repositories/ofertas.repository');
 const { chatRepository } =
   await import('../modules/chat/repositories/chat.repository');
 const { calificacionesRepository } =
@@ -151,11 +153,12 @@ describe('tareasRepository.buscarPorId (US-009)', () => {
           autor_descripcion: 'Plomera',
           autor_ubicacion: 'Envigado',
           autor_foto_url: '/f.jpg',
+          ya_postulado: true,
         },
       ],
     ];
     // When: se busca por id
-    const resultado = await tareasRepository.buscarPorId('t1');
+    const resultado = await tareasRepository.buscarPorId('t1', 'v1');
     // Then: devuelve tarea y autor mapeados, y consulta por ese id
     expect(resultado?.tarea.id).toBe('t1');
     expect(resultado?.autor).toEqual({
@@ -165,14 +168,15 @@ describe('tareasRepository.buscarPorId (US-009)', () => {
       ubicacion: 'Envigado',
       fotoUrl: '/f.jpg',
     });
-    expect(llamadas[0]?.valores).toEqual(['t1']);
+    expect(resultado?.yaPostulado).toBe(true);
+    expect(llamadas[0]?.valores).toEqual(['v1', 't1']);
   });
 
   test('sin fila devuelve undefined', async () => {
     // Given: un repositorio sin esa tarea
     // When: se busca
     // Then: devuelve undefined
-    expect(await tareasRepository.buscarPorId('x')).toBeUndefined();
+    expect(await tareasRepository.buscarPorId('x', 'v1')).toBeUndefined();
   });
 });
 
@@ -433,5 +437,75 @@ describe('calificacionesRepository', () => {
     // Then: devuelve la fila y consulta por u2
     expect(lista).toEqual([FILA]);
     expect(llamadas[0]?.valores).toEqual(['u2']);
+  });
+});
+
+describe('ofertasRepository (US-011)', () => {
+  const DATOS = {
+    tareaId: 't1',
+    afiliadoId: 'a1',
+    mensaje: 'Tengo experiencia',
+  };
+  const FILA = {
+    id: 'o1',
+    tarea_id: 't1',
+    afiliado_id: 'a1',
+    mensaje: 'Tengo experiencia',
+    estado: 'pendiente',
+    creado_en: FECHA,
+  };
+
+  test('crear inserta con la condición de tarea abierta y devuelve la oferta', async () => {
+    // Given: un INSERT que sí inserta la fila
+    respuestas = [[FILA]];
+    // When: se crea la oferta
+    const resultado = await ofertasRepository.crear(DATOS);
+    // Then: devuelve 'creada' mapeada, con el bloqueo FOR SHARE y ON CONFLICT
+    expect(resultado).toEqual({
+      tipo: 'creada',
+      oferta: {
+        id: 'o1',
+        tareaId: 't1',
+        afiliadoId: 'a1',
+        mensaje: 'Tengo experiencia',
+        estado: 'pendiente',
+        creadoEn: FECHA,
+      },
+    });
+    expect(llamadas[0]?.texto).toContain('FOR SHARE');
+    expect(llamadas[0]?.texto).toContain('ON CONFLICT');
+    expect(llamadas[0]?.valores).toEqual([
+      't1',
+      'a1',
+      'Tengo experiencia',
+      't1',
+    ]);
+    expect(llamadas).toHaveLength(1);
+  });
+
+  test('si no inserta y ya existía una oferta, es duplicada', async () => {
+    // Given: un INSERT sin fila y una oferta previa del afiliado
+    respuestas = [[], [{ existe: true }]];
+    // When: se intenta crear
+    // Then: resultado 'duplicada'
+    expect(await ofertasRepository.crear(DATOS)).toEqual({
+      tipo: 'duplicada',
+    });
+  });
+
+  test('si no inserta y no había oferta previa, la tarea ya no está abierta', async () => {
+    // Given: un INSERT sin fila y sin oferta previa
+    respuestas = [[], [{ existe: false }]];
+    // When: se intenta crear
+    // Then: resultado 'no-abierta'
+    expect(await ofertasRepository.crear(DATOS)).toEqual({
+      tipo: 'no-abierta',
+    });
+    // Given: y si la consulta de verificación no devuelve fila
+    respuestas = [[], []];
+    // Then: también se trata como no abierta
+    expect(await ofertasRepository.crear(DATOS)).toEqual({
+      tipo: 'no-abierta',
+    });
   });
 });

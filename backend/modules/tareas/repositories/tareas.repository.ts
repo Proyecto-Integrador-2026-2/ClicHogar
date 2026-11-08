@@ -42,22 +42,27 @@ function aTarea(fila: TareaRow): Tarea {
 export const tareasRepository = {
   /**
    * Detalle de una tarea (US-009) con los datos públicos de su autor, en
-   * una sola consulta. Devuelve la tarea sea cual sea su estado: decidir si
-   * se puede ver es regla del servicio.
+   * una sola consulta, y si `visitanteId` ya se postuló (US-011). Devuelve la
+   * tarea sea cual sea su estado: decidir si se puede ver es regla del servicio.
    */
   async buscarPorId(
-    id: string
-  ): Promise<{ tarea: Tarea; autor: AutorTarea } | undefined> {
+    id: string,
+    visitanteId: string
+  ): Promise<
+    { tarea: Tarea; autor: AutorTarea; yaPostulado: boolean } | undefined
+  > {
     const filas = await sql<
       (TareaRow & {
         autor_nombre: string;
         autor_descripcion: string | null;
         autor_ubicacion: string | null;
         autor_foto_url: string | null;
+        ya_postulado: boolean;
       })[]
     >`
       SELECT t.id, t.usuario_id, t.titulo, t.descripcion, t.categoria, t.estado, t.ubicacion, t.latitud, t.longitud, t.creado_en, t.actualizado_en,
-             u.nombre AS autor_nombre, u.descripcion AS autor_descripcion, u.ubicacion AS autor_ubicacion, u.foto_url AS autor_foto_url
+             u.nombre AS autor_nombre, u.descripcion AS autor_descripcion, u.ubicacion AS autor_ubicacion, u.foto_url AS autor_foto_url,
+             EXISTS (SELECT 1 FROM ofertas o WHERE o.tarea_id = t.id AND o.afiliado_id = ${visitanteId}) AS ya_postulado
       FROM tareas t
       JOIN usuarios u ON u.id = t.usuario_id
       WHERE t.id = ${id}
@@ -74,6 +79,7 @@ export const tareasRepository = {
         ubicacion: fila.autor_ubicacion,
         fotoUrl: fila.autor_foto_url,
       },
+      yaPostulado: fila.ya_postulado,
     };
   },
 

@@ -57,6 +57,13 @@
       "when": 1794086774157,
       "tag": "0007_sweet_lyja",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794142511627,
+      "tag": "0008_wealthy_the_watchers",
+      "breakpoints": true
     }
   ]
 }

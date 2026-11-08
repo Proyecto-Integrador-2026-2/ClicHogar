@@ -41,13 +41,34 @@ export class ErrorTareaNoDisponible extends Error {
   }
 }
 
+/** El afiliado ya envió una oferta a esta tarea (US-011, Escenario 3). */
+export class ErrorYaPostulado extends Error {
+  constructor() {
+    super('Ya te has postulado a esta tarea');
+    this.name = 'ErrorYaPostulado';
+  }
+}
+
+/**
+ * La tarea dejó de estar abierta justo al enviar la oferta (US-011,
+ * Escenario 5): la asignaron o la cancelaron.
+ */
+export class ErrorTareaNoAceptaOfertas extends Error {
+  constructor() {
+    super(
+      'Lo sentimos, esta tarea ya no acepta nuevas ofertas en este momento'
+    );
+    this.name = 'ErrorTareaNoAceptaOfertas';
+  }
+}
+
 type OpcionesPedir = {
   /** Convierte un fallo de `fetch` (sin red) en un mensaje amigable. */
   mensajeSinRed?: boolean;
   /** Traduce un 401 a `ErrorSesionExpirada`. */
   detectarSesionExpirada?: boolean;
-  /** Traduce un 404 o 410 a `ErrorTareaNoDisponible`. */
-  detectarNoDisponible?: boolean;
+  /** Traduce ciertos códigos de estado a un error propio (por código HTTP). */
+  traducirEstados?: Record<number, () => Error>;
 };
 
 /** Tareas: sin red con mensaje amigable y 401 como sesión expirada. */
@@ -68,7 +89,7 @@ async function pedir<T>(
   {
     mensajeSinRed = false,
     detectarSesionExpirada = false,
-    detectarNoDisponible = false,
+    traducirEstados = {},
   }: OpcionesPedir = {}
 ): Promise<T> {
   const base = apiUrl();
@@ -90,12 +111,8 @@ async function pedir<T>(
   if (detectarSesionExpirada && respuesta.status === 401) {
     throw new ErrorSesionExpirada();
   }
-  if (
-    detectarNoDisponible &&
-    (respuesta.status === 404 || respuesta.status === 410)
-  ) {
-    throw new ErrorTareaNoDisponible();
-  }
+  const traducir = traducirEstados[respuesta.status];
+  if (traducir) throw traducir();
   if (!respuesta.ok) {
     const detalle = await respuesta.json().catch(() => null);
     const mensaje =
@@ -353,7 +370,12 @@ export type DetalleTareaApi = TareaTablero & {
   autor: AutorTareaApi;
   esPropia: boolean;
   puedeOfertar: boolean;
+  /** El visitante ya envió una oferta a esta tarea (US-011). */
+  yaPostulado: boolean;
 };
+
+const tareaNoDisponible = () => new ErrorTareaNoDisponible();
+const tareaNoAceptaOfertas = () => new ErrorTareaNoAceptaOfertas();
 
 /**
  * Detalle de una tarea. Lanza `ErrorTareaNoDisponible` si no existe o ya no
@@ -367,7 +389,49 @@ export function obtenerTarea(
     `/api/tareas/${encodeURIComponent(id)}`,
     token,
     { signal: AbortSignal.timeout(TIMEOUT_TABLERO_MS) },
-    { ...OPCIONES_TAREAS, detectarNoDisponible: true }
+    {
+      ...OPCIONES_TAREAS,
+      traducirEstados: { 404: tareaNoDisponible, 410: tareaNoDisponible },
+    }
+  );
+}
+
+/** Oferta registrada por el afiliado (US-011). */
+export type OfertaApi = {
+  id: string;
+  tareaId: string;
+  afiliadoId: string;
+  mensaje: string | null;
+  estado: string;
+  creadoEn: string;
+};
+
+/**
+ * Envía la oferta del afiliado a una tarea (US-011) con un mensaje opcional.
+ * Lanza `ErrorYaPostulado` (409), `ErrorTareaNoAceptaOfertas` (404/410) y
+ * `ErrorSesionExpirada` (401); un fallo de red o un timeout llegan como
+ * `Error` genérico (la pantalla muestra el aviso de conexión).
+ */
+export function enviarOferta(
+  token: string,
+  tareaId: string,
+  mensaje?: string
+): Promise<OfertaApi> {
+  return pedir(
+    `/api/tareas/${encodeURIComponent(tareaId)}/ofertas`,
+    token,
+    {
+      ...conJson('POST', { mensaje: mensaje?.trim() || null }),
+      signal: AbortSignal.timeout(TIMEOUT_TABLERO_MS),
+    },
+    {
+      ...OPCIONES_TAREAS,
+      traducirEstados: {
+        404: tareaNoAceptaOfertas,
+        409: () => new ErrorYaPostulado(),
+        410: tareaNoAceptaOfertas,
+      },
+    }
   );
 }
 

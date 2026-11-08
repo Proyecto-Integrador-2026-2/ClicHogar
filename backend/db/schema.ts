@@ -10,3 +10,4 @@ export * from './schema/tareas.schema';
 export * from './schema/sesiones.schema';
 export * from './schema/calificaciones.schema';
 export * from './schema/mensajes.schema';
+export * from './schema/ofertas.schema';

@@ -17,8 +17,11 @@ export type OpcionesListado = {
 export interface TareasRepositorio {
   crear(datos: NuevaTarea): Promise<Tarea>;
   buscarPorId(
-    id: string
-  ): Promise<{ tarea: Tarea; autor: AutorTarea } | undefined>;
+    id: string,
+    visitanteId: string
+  ): Promise<
+    { tarea: Tarea; autor: AutorTarea; yaPostulado: boolean } | undefined
+  >;
   listarAbiertas(
     opciones: OpcionesListado
   ): Promise<Array<{ tarea: Tarea; autorNombre: string }>>;
