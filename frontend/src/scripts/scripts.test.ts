@@ -224,10 +224,13 @@ describe('initNavAuth', () => {
     '<a data-nav-auth="out" id="fuera">Entrar</a>' +
     '<button data-logout id="salir">Salir</button>';
   const fetchOriginal = globalThis.fetch;
+  const apiOriginal = process.env.PUBLIC_API_URL;
   let llamadas: Array<{ url: string; init?: RequestInit }>;
 
   beforeEach(() => {
     document.body.innerHTML = html;
+    // No depender de `frontend/.env` (en CI no existe): URL fija para el test.
+    process.env.PUBLIC_API_URL = 'http://api.test';
     llamadas = [];
     globalThis.fetch = (async (url: string, init?: RequestInit) => {
       llamadas.push({ url, init });
@@ -237,6 +240,8 @@ describe('initNavAuth', () => {
 
   afterEach(() => {
     globalThis.fetch = fetchOriginal;
+    if (apiOriginal === undefined) delete process.env.PUBLIC_API_URL;
+    else process.env.PUBLIC_API_URL = apiOriginal;
   });
 
   test('sin sesión muestra "out" y oculta "in"', () => {
