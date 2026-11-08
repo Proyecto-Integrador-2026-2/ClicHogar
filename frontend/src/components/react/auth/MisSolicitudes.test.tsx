@@ -14,6 +14,7 @@ import React from 'react';
 import { resetSesion, simularNavegacion } from '../../../../test-setup';
 import * as api from '../../../lib/usuarios-api';
 import MisSolicitudes, {
+  MENSAJE_CALIFICACION_PENDIENTE,
   MENSAJE_ERROR_SOLICITUDES,
   MENSAJE_SIN_SOLICITUDES,
   textoOfertas,
@@ -22,7 +23,8 @@ import MisSolicitudes, {
 const tarea = (
   id: string,
   totalOfertas: number,
-  estado = 'abierta'
+  estado = 'abierta',
+  calificacionPendiente = false
 ): api.TareaPropiaApi => ({
   id,
   titulo: `Tarea ${id}`,
@@ -36,6 +38,7 @@ const tarea = (
   autorNombre: 'Ana',
   creadoEn: '2026-03-15T12:00:00.000Z',
   totalOfertas,
+  calificacionPendiente,
 });
 
 let nav: ReturnType<typeof simularNavegacion>;
@@ -82,6 +85,24 @@ describe('MisSolicitudes', () => {
         .getAllByRole('link', { name: 'Ver ofertas' })
         .map((a) => a.getAttribute('href'))
     ).toEqual(['/tareas/detalle?id=t-1', '/tareas/detalle?id=t-2']);
+  });
+
+  test('US-016 Esc 6: una tarea finalizada sin calificar muestra la calificación pendiente', async () => {
+    // Given: una tarea finalizada sin calificar y otra ya calificada
+    spyOn(api, 'listarMisTareas').mockResolvedValue([
+      tarea('t-1', 1, 'finalizada', true),
+      tarea('t-2', 1, 'finalizada', false),
+    ]);
+    // When: se abre la página
+    render(<MisSolicitudes />);
+    await screen.findByText('Tarea t-1');
+    // Then: solo la pendiente muestra el aviso, con un enlace para retomarla
+    expect(
+      screen.getAllByText(MENSAJE_CALIFICACION_PENDIENTE, { exact: false })
+    ).toHaveLength(1);
+    expect(
+      screen.getByRole('link', { name: 'Calificar ahora' }).getAttribute('href')
+    ).toBe('/calificaciones?tarea=t-1');
   });
 
   test('sin solicitudes invita a publicar la primera', async () => {

@@ -1,14 +1,15 @@
 import { Elysia } from 'elysia';
 import { usuarioDesdeHeaders } from '../../auth/token';
-import {
-  CrearCalificacionDto,
-  ParamsUsuarioDto,
-} from '../dto/calificaciones.dto';
+import { CrearCalificacionDto, ParamsIdDto } from '../dto/calificaciones.dto';
 import { calificacionesService } from '../services/calificaciones.service';
 
 /**
- * Módulo `calificaciones`.
- * - POST /api/calificaciones: califica a otro usuario (autor = sesión).
+ * Módulo `calificaciones` (US-016).
+ * - POST /api/calificaciones: el creador califica de 1 a 5, con reseña
+ *   opcional, al afiliado de una tarea finalizada. 400 si la tarea no está
+ *   finalizada, 403 si no es el creador y 409 si ya la calificó.
+ * - GET /api/calificaciones/tarea/:id: datos del formulario de calificación
+ *   (afiliado a calificar y si ya se hizo), solo para el creador.
  * - GET /api/calificaciones/usuario/:id: calificaciones recibidas (público).
  */
 export const calificacionesController = new Elysia({
@@ -18,14 +19,22 @@ export const calificacionesController = new Elysia({
     '/',
     async ({ body, headers, set }) => {
       const usuario = await usuarioDesdeHeaders(headers);
-      const calificacion = await calificacionesService.crear(usuario.id, body);
+      const calificacion = await calificacionesService.crear(usuario, body);
       set.status = 201;
       return calificacion;
     },
     { body: CrearCalificacionDto }
   )
   .get(
+    '/tarea/:id',
+    async ({ params, headers }) => {
+      const usuario = await usuarioDesdeHeaders(headers);
+      return calificacionesService.formulario(usuario, params.id);
+    },
+    { params: ParamsIdDto }
+  )
+  .get(
     '/usuario/:id',
     ({ params }) => calificacionesService.listarPorUsuario(params.id),
-    { params: ParamsUsuarioDto }
+    { params: ParamsIdDto }
   );

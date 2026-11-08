@@ -122,8 +122,9 @@ export function crearTareasService({ usuarios, tareas }: Dependencias) {
     /** "Mis solicitudes" (US-012): las tareas del usuario con sus ofertas. */
     async listarPropias(usuarioId: string): Promise<TareaPropia[]> {
       const filas = await tareas.listarPorAutor(usuarioId);
-      return filas.map(({ tarea, autorNombre, totalOfertas }) =>
-        toTareaPropia(tarea, autorNombre, totalOfertas)
+      return filas.map(
+        ({ tarea, autorNombre, totalOfertas, calificacionPendiente }) =>
+          toTareaPropia(tarea, autorNombre, totalOfertas, calificacionPendiente)
       );
     },
 

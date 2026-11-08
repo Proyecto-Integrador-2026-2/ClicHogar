@@ -87,6 +87,14 @@ export class ErrorSinPermisoOfertas extends Error {
   }
 }
 
+/** El creador ya calificó esta tarea (US-016, Escenario 5). */
+export class ErrorYaCalificada extends Error {
+  constructor() {
+    super('Ya has enviado tu valoración para esta tarea anteriormente.');
+    this.name = 'ErrorYaCalificada';
+  }
+}
+
 /** La tarea ya tenía un afiliado asignado (US-013, Escenario 5). */
 export class ErrorTareaYaAsignada extends Error {
   constructor() {
@@ -272,22 +280,55 @@ export function listarConversacion(args: {
   );
 }
 
+/**
+ * El creador califica de 1 a 5 el servicio de una tarea finalizada (US-016),
+ * con una reseña opcional (en blanco = sin reseña). El afiliado calificado
+ * lo decide el servidor a partir de la tarea. Lanza `ErrorYaCalificada`
+ * (409), `ErrorSesionExpirada` (401) y `ErrorSinConexion` ante un fallo de
+ * red; otros rechazos llegan con el mensaje del backend.
+ */
 export function crearCalificacion(args: {
   token: string;
-  destinatarioId: string;
-  tareaId?: string | null;
+  tareaId: string;
   puntuacion: number;
   comentario?: string;
 }): Promise<CalificacionApi> {
   return pedir(
     '/api/calificaciones',
     args.token,
-    conJson('POST', {
-      destinatarioId: args.destinatarioId,
-      tareaId: args.tareaId ?? null,
-      puntuacion: args.puntuacion,
-      comentario: args.comentario,
-    }),
+    {
+      ...conJson('POST', {
+        tareaId: args.tareaId,
+        puntuacion: args.puntuacion,
+        comentario: args.comentario?.trim() || null,
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_TABLERO_MS),
+    },
+    {
+      ...OPCIONES_TAREAS,
+      traducirEstados: { 409: () => new ErrorYaCalificada() },
+    }
+  );
+}
+
+/** Datos del formulario de calificación de una tarea finalizada (US-016). */
+export type FormularioCalificacionApi = {
+  tareaId: string;
+  titulo: string;
+  afiliado: { id: string; nombre: string };
+  /** El creador ya calificó esta tarea: el formulario se bloquea. */
+  yaCalificada: boolean;
+};
+
+/** A quién se califica y si ya se hizo (solo el creador de la tarea). */
+export function obtenerFormularioCalificacion(
+  token: string,
+  tareaId: string
+): Promise<FormularioCalificacionApi> {
+  return pedir(
+    `/api/calificaciones/tarea/${encodeURIComponent(tareaId)}`,
+    token,
+    { signal: AbortSignal.timeout(TIMEOUT_TABLERO_MS) },
     OPCIONES_TAREAS
   );
 }
@@ -572,7 +613,11 @@ export function finalizarTarea(
 }
 
 /** Una tarea propia con el número de ofertas que lleva (US-012). */
-export type TareaPropiaApi = TareaTablero & { totalOfertas: number };
+export type TareaPropiaApi = TareaTablero & {
+  totalOfertas: number;
+  /** Finalizada y sin calificar: queda una calificación pendiente (US-016). */
+  calificacionPendiente: boolean;
+};
 
 /** "Mis solicitudes": las tareas del usuario, la más reciente primero. */
 export function listarMisTareas(token: string): Promise<TareaPropiaApi[]> {

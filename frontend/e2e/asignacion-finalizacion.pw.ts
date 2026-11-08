@@ -18,7 +18,6 @@ const emailOtro = `e2e.otro13.${marca}@example.test`;
 let tokenCliente = '';
 let tokenElegido = '';
 let tokenOtro = '';
-let idElegido = '';
 let tareaId = '';
 
 type Peticiones = import('@playwright/test').APIRequestContext;
@@ -66,7 +65,6 @@ test.beforeAll(async ({ request }) => {
   tokenCliente = cliente.token;
   tokenElegido = elegido.token;
   tokenOtro = otro.token;
-  idElegido = elegido.id;
 
   const t = await request.post(`${API}/api/tareas`, {
     headers: auth(tokenCliente),
@@ -256,11 +254,12 @@ test('Esc 1 (US-014): confirma el pago, finaliza y lleva a calificar al afiliado
   await expect(
     page.getByText('Tarea completada. Gracias por usar ClicHogar')
   ).toBeVisible();
-  await page.waitForURL(
-    new RegExp(`/calificaciones\\?usuario=${idElegido}&tarea=${tareaId}`),
-    { timeout: 10000 }
-  );
-  await expect(page.getByPlaceholder('ID del usuario')).toHaveValue(idElegido);
+  await page.waitForURL(`**/calificaciones?tarea=${tareaId}`, {
+    timeout: 10000,
+  });
+  await expect(
+    page.getByRole('heading', { name: 'Califica el servicio' })
+  ).toBeVisible();
 });
 
 test('una tarea finalizada no se puede cerrar de nuevo', async ({

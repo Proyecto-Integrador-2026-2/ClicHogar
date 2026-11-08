@@ -35,10 +35,13 @@ export interface TareasRepositorio {
     tareaId: string;
     autorId: string;
   }): Promise<ResultadoFinalizacion>;
-  listarPorAutor(
-    usuarioId: string
-  ): Promise<
-    Array<{ tarea: Tarea; autorNombre: string; totalOfertas: number }>
+  listarPorAutor(usuarioId: string): Promise<
+    Array<{
+      tarea: Tarea;
+      autorNombre: string;
+      totalOfertas: number;
+      calificacionPendiente: boolean;
+    }>
   >;
   listarAbiertas(
     opciones: OpcionesListado

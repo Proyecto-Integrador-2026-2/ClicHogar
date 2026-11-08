@@ -197,17 +197,27 @@ export const tareasRepository = {
    * "Mis solicitudes" (US-012): las tareas de un usuario, la más reciente
    * primero, con cuántas ofertas lleva cada una. Tope de 100.
    */
-  async listarPorAutor(
-    usuarioId: string
-  ): Promise<
-    Array<{ tarea: Tarea; autorNombre: string; totalOfertas: number }>
+  async listarPorAutor(usuarioId: string): Promise<
+    Array<{
+      tarea: Tarea;
+      autorNombre: string;
+      totalOfertas: number;
+      calificacionPendiente: boolean;
+    }>
   > {
     const filas = await sql<
-      (TareaRow & { autor_nombre: string; total_ofertas: number })[]
+      (TareaRow & {
+        autor_nombre: string;
+        total_ofertas: number;
+        calificacion_pendiente: boolean;
+      })[]
     >`
       SELECT t.id, t.usuario_id, t.titulo, t.descripcion, t.categoria, t.estado, t.ubicacion, t.latitud, t.longitud, t.creado_en, t.actualizado_en,
              u.nombre AS autor_nombre,
-             (SELECT COUNT(*)::int FROM ofertas o WHERE o.tarea_id = t.id) AS total_ofertas
+             (SELECT COUNT(*)::int FROM ofertas o WHERE o.tarea_id = t.id) AS total_ofertas,
+             (t.estado = 'finalizada' AND NOT EXISTS (
+               SELECT 1 FROM calificaciones c WHERE c.tarea_id = t.id AND c.autor_id = t.usuario_id
+             )) AS calificacion_pendiente
       FROM tareas t
       JOIN usuarios u ON u.id = t.usuario_id
       WHERE t.usuario_id = ${usuarioId}
@@ -218,6 +228,7 @@ export const tareasRepository = {
       tarea: aTarea(fila),
       autorNombre: fila.autor_nombre,
       totalOfertas: fila.total_ofertas,
+      calificacionPendiente: fila.calificacion_pendiente,
     }));
   },
 

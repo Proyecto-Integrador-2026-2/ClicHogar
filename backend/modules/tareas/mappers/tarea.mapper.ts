@@ -40,15 +40,26 @@ export function toTareaPublica(
   };
 }
 
-/** Tarea del propio usuario con el número de ofertas recibidas (US-012). */
-export type TareaPropia = TareaPublica & { totalOfertas: number };
+/**
+ * Tarea del propio usuario con el número de ofertas recibidas (US-012) y si
+ * le falta calificar el servicio (US-016, Escenario 6).
+ */
+export type TareaPropia = TareaPublica & {
+  totalOfertas: number;
+  calificacionPendiente: boolean;
+};
 
 export function toTareaPropia(
   tarea: Tarea,
   autorNombre: string,
-  totalOfertas: number
+  totalOfertas: number,
+  calificacionPendiente: boolean
 ): TareaPropia {
-  return { ...toTareaPublica(tarea, autorNombre), totalOfertas };
+  return {
+    ...toTareaPublica(tarea, autorNombre),
+    totalOfertas,
+    calificacionPendiente,
+  };
 }
 
 /**

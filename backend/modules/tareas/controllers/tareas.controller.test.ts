@@ -275,15 +275,18 @@ describe('GET /api/tareas/mias (Mis solicitudes, US-012)', () => {
     // Given: una sesión válida y un servicio con una tarea propia
     conSesion();
     const propias = spyOn(tareasService, 'listarPropias').mockResolvedValue([
-      { ...TAREA, totalOfertas: 2 },
+      { ...TAREA, totalOfertas: 2, calificacionPendiente: true },
     ]);
     // When: se pide la lista
     const res = await pedido('/api/tareas/mias', 'GET');
     // Then: responde 200 con las tareas y el servicio recibe el id de la sesión
     expect(res.status).toBe(200);
-    expect(
-      ((await res.json()) as Array<{ totalOfertas: number }>)[0]?.totalOfertas
-    ).toBe(2);
+    const [primera] = (await res.json()) as Array<{
+      totalOfertas: number;
+      calificacionPendiente: boolean;
+    }>;
+    expect(primera?.totalOfertas).toBe(2);
+    expect(primera?.calificacionPendiente).toBe(true);
     expect(propias).toHaveBeenCalledWith('u-1');
   });
 

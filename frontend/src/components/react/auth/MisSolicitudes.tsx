@@ -17,6 +17,8 @@ import {
   PantallaSinSesion,
 } from './carga-sesion';
 
+export const MENSAJE_CALIFICACION_PENDIENTE =
+  'Tienes una calificación pendiente por esta tarea.';
 export const MENSAJE_SIN_SOLICITUDES = 'Aún no has publicado ninguna tarea.';
 export const MENSAJE_ERROR_SOLICITUDES =
   'No pudimos cargar tus solicitudes. Por favor, verifica tu conexión e intenta nuevamente';
@@ -93,6 +95,16 @@ export default function MisSolicitudes() {
                   <span className="ch-chip">{tarea.categoria}</span>
                 </div>
                 <p className="ch-tarea__meta">{tarea.ubicacion}</p>
+                {tarea.calificacionPendiente && (
+                  <p className="ch-alert" role="status">
+                    {MENSAJE_CALIFICACION_PENDIENTE}{' '}
+                    <a
+                      href={`/calificaciones?tarea=${encodeURIComponent(tarea.id)}`}
+                    >
+                      Calificar ahora
+                    </a>
+                  </p>
+                )}
                 <div className="ch-tarea__actions">
                   <span className="ch-badge">
                     {tarea.estado === 'abierta' ? 'Abierta' : tarea.estado}

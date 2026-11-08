@@ -124,13 +124,30 @@ test.beforeAll(async ({ request }) => {
     data: { slots: [{ dia: 1, franja: 'tarde' }] },
   });
   expect(horario.status()).toBe(200);
+  // La calificación exige una tarea finalizada: se completa el ciclo completo.
+  const previa = await crearTarea(
+    request,
+    tokenCliente,
+    `US012 ${marca} previa`
+  );
+  const oPrevia = await request.post(`${API}/api/tareas/${previa}/ofertas`, {
+    headers: { Authorization: `Bearer ${tokenMejor}` },
+    data: {},
+  });
+  expect(oPrevia.status()).toBe(201);
+  const asignada = await request.post(`${API}/api/tareas/${previa}/asignar`, {
+    headers: { Authorization: `Bearer ${tokenCliente}` },
+    data: { ofertaId: ((await oPrevia.json()) as { id: string }).id },
+  });
+  expect(asignada.status()).toBe(200);
+  const cerrada = await request.post(`${API}/api/tareas/${previa}/finalizar`, {
+    headers: { Authorization: `Bearer ${tokenCliente}` },
+    data: { pagoConfirmado: true },
+  });
+  expect(cerrada.status()).toBe(200);
   const calificacion = await request.post(`${API}/api/calificaciones`, {
     headers: { Authorization: `Bearer ${tokenCliente}` },
-    data: {
-      destinatarioId: idMejor,
-      puntuacion: 5,
-      comentario: 'Excelente trabajo',
-    },
+    data: { tareaId: previa, puntuacion: 5, comentario: 'Excelente trabajo' },
   });
   expect(calificacion.status()).toBe(201);
 });

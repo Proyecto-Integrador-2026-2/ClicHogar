@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import {
   ErrorSesionExpirada,
   ErrorSinConexion,
+  ErrorYaCalificada,
+  obtenerFormularioCalificacion,
   ErrorTareaYaAsignada,
   asignarTarea,
   finalizarTarea,
@@ -493,35 +495,93 @@ describe('chat y calificaciones (con token)', () => {
     expect(ultima?.url).toBe('http://api.test/api/chat/conversacion/u2');
   });
 
-  test('crearCalificacion envía puntuación y tarea opcional', async () => {
-    // Given: un backend que responde con la calificación
+  test('crearCalificacion envía la tarea, las estrellas y la reseña recortada', async () => {
+    // Given: un backend que registra la calificación
     simular(json({ id: 'c1' }, 201));
-    // When: se califica sin tarea ni comentario
+    // When: se califica con una reseña con espacios
     await crearCalificacion({
       token: 'tk',
-      destinatarioId: 'u2',
-      puntuacion: 5,
+      tareaId: 't1',
+      puntuacion: 4,
+      comentario: '  Bien  ',
     });
-    // Then: la tarea viaja como null
+    // Then: no viaja el afiliado (lo decide la tarea), con Bearer y timeout
     expect(ultima?.url).toBe('http://api.test/api/calificaciones');
-    expect(JSON.parse(String(ultima?.init?.body))).toMatchObject({
-      destinatarioId: 'u2',
-      tareaId: null,
-      puntuacion: 5,
-    });
-    // When: se califica con tarea
-    await crearCalificacion({
-      token: 'tk',
-      destinatarioId: 'u2',
+    expect(JSON.parse(String(ultima?.init?.body))).toEqual({
       tareaId: 't1',
       puntuacion: 4,
       comentario: 'Bien',
     });
-    // Then: viaja la tarea y el comentario
-    expect(JSON.parse(String(ultima?.init?.body))).toMatchObject({
+    expect(
+      (ultima?.init?.headers as Record<string, string>).Authorization
+    ).toBe('Bearer tk');
+    expect(ultima?.init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  test('la reseña es opcional: ausente o en blanco viaja como null', async () => {
+    // Given: un backend que registra la calificación
+    simular(json({ id: 'c1' }, 201));
+    // When: se califica sin reseña y con solo espacios
+    await crearCalificacion({ token: 'tk', tareaId: 't1', puntuacion: 5 });
+    expect(JSON.parse(String(ultima?.init?.body)).comentario).toBeNull();
+    await crearCalificacion({
+      token: 'tk',
       tareaId: 't1',
-      comentario: 'Bien',
+      puntuacion: 5,
+      comentario: '   ',
     });
+    // Then: null en ambos
+    expect(JSON.parse(String(ultima?.init?.body)).comentario).toBeNull();
+  });
+
+  test('409 es ya calificada; otros fallos conservan su mensaje', async () => {
+    // Given: un 409
+    simular(json({ message: 'x' }, 409));
+    // When / Then: ErrorYaCalificada con el mensaje de la historia
+    await expect(
+      crearCalificacion({ token: 'tk', tareaId: 't1', puntuacion: 5 })
+    ).rejects.toBeInstanceOf(ErrorYaCalificada);
+    await expect(
+      crearCalificacion({ token: 'tk', tareaId: 't1', puntuacion: 5 })
+    ).rejects.toThrow(
+      'Ya has enviado tu valoración para esta tarea anteriormente.'
+    );
+    // Given / When / Then: un 400 con mensaje y un fallo de red
+    simular(
+      json({ message: 'Solo puedes calificar una tarea finalizada' }, 400)
+    );
+    await expect(
+      crearCalificacion({ token: 'tk', tareaId: 't1', puntuacion: 5 })
+    ).rejects.toThrow('Solo puedes calificar');
+    simular(new Error('offline'));
+    await expect(
+      crearCalificacion({ token: 'tk', tareaId: 't1', puntuacion: 5 })
+    ).rejects.toBeInstanceOf(ErrorSinConexion);
+  });
+
+  test('obtenerFormularioCalificacion pide /calificaciones/tarea/:id con el token', async () => {
+    // Given: un backend con el formulario
+    simular(
+      json({
+        tareaId: 't1',
+        titulo: 'Arreglar grifo',
+        afiliado: { id: 'a1', nombre: 'José' },
+        yaCalificada: false,
+      })
+    );
+    // When: se pide (el id se codifica)
+    const f = await obtenerFormularioCalificacion('tk', 't 1');
+    // Then: llama a la ruta con Bearer y devuelve a quién se califica
+    expect(f.afiliado.nombre).toBe('José');
+    expect(ultima?.url).toBe('http://api.test/api/calificaciones/tarea/t%201');
+    expect(
+      (ultima?.init?.headers as Record<string, string>).Authorization
+    ).toBe('Bearer tk');
+    // Given / When / Then: un 401 es sesión expirada
+    simular(json({}, 401));
+    await expect(
+      obtenerFormularioCalificacion('tk', 't1')
+    ).rejects.toBeInstanceOf(ErrorSesionExpirada);
   });
 });
 

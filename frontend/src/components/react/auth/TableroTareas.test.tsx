@@ -297,6 +297,8 @@ describe('TableroTareas: scroll infinito', () => {
     ];
     render(<TableroTareas />);
     await screen.findByText('Tarea 1');
+    // El observador se registra en un efecto posterior al primer pintado.
+    await waitFor(() => expect(avisos.length).toBeGreaterThan(0));
     const avisar = avisos[avisos.length - 1]!;
     // When: el centinela aún no es visible
     act(() => avisar([{ isIntersecting: false }]));

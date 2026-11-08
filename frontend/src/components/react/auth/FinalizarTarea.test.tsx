@@ -52,11 +52,9 @@ afterEach(() => {
 });
 
 describe('FinalizarTarea', () => {
-  test('hrefCalificar lleva al afiliado y la tarea', () => {
-    // Given / When / Then: ids codificados
-    expect(hrefCalificar('a 1', 't/1')).toBe(
-      '/calificaciones?usuario=a%201&tarea=t%2F1'
-    );
+  test('hrefCalificar lleva al formulario de calificación de la tarea', () => {
+    // Given / When / Then: el id de la tarea se codifica
+    expect(hrefCalificar('t/1')).toBe('/calificaciones?tarea=t%2F1');
   });
 
   test('Esc 1: confirma el pago, felicita y lleva a calificar al afiliado', async () => {
@@ -76,7 +74,7 @@ describe('FinalizarTarea', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(finalizar).toHaveBeenCalledWith('token-falso', 't-1');
     await waitFor(() =>
-      expect(nav.destino()).toBe('/calificaciones?usuario=a-1&tarea=t-1')
+      expect(nav.destino()).toBe('/calificaciones?tarea=t-1')
     );
   });
 

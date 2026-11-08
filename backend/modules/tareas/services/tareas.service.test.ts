@@ -438,6 +438,7 @@ describe('tareasService.listarPropias (US-012)', () => {
         },
         autorNombre: 'Ana',
         totalOfertas: 2,
+        calificacionPendiente: true,
       },
     ]);
     // When: se listan sus solicitudes
@@ -449,6 +450,7 @@ describe('tareasService.listarPropias (US-012)', () => {
       id: 't-1',
       autorNombre: 'Ana',
       totalOfertas: 2,
+      calificacionPendiente: true,
     });
   });
 });

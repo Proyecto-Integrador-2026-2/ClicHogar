@@ -24,9 +24,9 @@ export const MENSAJE_ERROR_FINALIZAR =
 /** Pausa para leer el mensaje de éxito antes de ir a calificar. */
 export const REDIRECCION_CALIFICAR_MS = 1500;
 
-/** Destino del formulario de calificación, con el afiliado y la tarea. */
-export const hrefCalificar = (afiliadoId: string, tareaId: string) =>
-  `/calificaciones?usuario=${encodeURIComponent(afiliadoId)}&tarea=${encodeURIComponent(tareaId)}`;
+/** Destino del formulario de calificación de la tarea (US-016). */
+export const hrefCalificar = (tareaId: string) =>
+  `/calificaciones?tarea=${encodeURIComponent(tareaId)}`;
 
 type Props = {
   tareaId: string;
@@ -60,11 +60,11 @@ export default function FinalizarTarea({
     try {
       const token = obtenerToken();
       if (!token) throw new ErrorSesionExpirada();
-      const resultado = await finalizarTarea(token, tareaId);
+      await finalizarTarea(token, tareaId);
       setAbierto(false);
       setCompletada(true);
       setTimeout(() => {
-        window.location.href = hrefCalificar(resultado.afiliadoId, tareaId);
+        window.location.href = hrefCalificar(tareaId);
       }, esperaMs);
     } catch (err: unknown) {
       if (err instanceof ErrorSesionExpirada) {

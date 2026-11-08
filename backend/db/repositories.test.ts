@@ -398,45 +398,66 @@ describe('chatRepository', () => {
   });
 });
 
-describe('calificacionesRepository', () => {
+describe('calificacionesRepository (US-016)', () => {
   const FILA = {
     id: 'c1',
-    tarea_id: null,
+    tarea_id: 't1',
     autor_id: 'u1',
     destinatario_id: 'u2',
     puntuacion: 5,
-    comentario: null,
+    comentario: 'Muy bien',
     creado_en: FECHA,
   };
+  const DATOS = {
+    tareaId: 't1',
+    autorId: 'u1',
+    puntuacion: 5,
+    comentario: 'Muy bien',
+  };
 
-  test('crear inserta y devuelve la calificación', async () => {
-    // Given: un INSERT que devuelve la fila
+  test('crearParaTarea inserta solo si la tarea es del autor y está finalizada', async () => {
+    // Given: un INSERT que sí inserta la fila
     respuestas = [[FILA]];
-    // When: se crea una calificación
-    const resultado = await calificacionesRepository.crear({
-      tareaId: null,
-      autorId: 'u1',
-      destinatarioId: 'u2',
-      puntuacion: 5,
-      comentario: null,
-    });
-    // Then: viaja como parámetros y devuelve la fila
-    expect(llamadas[0]?.valores).toEqual([null, 'u1', 'u2', 5, null]);
-    expect(resultado).toEqual(FILA);
+    // When: se califica la tarea
+    const resultado = await calificacionesRepository.crearParaTarea(DATOS);
+    // Then: devuelve la calificación y la sentencia exige tarea propia, finalizada y con afiliado
+    expect(resultado).toEqual({ tipo: 'creada', calificacion: FILA });
+    expect(llamadas[0]?.texto).toContain("estado = 'finalizada'");
+    expect(llamadas[0]?.texto).toContain('afiliado_asignado_id IS NOT NULL');
+    expect(llamadas[0]?.texto).toContain(
+      'ON CONFLICT (tarea_id, autor_id) DO NOTHING'
+    );
+    expect(llamadas[0]?.valores).toEqual([5, 'Muy bien', 't1', 'u1']);
+    expect(llamadas).toHaveLength(1);
   });
 
-  test('crear falla si el INSERT no devuelve fila', async () => {
-    // Given: un INSERT sin fila
-    // When / Then: falla con el mensaje esperado
-    await expect(
-      calificacionesRepository.crear({
-        tareaId: null,
-        autorId: 'u1',
-        destinatarioId: 'u2',
-        puntuacion: 5,
-        comentario: null,
-      })
-    ).rejects.toThrow('No se pudo guardar la calificación.');
+  test('si no inserta y ya había una calificación, es duplicada', async () => {
+    // Given: un INSERT sin fila y una calificación previa
+    respuestas = [[], [{ existe: true }]];
+    // When / Then: 'duplicada'
+    expect(await calificacionesRepository.crearParaTarea(DATOS)).toEqual({
+      tipo: 'duplicada',
+    });
+  });
+
+  test('si no inserta y no había calificación, la tarea no es elegible', async () => {
+    // Given: un INSERT sin fila y sin calificación previa
+    respuestas = [[], [{ existe: false }]];
+    // When / Then: 'no-elegible'
+    expect(await calificacionesRepository.crearParaTarea(DATOS)).toEqual({
+      tipo: 'no-elegible',
+    });
+  });
+
+  test('existe devuelve false si la consulta no trae fila', async () => {
+    // Given: una consulta sin filas
+    // When / Then: false
+    expect(await calificacionesRepository.existe('t1', 'u1')).toBe(false);
+    // Given: una consulta con existencia
+    respuestas = [[{ existe: true }]];
+    // When / Then: true y consulta por tarea y autor
+    expect(await calificacionesRepository.existe('t1', 'u1')).toBe(true);
+    expect(llamadas[1]?.valores).toEqual(['t1', 'u1']);
   });
 
   test('listarPorDestinatario filtra por destinatario', async () => {
@@ -577,7 +598,16 @@ describe('ofertasRepository.listarPorTarea (US-012)', () => {
 describe('tareasRepository.listarPorAutor (US-012)', () => {
   test('devuelve las tareas del usuario con su número de ofertas', async () => {
     // Given: una fila de tarea con 3 ofertas
-    respuestas = [[{ ...FILA_TAREA, autor_nombre: 'Ana', total_ofertas: 3 }]];
+    respuestas = [
+      [
+        {
+          ...FILA_TAREA,
+          autor_nombre: 'Ana',
+          total_ofertas: 3,
+          calificacion_pendiente: true,
+        },
+      ],
+    ];
     // When: se listan las del usuario
     const lista = await tareasRepository.listarPorAutor('u1');
     // Then: mapea tarea, autor y total, y filtra por el usuario
@@ -585,6 +615,7 @@ describe('tareasRepository.listarPorAutor (US-012)', () => {
     expect(lista[0]?.tarea.id).toBe('t1');
     expect(lista[0]?.autorNombre).toBe('Ana');
     expect(lista[0]?.totalOfertas).toBe(3);
+    expect(lista[0]?.calificacionPendiente).toBe(true);
     expect(llamadas[0]?.valores).toEqual(['u1']);
   });
 });

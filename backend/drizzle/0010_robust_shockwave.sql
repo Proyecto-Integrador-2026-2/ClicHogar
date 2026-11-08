@@ -1,0 +1,1 @@
+ALTER TABLE "calificaciones" ADD CONSTRAINT "calificaciones_tarea_autor_unique" UNIQUE("tarea_id","autor_id");

@@ -71,6 +71,13 @@
       "when": 1794144998410,
       "tag": "0009_pink_tarot",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794146962807,
+      "tag": "0010_robust_shockwave",
+      "breakpoints": true
     }
   ]
 }
