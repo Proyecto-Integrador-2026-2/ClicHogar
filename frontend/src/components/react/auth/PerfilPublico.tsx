@@ -8,11 +8,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { estaFirmado, obtenerToken } from '../../../lib/auth';
 import {
   ErrorSesionExpirada,
-  listarCalificaciones,
+  obtenerReputacion,
   obtenerDisponibilidadDe,
   obtenerPerfilPublico,
   urlPublica,
-  type CalificacionApi,
+  type ReputacionApi,
   type SlotApi,
   type UsuarioPublico,
 } from '../../../lib/usuarios-api';
@@ -23,8 +23,10 @@ import {
   PantallaSinSesion,
 } from './carga-sesion';
 import { DIAS, FRANJAS, claveSlot } from './disponibilidad.validation';
-import Estrellas from './Estrellas';
+import Estrellas, { formatearPromedio } from './Estrellas';
 
+export const MENSAJE_AFILIADO_NUEVO =
+  'Nuevo en la plataforma. Este afiliado aún no tiene valoraciones.';
 export const MENSAJE_PERFIL_NO_ENCONTRADO = 'No encontramos este perfil.';
 export const MENSAJE_ERROR_PERFIL =
   'No pudimos cargar el perfil. Por favor, verifica tu conexión e intenta nuevamente';
@@ -32,7 +34,7 @@ export const MENSAJE_ERROR_PERFIL =
 type Datos = {
   perfil: UsuarioPublico;
   disponibilidad: SlotApi[];
-  calificaciones: CalificacionApi[];
+  reputacion: ReputacionApi;
 };
 
 type Estado =
@@ -47,13 +49,6 @@ function idDeLaUrl(): string {
   } catch {
     return '';
   }
-}
-
-/** Promedio de 1 a 5 con un decimal (null sin calificaciones). */
-export function promedioDe(calificaciones: CalificacionApi[]): number | null {
-  if (calificaciones.length === 0) return null;
-  const suma = calificaciones.reduce((acc, c) => acc + c.puntuacion, 0);
-  return Math.round((suma / calificaciones.length) * 10) / 10;
 }
 
 function fechaCorta(iso: string): string {
@@ -126,14 +121,14 @@ export default function PerfilPublico() {
     try {
       const token = obtenerToken();
       if (!token) throw new ErrorSesionExpirada();
-      const [perfil, disponibilidad, calificaciones] = await Promise.all([
+      const [perfil, disponibilidad, reputacion] = await Promise.all([
         obtenerPerfilPublico(id),
         obtenerDisponibilidadDe(token, id),
-        listarCalificaciones(id),
+        obtenerReputacion(id),
       ]);
       setEstado({
         tipo: 'listo',
-        datos: { perfil, disponibilidad, calificaciones },
+        datos: { perfil, disponibilidad, reputacion },
       });
     } catch (err: unknown) {
       if (err instanceof ErrorSesionExpirada) {
@@ -186,7 +181,7 @@ export default function PerfilPublico() {
     );
   }
 
-  const { perfil, disponibilidad, calificaciones } = estado.datos;
+  const { perfil, disponibilidad, reputacion } = estado.datos;
   return (
     <div className="ch-auth">
       <div className="ch-card ch-card--wide">
@@ -203,10 +198,19 @@ export default function PerfilPublico() {
           )}
           <div>
             <h2 className="ch-card__title">{perfil.nombre}</h2>
-            <Estrellas
-              promedio={promedioDe(calificaciones)}
-              total={calificaciones.length}
-            />
+            {reputacion.promedio === null ? (
+              <p className="ch-field__hint">{MENSAJE_AFILIADO_NUEVO}</p>
+            ) : (
+              <p className="ch-reputacion">
+                <Estrellas
+                  promedio={reputacion.promedio}
+                  total={reputacion.total}
+                />{' '}
+                <strong>
+                  {formatearPromedio(reputacion.promedio)} / 5,0 estrellas
+                </strong>
+              </p>
+            )}
             {perfil.ubicacion && (
               <p className="ch-tarea__meta">{perfil.ubicacion}</p>
             )}
@@ -221,25 +225,29 @@ export default function PerfilPublico() {
         <h3 className="ch-autor__nombre">Disponibilidad</h3>
         <Horario slots={disponibilidad} />
 
-        <h3 className="ch-autor__nombre">Valoraciones de servicios previos</h3>
-        {calificaciones.length === 0 ? (
-          <p className="ch-field__hint">Aún no tiene valoraciones.</p>
-        ) : (
-          <ul className="ch-ofertas__lista">
-            {calificaciones.map((c) => (
-              <li className="ch-oferta" key={c.id}>
-                <div className="ch-oferta__cuerpo">
-                  <Estrellas promedio={c.puntuacion} total={1} />
-                  {c.comentario && (
-                    <p className="ch-oferta__mensaje">“{c.comentario}”</p>
-                  )}
-                  {fechaCorta(c.creado_en) && (
-                    <p className="ch-tarea__meta">{fechaCorta(c.creado_en)}</p>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+        {reputacion.valoraciones.length > 0 && (
+          <>
+            <h3 className="ch-autor__nombre">Valoraciones</h3>
+            <ul className="ch-ofertas__lista">
+              {reputacion.valoraciones.map((v) => (
+                <li className="ch-oferta" key={v.id}>
+                  <div className="ch-oferta__cuerpo">
+                    <h4 className="ch-autor__nombre">{v.cliente.nombre}</h4>
+                    <Estrellas promedio={v.puntuacion} total={1} />
+                    {v.comentario && (
+                      <p className="ch-oferta__mensaje">“{v.comentario}”</p>
+                    )}
+                    {fechaCorta(v.fechaServicio ?? v.fecha) && (
+                      <p className="ch-tarea__meta">
+                        Servicio realizado el{' '}
+                        {fechaCorta(v.fechaServicio ?? v.fecha)}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </div>
     </div>

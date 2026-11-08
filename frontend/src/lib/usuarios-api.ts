@@ -333,11 +333,39 @@ export function obtenerFormularioCalificacion(
   );
 }
 
-/** Calificaciones recibidas por un usuario (lectura pública). */
-export function listarCalificaciones(
-  usuarioId: string
-): Promise<CalificacionApi[]> {
-  return pedir(`/api/calificaciones/usuario/${usuarioId}`, null);
+/** Valoración verificada de un servicio en el perfil de un afiliado (US-017). */
+export type ValoracionApi = {
+  id: string;
+  puntuacion: number;
+  comentario: string | null;
+  /** Cuándo se calificó. */
+  fecha: string;
+  /** Cuándo se realizó (finalizó) el servicio. */
+  fechaServicio: string | null;
+  cliente: { nombre: string };
+};
+
+/** Reputación pública de un afiliado (US-017). */
+export type ReputacionApi = {
+  /** Promedio con 1 decimal; null si aún no tiene valoraciones (nunca 0). */
+  promedio: number | null;
+  total: number;
+  /** De la más reciente a la más antigua. */
+  valoraciones: ValoracionApi[];
+};
+
+/**
+ * Reputación de un afiliado (lectura pública): promedio calculado por el
+ * servidor solo con valoraciones de tareas asignadas y finalizadas, y sus
+ * valoraciones recientes.
+ */
+export function obtenerReputacion(usuarioId: string): Promise<ReputacionApi> {
+  return pedir(
+    `/api/calificaciones/usuario/${encodeURIComponent(usuarioId)}`,
+    null,
+    {},
+    { mensajeSinRed: true }
+  );
 }
 
 /**

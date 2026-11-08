@@ -13,8 +13,12 @@ import type { Usuario } from '../usuarios/entities/usuario.entity';
 import {
   calificacionesRepository,
   type CalificacionFila,
+  type ValoracionFila,
 } from './repositories/calificaciones.repository';
+import { redondearPromedio } from './redondeo';
+import { usuariosRepository } from '../usuarios/repositories/usuarios.repository';
 import {
+  LIMITE_VALORACIONES,
   MENSAJE_SOLO_CREADOR_CALIFICA,
   MENSAJE_TAREA_NO_FINALIZADA,
   MENSAJE_YA_CALIFICADA,
@@ -206,19 +210,6 @@ describe('calificacionesService.formulario y listarPorUsuario (US-016)', () => {
       calificacionesService.formulario(AUTOR, TAREA_ID)
     ).rejects.toThrow(MENSAJE_TAREA_NO_FINALIZADA);
   });
-
-  test('listarPorUsuario delega en el repositorio', async () => {
-    // Given: un repositorio con una calificación
-    const listar = spyOn(
-      calificacionesRepository,
-      'listarPorDestinatario'
-    ).mockResolvedValue([FILA]);
-    // When / Then: devuelve la lista
-    expect(await calificacionesService.listarPorUsuario(OTRO_ID)).toEqual([
-      FILA,
-    ]);
-    expect(listar).toHaveBeenCalledWith(OTRO_ID);
-  });
 });
 
 describe('endpoints de calificaciones', () => {
@@ -355,17 +346,110 @@ describe('endpoints de calificaciones', () => {
     expect(sin.status).toBe(401);
   });
 
-  test('GET /usuario/:id es público; 400 si el id no es uuid', async () => {
-    // Given: un servicio con una calificación
-    spyOn(calificacionesService, 'listarPorUsuario').mockResolvedValue([FILA]);
+  test('GET /usuario/:id es público y devuelve la reputación; 400 si el id no es uuid', async () => {
+    // Given: un servicio con una reputación
+    spyOn(calificacionesService, 'obtenerReputacion').mockResolvedValue({
+      promedio: 4.7,
+      total: 3,
+      valoraciones: [],
+    });
     // When: se pide sin Authorization
     const res = await buildApp().handle(
       new Request(`http://localhost/api/calificaciones/usuario/${OTRO_ID}`)
     );
-    // Then: 200 con la lista
+    // Then: 200 con el promedio y el total
     expect(res.status).toBe(200);
-    expect(((await res.json()) as CalificacionFila[])[0]?.id).toBe('c1');
+    expect(await res.json()).toEqual({
+      promedio: 4.7,
+      total: 3,
+      valoraciones: [],
+    });
     // When / Then: id inválido
     expect((await pedido('/api/calificaciones/usuario/abc')).status).toBe(400);
+  });
+});
+
+describe('calificacionesService.obtenerReputacion (US-017)', () => {
+  const FECHA_SERVICIO = new Date('2026-03-01T00:00:00.000Z');
+  const FECHA_CALIFICACION = new Date('2026-03-02T00:00:00.000Z');
+  const valoracion = (id: string, puntuacion: number): ValoracionFila => ({
+    id,
+    puntuacion,
+    comentario: puntuacion === 5 ? 'Excelente' : null,
+    creado_en: FECHA_CALIFICACION,
+    finalizada_en: FECHA_SERVICIO,
+    cliente_nombre: 'Ana Pérez',
+  });
+  const existente = () =>
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue({
+      id: OTRO_ID,
+    } as Usuario);
+
+  test('Esc 1, 2 y 4: promedio a 1 decimal y valoraciones con cliente y fecha del servicio', async () => {
+    // Given: un afiliado con 3 valoraciones verificadas (promedio 4.666…)
+    existente();
+    spyOn(calificacionesRepository, 'reputacion').mockResolvedValue({
+      promedio: 4.666666,
+      total: 3,
+    });
+    const listar = spyOn(
+      calificacionesRepository,
+      'listarVerificadas'
+    ).mockResolvedValue([
+      valoracion('v1', 5),
+      valoracion('v2', 5),
+      valoracion('v3', 4),
+    ]);
+    // When: se pide su reputación
+    const r = await calificacionesService.obtenerReputacion(OTRO_ID);
+    // Then: el promedio se redondea a un decimal y el total sale de la base
+    expect(r.promedio).toBe(4.7);
+    expect(r.total).toBe(3);
+    // Then: cada valoración trae al cliente, cuándo se calificó y cuándo se hizo el servicio
+    expect(r.valoraciones[0]).toEqual({
+      id: 'v1',
+      puntuacion: 5,
+      comentario: 'Excelente',
+      fecha: FECHA_CALIFICACION,
+      fechaServicio: FECHA_SERVICIO,
+      cliente: { nombre: 'Ana Pérez' },
+    });
+    expect(r.valoraciones.map((v) => v.id)).toEqual(['v1', 'v2', 'v3']);
+    expect(listar).toHaveBeenCalledWith(OTRO_ID, LIMITE_VALORACIONES);
+  });
+
+  test('Esc 3: un afiliado nuevo no tiene promedio (null), nunca 0', async () => {
+    // Given: un afiliado sin valoraciones verificadas
+    existente();
+    spyOn(calificacionesRepository, 'reputacion').mockResolvedValue({
+      promedio: null,
+      total: 0,
+    });
+    spyOn(calificacionesRepository, 'listarVerificadas').mockResolvedValue([]);
+    // When: se pide su reputación
+    const r = await calificacionesService.obtenerReputacion(OTRO_ID);
+    // Then: promedio null, total 0 y sin valoraciones
+    expect(r).toEqual({ promedio: null, total: 0, valoraciones: [] });
+  });
+
+  test('un usuario inexistente responde 404 sin consultar valoraciones', async () => {
+    // Given: un usuario que no existe
+    spyOn(usuariosRepository, 'buscarPorId').mockResolvedValue(undefined);
+    const reputacion = spyOn(calificacionesRepository, 'reputacion');
+    // When / Then: NotFoundError
+    await expect(
+      calificacionesService.obtenerReputacion(OTRO_ID)
+    ).rejects.toThrow('Usuario no encontrado.');
+    expect(reputacion).not.toHaveBeenCalled();
+  });
+});
+
+describe('redondearPromedio (US-017, Esc 4)', () => {
+  test('redondea a 1 decimal y conserva null', () => {
+    // Given / When / Then: varios promedios con muchos decimales
+    expect(redondearPromedio(4.666)).toBe(4.7);
+    expect(redondearPromedio(4.649)).toBe(4.6);
+    expect(redondearPromedio(5)).toBe(5);
+    expect(redondearPromedio(null)).toBeNull();
   });
 });

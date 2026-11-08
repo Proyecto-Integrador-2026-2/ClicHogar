@@ -10,7 +10,9 @@ import { calificacionesService } from '../services/calificaciones.service';
  *   finalizada, 403 si no es el creador y 409 si ya la calificó.
  * - GET /api/calificaciones/tarea/:id: datos del formulario de calificación
  *   (afiliado a calificar y si ya se hizo), solo para el creador.
- * - GET /api/calificaciones/usuario/:id: calificaciones recibidas (público).
+ * - GET /api/calificaciones/usuario/:id: reputación pública de un afiliado
+ *   (US-017): promedio a 1 decimal (null sin valoraciones) y sus valoraciones
+ *   verificadas, de la más reciente a la más antigua.
  */
 export const calificacionesController = new Elysia({
   prefix: '/api/calificaciones',
@@ -35,6 +37,6 @@ export const calificacionesController = new Elysia({
   )
   .get(
     '/usuario/:id',
-    ({ params }) => calificacionesService.listarPorUsuario(params.id),
+    ({ params }) => calificacionesService.obtenerReputacion(params.id),
     { params: ParamsIdDto }
   );

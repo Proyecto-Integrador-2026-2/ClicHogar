@@ -8,6 +8,8 @@ import { ESTADO_FINALIZADA } from '../../tareas/categorias';
 import type { TareaEncontrada } from '../../tareas/entities/tarea.entity';
 import { tareasRepository } from '../../tareas/repositories/tareas.repository';
 import type { Usuario } from '../../usuarios/entities/usuario.entity';
+import { usuariosRepository } from '../../usuarios/repositories/usuarios.repository';
+import { redondearPromedio } from '../redondeo';
 import {
   calificacionesRepository,
   type CalificacionFila,
@@ -25,6 +27,29 @@ export type DatosCalificacion = {
   puntuacion: number;
   comentario?: string | null;
 };
+
+/** Valoración de un servicio tal como se muestra en el perfil (US-017). */
+export type Valoracion = {
+  id: string;
+  puntuacion: number;
+  comentario: string | null;
+  /** Cuándo se calificó. */
+  fecha: Date;
+  /** Cuándo se realizó (finalizó) el servicio. */
+  fechaServicio: Date | null;
+  cliente: { nombre: string };
+};
+
+/** Reputación pública de un afiliado (US-017). */
+export type Reputacion = {
+  /** Promedio con 1 decimal; null si aún no tiene valoraciones. */
+  promedio: number | null;
+  total: number;
+  valoraciones: Valoracion[];
+};
+
+/** Cuántas valoraciones recientes se listan en el perfil. */
+export const LIMITE_VALORACIONES = 50;
 
 /** Lo que necesita el formulario de calificación de una tarea. */
 export type FormularioCalificacion = {
@@ -98,7 +123,34 @@ export const calificacionesService = {
     };
   },
 
-  listarPorUsuario(usuarioId: string): Promise<CalificacionFila[]> {
-    return calificacionesRepository.listarPorDestinatario(usuarioId);
+  /**
+   * Reputación pública de un afiliado (US-017), calculada al consultarla:
+   * así siempre refleja las últimas valoraciones (Esc 1). Solo cuentan las
+   * de tareas asignadas y finalizadas (Esc 5). El promedio sale redondeado
+   * a 1 decimal (Esc 4) y es null sin valoraciones (Esc 3: sin "0.0").
+   */
+  async obtenerReputacion(usuarioId: string): Promise<Reputacion> {
+    if (!(await usuariosRepository.buscarPorId(usuarioId))) {
+      throw new NotFoundError('Usuario no encontrado.');
+    }
+    const [resumen, filas] = await Promise.all([
+      calificacionesRepository.reputacion(usuarioId),
+      calificacionesRepository.listarVerificadas(
+        usuarioId,
+        LIMITE_VALORACIONES
+      ),
+    ]);
+    return {
+      promedio: redondearPromedio(resumen.promedio),
+      total: resumen.total,
+      valoraciones: filas.map((fila) => ({
+        id: fila.id,
+        puntuacion: fila.puntuacion,
+        comentario: fila.comentario,
+        fecha: fila.creado_en,
+        fechaServicio: fila.finalizada_en,
+        cliente: { nombre: fila.cliente_nombre },
+      })),
+    };
   },
 };

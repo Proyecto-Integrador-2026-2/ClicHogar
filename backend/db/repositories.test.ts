@@ -460,14 +460,51 @@ describe('calificacionesRepository (US-016)', () => {
     expect(llamadas[1]?.valores).toEqual(['t1', 'u1']);
   });
 
-  test('listarPorDestinatario filtra por destinatario', async () => {
-    // Given: una calificación recibida
-    respuestas = [[FILA]];
-    // When: se listan las de u2
-    const lista = await calificacionesRepository.listarPorDestinatario('u2');
-    // Then: devuelve la fila y consulta por u2
-    expect(lista).toEqual([FILA]);
+  test('Esc 5: la reputación solo cuenta valoraciones de tareas asignadas y finalizadas', async () => {
+    // Given: una fila de resumen
+    respuestas = [[{ promedio: 4.5, total: 2 }]];
+    // When: se pide la reputación de u2
+    const r = await calificacionesRepository.reputacion('u2');
+    // Then: devuelve el resumen y la consulta exige tarea finalizada, afiliado asignado y autor creador
+    expect(r).toEqual({ promedio: 4.5, total: 2 });
+    expect(llamadas[0]?.texto).toContain("t.estado = 'finalizada'");
+    expect(llamadas[0]?.texto).toContain(
+      't.afiliado_asignado_id = c.destinatario_id'
+    );
+    expect(llamadas[0]?.texto).toContain('t.usuario_id = c.autor_id');
     expect(llamadas[0]?.valores).toEqual(['u2']);
+  });
+
+  test('sin fila de resumen, la reputación es vacía (promedio null)', async () => {
+    // Given: una consulta sin filas
+    // When / Then: promedio null y total 0
+    expect(await calificacionesRepository.reputacion('u2')).toEqual({
+      promedio: null,
+      total: 0,
+    });
+  });
+
+  test('Esc 2 y 5: lista las valoraciones verificadas, la más reciente primero, con el cliente', async () => {
+    // Given: una valoración con su cliente y la fecha del servicio
+    const fila = {
+      id: 'c1',
+      puntuacion: 5,
+      comentario: 'Muy bien',
+      creado_en: FECHA,
+      finalizada_en: FECHA,
+      cliente_nombre: 'Ana',
+    };
+    respuestas = [[fila]];
+    // When: se listan las de u2
+    const lista = await calificacionesRepository.listarVerificadas('u2', 50);
+    // Then: devuelve la fila; ordena por fecha del servicio y exige las mismas reglas
+    expect(lista).toEqual([fila]);
+    expect(llamadas[0]?.texto).toContain('ORDER BY t.finalizada_en DESC');
+    expect(llamadas[0]?.texto).toContain("t.estado = 'finalizada'");
+    expect(llamadas[0]?.texto).toContain(
+      'JOIN usuarios u ON u.id = c.autor_id'
+    );
+    expect(llamadas[0]?.valores).toEqual(['u2', 50]);
   });
 });
 
@@ -581,6 +618,7 @@ describe('ofertasRepository.listarPorTarea (US-012)', () => {
       },
     ]);
     expect(llamadas[0]?.texto).toContain('NULLS LAST');
+    expect(llamadas[0]?.texto).toContain("t.estado = 'finalizada'");
     expect(llamadas[0]?.valores).toEqual(['t1']);
   });
 
@@ -625,7 +663,7 @@ describe('listados de chat y calificaciones devuelven arrays planos', () => {
   class ResultadoSql<T> extends Array<T> {}
   const comoResultadoSql = <T>(filas: T[]) => ResultadoSql.from(filas);
 
-  test('listarConversacion y listarPorDestinatario no filtran la subclase de SQL', async () => {
+  test('listarConversacion y listarVerificadas no filtran la subclase de SQL', async () => {
     // Given: consultas que devuelven la subclase de Array de Bun SQL
     respuestas = [
       comoResultadoSql([
@@ -640,19 +678,20 @@ describe('listados de chat y calificaciones devuelven arrays planos', () => {
       comoResultadoSql([
         {
           id: 'c1',
-          tarea_id: null,
-          autor_id: 'u1',
-          destinatario_id: 'u2',
           puntuacion: 5,
           comentario: null,
           creado_en: FECHA,
+          finalizada_en: FECHA,
+          cliente_nombre: 'Ana',
         },
       ]),
     ];
     // When: se listan la conversación y las calificaciones
     const mensajes = await chatRepository.listarConversacion('u1', 'u2');
-    const calificaciones =
-      await calificacionesRepository.listarPorDestinatario('u2');
+    const calificaciones = await calificacionesRepository.listarVerificadas(
+      'u2',
+      50
+    );
     // Then: son arrays planos (Elysia solo añade CORS a respuestas JSON normales)
     expect(Object.getPrototypeOf(mensajes)).toBe(Array.prototype);
     expect(Object.getPrototypeOf(calificaciones)).toBe(Array.prototype);

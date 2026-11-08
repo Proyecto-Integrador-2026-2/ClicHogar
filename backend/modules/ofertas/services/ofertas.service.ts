@@ -7,6 +7,7 @@ import {
 import { ESTADO_INICIAL_TAREA } from '../../tareas/categorias';
 import { tareasRepository } from '../../tareas/repositories/tareas.repository';
 import type { Usuario } from '../../usuarios/entities/usuario.entity';
+import { redondearPromedio } from '../../calificaciones/redondeo';
 import type { Oferta, OfertaRecibida } from '../entities/oferta.entity';
 import { ofertasRepository } from '../repositories/ofertas.repository';
 
@@ -15,11 +16,6 @@ export const MENSAJE_SIN_PERMISO_OFERTAS =
   'No tienes los permisos necesarios para ver las ofertas de esta tarea.';
 export const MENSAJE_NO_ACEPTA_OFERTAS =
   'Lo sentimos, esta tarea ya no acepta nuevas ofertas en este momento';
-
-/** Redondea el promedio a 1 decimal (4.333 -> 4.3); null se conserva. */
-function redondear(promedio: number | null): number | null {
-  return promedio === null ? null : Math.round(promedio * 10) / 10;
-}
 
 export const ofertasService = {
   /**
@@ -44,7 +40,7 @@ export const ofertasService = {
       ...oferta,
       afiliado: {
         ...oferta.afiliado,
-        promedio: redondear(oferta.afiliado.promedio),
+        promedio: redondearPromedio(oferta.afiliado.promedio),
       },
     }));
   },

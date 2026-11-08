@@ -50,9 +50,13 @@ export const ofertasRepository = {
       FROM ofertas o
       JOIN usuarios u ON u.id = o.afiliado_id
       LEFT JOIN (
-        SELECT destinatario_id, AVG(puntuacion)::float8 AS promedio, COUNT(*)::int AS total
-        FROM calificaciones
-        GROUP BY destinatario_id
+        SELECT c.destinatario_id, AVG(c.puntuacion)::float8 AS promedio, COUNT(*)::int AS total
+        FROM calificaciones c
+        JOIN tareas t ON t.id = c.tarea_id
+          AND t.estado = 'finalizada'
+          AND t.afiliado_asignado_id = c.destinatario_id
+          AND t.usuario_id = c.autor_id
+        GROUP BY c.destinatario_id
       ) c ON c.destinatario_id = o.afiliado_id
       WHERE o.tarea_id = ${tareaId}::uuid
       ORDER BY c.promedio DESC NULLS LAST, o.creado_en DESC, o.id DESC

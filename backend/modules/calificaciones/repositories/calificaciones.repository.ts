@@ -11,6 +11,16 @@ export type CalificacionFila = {
   creado_en: Date;
 };
 
+/** Valoración verificada de un afiliado, con su cliente y la fecha del servicio. */
+export type ValoracionFila = {
+  id: string;
+  puntuacion: number;
+  comentario: string | null;
+  creado_en: Date;
+  finalizada_en: Date | null;
+  cliente_nombre: string;
+};
+
 export type ResultadoCalificacion =
   | { tipo: 'creada'; calificacion: CalificacionFila }
   | { tipo: 'duplicada' }
@@ -60,15 +70,48 @@ export const calificacionesRepository = {
     return filas[0]?.existe ?? false;
   },
 
-  /** Calificaciones recibidas por un usuario, la más reciente primero. */
-  async listarPorDestinatario(
+  /**
+   * Resumen de reputación (US-017): promedio exacto y total de las
+   * valoraciones VERIFICADAS de un afiliado. Solo cuentan las de tareas
+   * formalmente asignadas a él, finalizadas y calificadas por su creador
+   * (Esc 5): cualquier otra fila (sin tarea, de una tarea cancelada o
+   * ajena) queda fuera. Sin valoraciones: promedio null (nunca 0).
+   */
+  async reputacion(
     destinatarioId: string
-  ): Promise<CalificacionFila[]> {
-    const filas = await sql<CalificacionFila[]>`
-      SELECT id, tarea_id, autor_id, destinatario_id, puntuacion, comentario, creado_en
-      FROM calificaciones
-      WHERE destinatario_id = ${destinatarioId}
-      ORDER BY creado_en DESC
+  ): Promise<{ promedio: number | null; total: number }> {
+    const filas = await sql<{ promedio: number | null; total: number }[]>`
+      SELECT AVG(c.puntuacion)::float8 AS promedio, COUNT(*)::int AS total
+      FROM calificaciones c
+      JOIN tareas t ON t.id = c.tarea_id
+        AND t.estado = 'finalizada'
+        AND t.afiliado_asignado_id = c.destinatario_id
+        AND t.usuario_id = c.autor_id
+      WHERE c.destinatario_id = ${destinatarioId}::uuid
+    `;
+    return filas[0] ?? { promedio: null, total: 0 };
+  },
+
+  /**
+   * Valoraciones verificadas de un afiliado (mismas reglas que
+   * `reputacion`), con el nombre del cliente y la fecha del servicio, de la
+   * más reciente a la más antigua (US-017, Esc 2).
+   */
+  async listarVerificadas(
+    destinatarioId: string,
+    limite: number
+  ): Promise<ValoracionFila[]> {
+    const filas = await sql<ValoracionFila[]>`
+      SELECT c.id, c.puntuacion, c.comentario, c.creado_en, t.finalizada_en, u.nombre AS cliente_nombre
+      FROM calificaciones c
+      JOIN tareas t ON t.id = c.tarea_id
+        AND t.estado = 'finalizada'
+        AND t.afiliado_asignado_id = c.destinatario_id
+        AND t.usuario_id = c.autor_id
+      JOIN usuarios u ON u.id = c.autor_id
+      WHERE c.destinatario_id = ${destinatarioId}::uuid
+      ORDER BY t.finalizada_en DESC NULLS LAST, c.creado_en DESC, c.id DESC
+      LIMIT ${limite}
     `;
     // Array plano: el resultado de Bun SQL es una subclase que Elysia no
     // trata como JSON y por eso la respuesta salía sin cabeceras CORS.

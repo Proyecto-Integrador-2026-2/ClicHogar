@@ -945,3 +945,8 @@ textarea.ch-field__input {
   cursor: not-allowed;
   opacity: 0.6;
 }
+
+/* Reputación en la cabecera del perfil público (US-017) */
+.ch-reputacion {
+  margin: 4px 0;
+}

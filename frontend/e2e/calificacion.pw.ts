@@ -221,14 +221,15 @@ test('Esc 2: una calificación solo numérica se guarda sin reseña', async ({
   const lista = await request.get(
     `${API}/api/calificaciones/usuario/${idAfiliado}`
   );
-  const calificaciones = (await lista.json()) as Array<{
-    tarea_id: string;
-    puntuacion: number;
-    comentario: string | null;
-  }>;
-  const guardada = calificaciones.find((c) => c.tarea_id === tareaB);
+  const { valoraciones } = (await lista.json()) as {
+    valoraciones: Array<{
+      puntuacion: number;
+      comentario: string | null;
+      cliente: { nombre: string };
+    }>;
+  };
+  const guardada = valoraciones.find((v) => v.comentario === null);
   expect(guardada?.puntuacion).toBe(4);
-  expect(guardada?.comentario).toBeNull();
 });
 
 test('el afiliado no puede calificar su propio servicio ni una tarea ajena', async ({

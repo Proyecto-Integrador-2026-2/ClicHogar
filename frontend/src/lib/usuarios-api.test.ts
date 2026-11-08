@@ -27,13 +27,13 @@ import {
   enviarMensaje,
   guardarDisponibilidad,
   iniciarSesion,
-  listarCalificaciones,
   listarConversacion,
   registrar,
   listarTareas,
   normalizarRolParaBackend,
   obtenerDisponibilidad,
   obtenerPerfil,
+  obtenerReputacion,
   obtenerTarea,
   urlPublica,
 } from './usuarios-api';
@@ -157,22 +157,35 @@ describe('registrar e iniciarSesion', () => {
   });
 });
 
-describe('listarCalificaciones (lectura sin token)', () => {
-  test('llama a la ruta del usuario y devuelve la lista', async () => {
-    // Given: un backend que responde con una lista
-    simular(json([{ id: 'c1' }]));
-    // When: se listan las calificaciones del usuario
-    expect(await listarCalificaciones('u9')).toEqual([{ id: 'c1' } as never]);
-    // Then: llama a /api/calificaciones/usuario/:id
-    expect(ultima?.url).toBe('http://api.test/api/calificaciones/usuario/u9');
+describe('obtenerReputacion (lectura sin token, US-017)', () => {
+  const reputacion = {
+    promedio: 4.7,
+    total: 3,
+    valoraciones: [{ id: 'v1', puntuacion: 5 }],
+  };
+
+  test('llama a la ruta del usuario sin Authorization y devuelve la reputación', async () => {
+    // Given: un backend que responde con la reputación
+    simular(json(reputacion));
+    // When: se pide la reputación (el id se codifica)
+    const r = await obtenerReputacion('u 9');
+    // Then: llama a /api/calificaciones/usuario/:id sin token
+    expect(r).toEqual(reputacion as never);
+    expect(ultima?.url).toBe(
+      'http://api.test/api/calificaciones/usuario/u%209'
+    );
+    expect(ultima?.init?.headers).toBeUndefined();
   });
 
-  test('un error del backend llega con su mensaje', async () => {
+  test('un error del backend llega con su mensaje; sin red avisa', async () => {
     // Given: un backend que responde 400 con mensaje
     simular(json({ message: 'Id inválido.' }, 400));
-    // When: se listan las calificaciones
-    // Then: falla con ese mensaje
-    await expect(listarCalificaciones('x')).rejects.toThrow('Id inválido.');
+    // When / Then: falla con ese mensaje
+    await expect(obtenerReputacion('x')).rejects.toThrow('Id inválido.');
+    // Given: un fallo de red
+    simular(new Error('offline'));
+    // When / Then: mensaje de falta de conexión
+    await expect(obtenerReputacion('x')).rejects.toThrow(SIN_RED);
   });
 });
 
