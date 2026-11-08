@@ -15,7 +15,10 @@ import React from 'react';
 import { resetSesion, simularNavegacion } from '../../../../test-setup';
 import * as api from '../../../lib/usuarios-api';
 import DetalleTarea, {
+  MENSAJE_AFILIADO_SELECCIONADO,
   MENSAJE_ERROR_DETALLE,
+  MENSAJE_ESPERANDO_CIERRE,
+  MENSAJE_YA_ASIGNADA,
   MENSAJE_NO_DISPONIBLE,
   MENSAJE_NO_ACEPTA_OFERTAS,
   MENSAJE_OFERTA_ENVIADA,
@@ -50,6 +53,10 @@ const detalle = (
   esPropia: false,
   puedeOfertar: true,
   yaPostulado: false,
+  esAsignado: false,
+  puedeFinalizar: false,
+  contacto: null,
+  afiliadoAsignado: null,
   ...cambios,
 });
 
@@ -74,6 +81,8 @@ afterEach(() => {
   spyOn(api, 'obtenerTarea').mockRestore();
   spyOn(api, 'enviarOferta').mockRestore();
   spyOn(api, 'listarOfertasRecibidas').mockRestore();
+  spyOn(api, 'asignarTarea').mockRestore();
+  spyOn(api, 'finalizarTarea').mockRestore();
 });
 
 describe('DetalleTarea', () => {
@@ -465,5 +474,163 @@ describe('DetalleTarea: sesión y errores', () => {
     expect(
       await screen.findByRole('heading', { name: 'Arreglar grifo' })
     ).toBeTruthy();
+  });
+});
+
+describe('DetalleTarea: selección, contacto y cierre (US-013 y US-014)', () => {
+  const OFERTA_PENDIENTE: api.OfertaRecibidaApi = {
+    id: 'o-1',
+    mensaje: 'Tengo experiencia',
+    estado: 'pendiente',
+    creadoEn: '2026-03-15T12:00:00.000Z',
+    afiliado: {
+      id: 'a-1',
+      nombre: 'José',
+      fotoUrl: null,
+      descripcion: null,
+      ubicacion: null,
+      promedio: 4.5,
+      totalCalificaciones: 2,
+    },
+  };
+
+  test('US-013 Esc 1: tras elegir al afiliado avisa y recarga el detalle ya asignado', async () => {
+    // Given: una tarea propia abierta con una oferta y un backend que asigna
+    const obtener = spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({ esPropia: true, puedeOfertar: false })
+    );
+    (
+      api.listarOfertasRecibidas as unknown as ReturnType<typeof spyOn>
+    ).mockResolvedValue([OFERTA_PENDIENTE]);
+    spyOn(api, 'asignarTarea').mockResolvedValue({
+      tareaId: ID,
+      estado: 'asignada',
+      afiliadoId: 'a-1',
+    });
+    render(<DetalleTarea />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Seleccionar afiliado' })
+    );
+    // When: el servidor ya devuelve la tarea asignada y se confirma
+    obtener.mockResolvedValue(
+      detalle({
+        estado: 'asignada',
+        esPropia: true,
+        puedeOfertar: false,
+        puedeFinalizar: true,
+        contacto: { nombre: 'José', email: 'jose@ejemplo.com' },
+        afiliadoAsignado: { id: 'a-1', nombre: 'José' },
+      })
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirmar selección' })
+    );
+    // Then: mensaje de éxito, contacto del afiliado y opción de finalizar
+    expect(
+      (await screen.findByRole('status', { name: '' })).textContent
+    ).toBeTruthy();
+    expect(await screen.findByText(MENSAJE_AFILIADO_SELECCIONADO)).toBeTruthy();
+    expect(await screen.findByText('jose@ejemplo.com')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Marcar como finalizada' })
+    ).toBeTruthy();
+    expect(obtener).toHaveBeenCalledTimes(2);
+  });
+
+  test('US-013 Esc 5: si ya estaba asignada avisa con la alerta de la historia', async () => {
+    // Given: una tarea propia abierta y un backend que dice que ya está asignada
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({ esPropia: true, puedeOfertar: false })
+    );
+    (
+      api.listarOfertasRecibidas as unknown as ReturnType<typeof spyOn>
+    ).mockResolvedValue([OFERTA_PENDIENTE]);
+    spyOn(api, 'asignarTarea').mockRejectedValue(
+      new api.ErrorTareaYaAsignada()
+    );
+    render(<DetalleTarea />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Seleccionar afiliado' })
+    );
+    // When: confirma
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirmar selección' })
+    );
+    // Then: alerta "Esta tarea ya cuenta con un afiliado asignado"
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      MENSAJE_YA_ASIGNADA
+    );
+  });
+
+  test('US-013 Esc 2 y US-014 Esc 3: el afiliado elegido ve el contacto del creador y espera el cierre', async () => {
+    // Given: una tarea asignada vista por el afiliado elegido
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({
+        estado: 'asignada',
+        esAsignado: true,
+        puedeOfertar: false,
+        contacto: { nombre: 'Ana Pérez', email: 'ana@ejemplo.com' },
+      })
+    );
+    // When: abre el detalle
+    render(<DetalleTarea />);
+    // Then: ve el contacto, el indicador de espera y no puede finalizar
+    expect(await screen.findByText('ana@ejemplo.com')).toBeTruthy();
+    expect(screen.getByText(MENSAJE_ESPERANDO_CIERRE)).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: 'Marcar como finalizada' })
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Enviar oferta' })).toBeNull();
+  });
+
+  test('US-014 Esc 2: una tarea abierta propia no ofrece finalizar', async () => {
+    // Given: una tarea propia abierta
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({ esPropia: true, puedeOfertar: false })
+    );
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: sin sección de servicio ni botón de finalizar
+    await screen.findByRole('heading', { name: 'Arreglar grifo' });
+    expect(
+      screen.queryByRole('region', { name: 'Servicio en curso' })
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Marcar como finalizada' })
+    ).toBeNull();
+  });
+
+  test('una tarea finalizada ya no muestra servicio en curso', async () => {
+    // Given: una tarea propia finalizada
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({ estado: 'finalizada', esPropia: true, puedeOfertar: false })
+    );
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: se ve el estado y no hay acciones de servicio
+    expect(await screen.findByText('finalizada')).toBeTruthy();
+    expect(
+      screen.queryByRole('region', { name: 'Servicio en curso' })
+    ).toBeNull();
+  });
+
+  test('un creador sin afiliado cargado no ve el botón de finalizar', async () => {
+    // Given: una tarea asignada sin datos del afiliado (caso defensivo)
+    spyOn(api, 'obtenerTarea').mockResolvedValue(
+      detalle({
+        estado: 'asignada',
+        esPropia: true,
+        puedeOfertar: false,
+        puedeFinalizar: true,
+        afiliadoAsignado: null,
+      })
+    );
+    // When: se abre el detalle
+    render(<DetalleTarea />);
+    // Then: se ve el servicio en curso sin contacto ni botón
+    await screen.findByRole('region', { name: 'Servicio en curso' });
+    expect(
+      screen.queryByRole('button', { name: 'Marcar como finalizada' })
+    ).toBeNull();
   });
 });

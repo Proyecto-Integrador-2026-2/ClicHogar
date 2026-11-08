@@ -50,6 +50,16 @@ describe('toTareaPublica', () => {
   });
 });
 
+const BANDERAS = {
+  esPropia: false,
+  puedeOfertar: true,
+  yaPostulado: false,
+  esAsignado: false,
+  puedeFinalizar: false,
+  contacto: null,
+  afiliadoAsignado: null,
+};
+
 describe('toDetalleTarea (US-009)', () => {
   const AUTOR: AutorTarea = {
     id: TAREA.usuarioId,
@@ -68,9 +78,9 @@ describe('toDetalleTarea (US-009)', () => {
     // Given: una tarea ajena abierta y su autor
     // When: se arma el detalle para un afiliado
     const detalle = toDetalleTarea(TAREA, AUTOR, {
+      ...BANDERAS,
       esPropia: false,
       puedeOfertar: true,
-      yaPostulado: false,
     });
     // Then: trae la tarea pública, el autor y las banderas
     expect(detalle).toMatchObject({
@@ -88,9 +98,9 @@ describe('toDetalleTarea (US-009)', () => {
     // Given: una tarea con coordenadas exactas
     // When: la ve alguien que no es su autor
     const detalle = toDetalleTarea(CON_COORDENADAS, AUTOR, {
+      ...BANDERAS,
       esPropia: false,
       puedeOfertar: true,
-      yaPostulado: false,
     });
     // Then: las coordenadas se redondean a ~1 km
     expect(detalle.latitud).toBe(6.24);
@@ -101,9 +111,9 @@ describe('toDetalleTarea (US-009)', () => {
     // Given: una tarea con coordenadas exactas
     // When: la ve su autor
     const detalle = toDetalleTarea(CON_COORDENADAS, AUTOR, {
+      ...BANDERAS,
       esPropia: true,
       puedeOfertar: false,
-      yaPostulado: false,
     });
     // Then: las coordenadas no se alteran
     expect(detalle.latitud).toBe(6.244203);
@@ -114,9 +124,9 @@ describe('toDetalleTarea (US-009)', () => {
     // Given: una tarea sin coordenadas
     // When: la ve un tercero
     const detalle = toDetalleTarea(TAREA, AUTOR, {
+      ...BANDERAS,
       esPropia: false,
       puedeOfertar: true,
-      yaPostulado: false,
     });
     // Then: siguen en null
     expect(detalle.latitud).toBeNull();

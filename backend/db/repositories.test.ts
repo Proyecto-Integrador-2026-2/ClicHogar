@@ -153,7 +153,11 @@ describe('tareasRepository.buscarPorId (US-009)', () => {
           autor_descripcion: 'Plomera',
           autor_ubicacion: 'Envigado',
           autor_foto_url: '/f.jpg',
+          autor_email: 'ana@ejemplo.com',
           ya_postulado: true,
+          asignado_id: 'a1',
+          asignado_nombre: 'José',
+          asignado_email: 'jose@ejemplo.com',
         },
       ],
     ];
@@ -169,6 +173,12 @@ describe('tareasRepository.buscarPorId (US-009)', () => {
       fotoUrl: '/f.jpg',
     });
     expect(resultado?.yaPostulado).toBe(true);
+    expect(resultado?.autorEmail).toBe('ana@ejemplo.com');
+    expect(resultado?.asignado).toEqual({
+      id: 'a1',
+      nombre: 'José',
+      email: 'jose@ejemplo.com',
+    });
     expect(llamadas[0]?.valores).toEqual(['v1', 't1']);
   });
 
@@ -617,5 +627,118 @@ describe('listados de chat y calificaciones devuelven arrays planos', () => {
     expect(Object.getPrototypeOf(calificaciones)).toBe(Array.prototype);
     expect(mensajes).toHaveLength(1);
     expect(calificaciones).toHaveLength(1);
+  });
+});
+
+describe('tareasRepository.buscarPorId: sin afiliado asignado', () => {
+  test('asignado es null cuando la tarea no tiene afiliado', async () => {
+    // Given: una fila sin las columnas del afiliado asignado
+    respuestas = [
+      [
+        {
+          ...FILA_TAREA,
+          autor_nombre: 'Ana',
+          autor_email: 'ana@ejemplo.com',
+          autor_descripcion: null,
+          autor_ubicacion: null,
+          autor_foto_url: null,
+          ya_postulado: false,
+          asignado_id: null,
+          asignado_nombre: null,
+          asignado_email: null,
+        },
+      ],
+    ];
+    // When: se busca por id
+    const resultado = await tareasRepository.buscarPorId('t1', 'v1');
+    // Then: asignado es null
+    expect(resultado?.asignado).toBeNull();
+  });
+});
+
+describe('tareasRepository.asignar (US-013)', () => {
+  const DATOS = { tareaId: 't1', autorId: 'u1', ofertaId: 'o1' };
+
+  test('asigna en una transacción: tarea, oferta aceptada, afiliado y rechazo del resto', async () => {
+    // Given: la tarea se actualiza, la oferta devuelve su afiliado y las demás consultas no devuelven nada
+    respuestas = [[{ id: 't1' }], [{ afiliado_id: 'a1' }], [], []];
+    // When: se asigna
+    const resultado = await tareasRepository.asignar(DATOS);
+    // Then: devuelve el afiliado y ejecutó las 4 sentencias en orden
+    expect(resultado).toEqual({ tipo: 'asignada', afiliadoId: 'a1' });
+    expect(llamadas).toHaveLength(4);
+    expect(llamadas[0]?.texto).toContain("SET estado = 'asignada'");
+    expect(llamadas[0]?.texto).toContain("estado = 'abierta'");
+    expect(llamadas[1]?.texto).toContain("SET estado = 'aceptada'");
+    expect(llamadas[2]?.texto).toContain('afiliado_asignado_id');
+    expect(llamadas[3]?.texto).toContain("SET estado = 'rechazada'");
+    expect(llamadas[3]?.valores).toEqual(['t1', 'o1']);
+  });
+
+  test('si la tarea ya no está abierta no toca las ofertas', async () => {
+    // Given: el UPDATE de la tarea no encuentra fila
+    respuestas = [[]];
+    // When: se asigna
+    // Then: 'no-abierta' tras una sola sentencia
+    expect(await tareasRepository.asignar(DATOS)).toEqual({
+      tipo: 'no-abierta',
+    });
+    expect(llamadas).toHaveLength(1);
+  });
+
+  test('si la oferta no es válida revierte y lo informa', async () => {
+    // Given: la tarea se actualiza pero la oferta no existe o no está pendiente
+    respuestas = [[{ id: 't1' }], []];
+    // When: se asigna
+    // Then: 'oferta-invalida' y no se vincula ningún afiliado
+    expect(await tareasRepository.asignar(DATOS)).toEqual({
+      tipo: 'oferta-invalida',
+    });
+    expect(llamadas).toHaveLength(2);
+  });
+
+  test('un error inesperado de la base se propaga', async () => {
+    // Given: una base que falla
+    const original = sqlFalso.begin;
+    sqlFalso.begin = async () => {
+      throw new Error('caída de BD');
+    };
+    try {
+      // When / Then: el error no se traga
+      await expect(tareasRepository.asignar(DATOS)).rejects.toThrow(
+        'caída de BD'
+      );
+    } finally {
+      sqlFalso.begin = original;
+    }
+  });
+});
+
+describe('tareasRepository.finalizar (US-014)', () => {
+  test('cierra la tarea asignada y devuelve el afiliado y la fecha', async () => {
+    // Given: el UPDATE encuentra la tarea asignada
+    respuestas = [[{ afiliado_asignado_id: 'a1', finalizada_en: FECHA }]];
+    // When: se finaliza
+    const r = await tareasRepository.finalizar({
+      tareaId: 't1',
+      autorId: 'u1',
+    });
+    // Then: finalizada, solo si estaba asignada y era del autor
+    expect(r).toEqual({
+      tipo: 'finalizada',
+      afiliadoId: 'a1',
+      finalizadaEn: FECHA,
+    });
+    expect(llamadas[0]?.texto).toContain("SET estado = 'finalizada'");
+    expect(llamadas[0]?.texto).toContain("estado = 'asignada'");
+    expect(llamadas[0]?.valores).toEqual(['t1', 'u1']);
+  });
+
+  test('sin fila, la tarea no estaba asignada (o ya se cerró)', async () => {
+    // Given: el UPDATE no encuentra fila
+    // When / Then: 'no-asignada'
+    expect(
+      await tareasRepository.finalizar({ tareaId: 't1', autorId: 'u1' })
+    ).toEqual({ tipo: 'no-asignada' });
   });
 });

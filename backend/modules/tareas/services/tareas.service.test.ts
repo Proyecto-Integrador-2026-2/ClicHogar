@@ -5,17 +5,26 @@
  */
 import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import {
+  ConflictError,
+  ForbiddenError,
   GoneError,
   NotFoundError,
   ValidationError,
 } from '../../../shared/errors/app-error';
 import { ESTADO_INICIAL_TAREA } from '../categorias';
-import type { Tarea } from '../entities/tarea.entity';
+import type { Tarea, UsuarioContacto } from '../entities/tarea.entity';
 import { usuariosRepository } from '../../usuarios/repositories/usuarios.repository';
 import type { Usuario } from '../../usuarios/entities/usuario.entity';
 import { tareasRepository } from '../repositories/tareas.repository';
 import { normalizarTarea } from '../validators/tarea.validator';
-import { tareasService } from './tareas.service';
+import {
+  MENSAJE_NO_ASIGNADA,
+  MENSAJE_PAGO_REQUERIDO,
+  MENSAJE_SOLO_CREADOR_ASIGNA,
+  MENSAJE_SOLO_CREADOR_FINALIZA,
+  MENSAJE_YA_ASIGNADA,
+  tareasService,
+} from './tareas.service';
 
 const VALIDA = {
   titulo: 'Arreglar grifo que gotea',
@@ -306,11 +315,17 @@ describe('tareasService.obtenerDetalle (US-009)', () => {
     ubicacion: null,
     fotoUrl: null,
   };
-  const encontrada = (cambios: Partial<Tarea> = {}, yaPostulado = false) =>
+  const encontrada = (
+    cambios: Partial<Tarea> = {},
+    yaPostulado = false,
+    asignado: UsuarioContacto | null = null
+  ) =>
     spyOn(tareasRepository, 'buscarPorId').mockResolvedValue({
       tarea: tarea(cambios),
       autor: AUTOR,
+      autorEmail: 'ana@ejemplo.com',
       yaPostulado,
+      asignado,
     });
   const AFILIADO = { id: 'u-afiliado', rol: 'afiliado' as const };
   const CLIENTE = { id: 'u-cliente', rol: 'cliente' as const };
@@ -434,6 +449,270 @@ describe('tareasService.listarPropias (US-012)', () => {
       id: 't-1',
       autorNombre: 'Ana',
       totalOfertas: 2,
+    });
+  });
+});
+
+describe('tareasService: asignación, contacto y finalización (US-013 y US-014)', () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  const AUTOR = { id: 'u-autor', rol: 'cliente' as const };
+  const ELEGIDO = { id: 'u-elegido', rol: 'afiliado' as const };
+  const OTRO = { id: 'u-otro', rol: 'afiliado' as const };
+  const CONTACTO_ELEGIDO: UsuarioContacto = {
+    id: ELEGIDO.id,
+    nombre: 'José',
+    email: 'jose@ejemplo.com',
+  };
+
+  const tarea = (cambios: Partial<Tarea> = {}): Tarea => ({
+    id: 't-1',
+    usuarioId: AUTOR.id,
+    titulo: 'Arreglar grifo',
+    descripcion: 'El grifo de la cocina gotea día y noche, hay que repararlo.',
+    categoria: 'Plomería',
+    estado: 'abierta',
+    ubicacion: 'Belén',
+    latitud: null,
+    longitud: null,
+    creadoEn: new Date('2026-02-01T00:00:00.000Z'),
+    actualizadoEn: new Date('2026-02-01T00:00:00.000Z'),
+    ...cambios,
+  });
+  const encontrada = (
+    cambios: Partial<Tarea> = {},
+    asignado: UsuarioContacto | null = null
+  ) =>
+    spyOn(tareasRepository, 'buscarPorId').mockResolvedValue({
+      tarea: tarea(cambios),
+      autor: {
+        id: AUTOR.id,
+        nombre: 'Ana',
+        descripcion: null,
+        ubicacion: null,
+        fotoUrl: null,
+      },
+      autorEmail: 'ana@ejemplo.com',
+      yaPostulado: false,
+      asignado,
+    });
+
+  describe('obtenerDetalle: afiliado elegido y contacto', () => {
+    test('Esc 2: asignada, el creador ve el contacto del afiliado y puede finalizar', async () => {
+      // Given: una tarea asignada vista por su creador
+      encontrada({ estado: 'asignada' }, CONTACTO_ELEGIDO);
+      // When: pide el detalle
+      const d = await tareasService.obtenerDetalle(AUTOR, 't-1');
+      // Then: ve el contacto del afiliado, quién es y puede finalizar
+      expect(d).toMatchObject({
+        esPropia: true,
+        esAsignado: false,
+        puedeFinalizar: true,
+        puedeOfertar: false,
+        contacto: { nombre: 'José', email: 'jose@ejemplo.com' },
+        afiliadoAsignado: { id: ELEGIDO.id, nombre: 'José' },
+      });
+    });
+
+    test('Esc 2: el afiliado elegido sigue viendo la tarea con el contacto del creador y no puede finalizar', async () => {
+      // Given: una tarea asignada vista por el afiliado elegido
+      encontrada({ estado: 'asignada' }, CONTACTO_ELEGIDO);
+      // When: pide el detalle
+      const d = await tareasService.obtenerDetalle(ELEGIDO, 't-1');
+      // Then: la ve (ya no está abierta) con el contacto del creador
+      expect(d).toMatchObject({
+        esAsignado: true,
+        esPropia: false,
+        puedeFinalizar: false,
+        puedeOfertar: false,
+        contacto: { nombre: 'Ana', email: 'ana@ejemplo.com' },
+        afiliadoAsignado: null,
+      });
+    });
+
+    test('un tercero no ve una tarea asignada ni su contacto', async () => {
+      // Given: una tarea asignada a otra persona
+      encontrada({ estado: 'asignada' }, CONTACTO_ELEGIDO);
+      // When / Then: un afiliado ajeno recibe 410
+      await expect(
+        tareasService.obtenerDetalle(OTRO, 't-1')
+      ).rejects.toBeInstanceOf(GoneError);
+    });
+
+    test('abierta o finalizada no revelan contacto', async () => {
+      // Given / When / Then: abierta
+      encontrada({ estado: 'abierta' });
+      expect(
+        (await tareasService.obtenerDetalle(AUTOR, 't-1')).contacto
+      ).toBeNull();
+      // Given / When / Then: finalizada (el creador la ve, sin contacto ni cierre)
+      encontrada({ estado: 'finalizada' }, CONTACTO_ELEGIDO);
+      const d = await tareasService.obtenerDetalle(AUTOR, 't-1');
+      expect(d.contacto).toBeNull();
+      expect(d.puedeFinalizar).toBe(false);
+    });
+
+    test('Esc 2 de la US-014: una tarea abierta no se puede finalizar desde el detalle', async () => {
+      // Given: una tarea abierta propia
+      encontrada({ estado: 'abierta' });
+      // When: su creador pide el detalle
+      const d = await tareasService.obtenerDetalle(AUTOR, 't-1');
+      // Then: no se ofrece finalizar
+      expect(d.puedeFinalizar).toBe(false);
+    });
+  });
+
+  describe('asignar (US-013)', () => {
+    test('Esc 1: el creador asigna una tarea abierta a la oferta elegida', async () => {
+      // Given: una tarea abierta y un repositorio que asigna
+      encontrada();
+      const asignar = spyOn(tareasRepository, 'asignar').mockResolvedValue({
+        tipo: 'asignada',
+        afiliadoId: ELEGIDO.id,
+      });
+      // When: el creador elige la oferta
+      const r = await tareasService.asignar(AUTOR, 't-1', 'o-1');
+      // Then: queda asignada al afiliado de esa oferta
+      expect(r).toEqual({
+        tareaId: 't-1',
+        estado: 'asignada',
+        afiliadoId: ELEGIDO.id,
+      });
+      expect(asignar).toHaveBeenCalledWith({
+        tareaId: 't-1',
+        autorId: AUTOR.id,
+        ofertaId: 'o-1',
+      });
+    });
+
+    test('solo el creador asigna (403) y la tarea debe existir (404)', async () => {
+      const asignar = spyOn(tareasRepository, 'asignar');
+      // Given: una tarea de otra persona
+      encontrada();
+      // When / Then: 403
+      await expect(tareasService.asignar(OTRO, 't-1', 'o-1')).rejects.toThrow(
+        MENSAJE_SOLO_CREADOR_ASIGNA
+      );
+      // Given: una tarea inexistente
+      spyOn(tareasRepository, 'buscarPorId').mockResolvedValue(undefined);
+      // When / Then: 404
+      await expect(
+        tareasService.asignar(AUTOR, 'x', 'o-1')
+      ).rejects.toBeInstanceOf(NotFoundError);
+      expect(asignar).not.toHaveBeenCalled();
+    });
+
+    test('Esc 5: una tarea ya asignada responde 409 con el mensaje de la historia', async () => {
+      // Given: una tarea que ya tiene afiliado
+      encontrada({ estado: 'asignada' }, CONTACTO_ELEGIDO);
+      const asignar = spyOn(tareasRepository, 'asignar');
+      // When / Then: 409 sin tocar la escritura
+      await expect(tareasService.asignar(AUTOR, 't-1', 'o-1')).rejects.toThrow(
+        MENSAJE_YA_ASIGNADA
+      );
+      expect(asignar).not.toHaveBeenCalled();
+    });
+
+    test('Esc 5 en la escritura atómica: la carrera pierde y la oferta ajena no vale', async () => {
+      // Given: una tarea que parecía abierta al leerla
+      encontrada();
+      const asignar = spyOn(tareasRepository, 'asignar');
+      // When: otra sesión la asignó justo antes
+      asignar.mockResolvedValue({ tipo: 'no-abierta' });
+      // Then: 409
+      await expect(
+        tareasService.asignar(AUTOR, 't-1', 'o-1')
+      ).rejects.toBeInstanceOf(ConflictError);
+      // When: la oferta no es de esa tarea o ya no está pendiente
+      asignar.mockResolvedValue({ tipo: 'oferta-invalida' });
+      // Then: 404
+      await expect(tareasService.asignar(AUTOR, 't-1', 'o-1')).rejects.toThrow(
+        'Oferta no encontrada.'
+      );
+    });
+  });
+
+  describe('finalizar (US-014)', () => {
+    test('Esc 1: el creador finaliza una tarea asignada confirmando el pago', async () => {
+      // Given: una tarea asignada
+      encontrada({ estado: 'asignada' }, CONTACTO_ELEGIDO);
+      const fecha = new Date('2026-03-01T00:00:00.000Z');
+      const finalizar = spyOn(tareasRepository, 'finalizar').mockResolvedValue({
+        tipo: 'finalizada',
+        afiliadoId: ELEGIDO.id,
+        finalizadaEn: fecha,
+      });
+      // When: confirma el pago y finaliza
+      const r = await tareasService.finalizar(AUTOR, 't-1', true);
+      // Then: queda finalizada y devuelve el afiliado para calificarlo
+      expect(r).toEqual({
+        tareaId: 't-1',
+        estado: 'finalizada',
+        afiliadoId: ELEGIDO.id,
+        finalizadaEn: fecha,
+      });
+      expect(finalizar).toHaveBeenCalledWith({
+        tareaId: 't-1',
+        autorId: AUTOR.id,
+      });
+    });
+
+    test('exige confirmar el pago (400)', async () => {
+      const buscar = spyOn(tareasRepository, 'buscarPorId');
+      // Given / When / Then: sin confirmar el pago
+      await expect(
+        tareasService.finalizar(AUTOR, 't-1', false)
+      ).rejects.toThrow(MENSAJE_PAGO_REQUERIDO);
+      await expect(
+        tareasService.finalizar(AUTOR, 't-1', false)
+      ).rejects.toBeInstanceOf(ValidationError);
+      expect(buscar).not.toHaveBeenCalled();
+    });
+
+    test('Esc 3: el afiliado asignado (o cualquiera) no puede finalizar (403)', async () => {
+      // Given: una tarea asignada
+      encontrada({ estado: 'asignada' }, CONTACTO_ELEGIDO);
+      const finalizar = spyOn(tareasRepository, 'finalizar');
+      // When / Then: el afiliado elegido recibe 403
+      await expect(
+        tareasService.finalizar(ELEGIDO, 't-1', true)
+      ).rejects.toThrow(MENSAJE_SOLO_CREADOR_FINALIZA);
+      await expect(
+        tareasService.finalizar(OTRO, 't-1', true)
+      ).rejects.toBeInstanceOf(ForbiddenError);
+      expect(finalizar).not.toHaveBeenCalled();
+    });
+
+    test('Esc 2: una tarea abierta o ya finalizada no se puede finalizar (409)', async () => {
+      const finalizar = spyOn(tareasRepository, 'finalizar');
+      // Given / When / Then: abierta, finalizada y asignada-pero-cerrada
+      for (const estado of ['abierta', 'finalizada', 'cancelada']) {
+        encontrada({ estado });
+        await expect(
+          tareasService.finalizar(AUTOR, 't-1', true)
+        ).rejects.toThrow(MENSAJE_NO_ASIGNADA);
+      }
+      expect(finalizar).not.toHaveBeenCalled();
+    });
+
+    test('una tarea inexistente da 404 y la escritura atómica evita el doble cierre', async () => {
+      // Given: una tarea inexistente
+      spyOn(tareasRepository, 'buscarPorId').mockResolvedValue(undefined);
+      // When / Then: 404
+      await expect(
+        tareasService.finalizar(AUTOR, 'x', true)
+      ).rejects.toBeInstanceOf(NotFoundError);
+      // Given: una tarea que parecía asignada pero otra sesión la cerró antes
+      encontrada({ estado: 'asignada' }, CONTACTO_ELEGIDO);
+      spyOn(tareasRepository, 'finalizar').mockResolvedValue({
+        tipo: 'no-asignada',
+      });
+      // When / Then: 409
+      await expect(tareasService.finalizar(AUTOR, 't-1', true)).rejects.toThrow(
+        MENSAJE_NO_ASIGNADA
+      );
     });
   });
 });

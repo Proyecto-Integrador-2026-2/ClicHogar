@@ -26,6 +26,13 @@ export const tareas = pgTable('tareas', {
   ubicacion: varchar('ubicacion', { length: 200 }).notNull(),
   latitud: doublePrecision('latitud'),
   longitud: doublePrecision('longitud'),
+  /** Afiliado elegido por el creador (US-013); null mientras esté abierta. */
+  afiliadoAsignadoId: uuid('afiliado_asignado_id').references(
+    () => usuarios.id,
+    { onDelete: 'set null' }
+  ),
+  /** Momento en que el creador la cerró y confirmó el pago (US-014). */
+  finalizadaEn: timestamp('finalizada_en', { withTimezone: true }),
   creadoEn: timestamp('creado_en', { withTimezone: true })
     .notNull()
     .defaultNow(),

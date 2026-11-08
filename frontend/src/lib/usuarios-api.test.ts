@@ -6,6 +6,10 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import {
   ErrorSesionExpirada,
+  ErrorSinConexion,
+  ErrorTareaYaAsignada,
+  asignarTarea,
+  finalizarTarea,
   ErrorSinPermisoOfertas,
   listarMisTareas,
   listarOfertasRecibidas,
@@ -376,6 +380,86 @@ describe('listarMisTareas, obtenerPerfilPublico y obtenerDisponibilidadDe (US-01
     expect(
       (ultima?.init?.headers as Record<string, string>).Authorization
     ).toBe('Bearer tk');
+  });
+});
+
+describe('asignarTarea y finalizarTarea (US-013 y US-014)', () => {
+  test('asignarTarea hace POST /asignar con la oferta elegida y Bearer', async () => {
+    // Given: un backend que asigna
+    simular(json({ tareaId: 't1', estado: 'asignada', afiliadoId: 'a1' }));
+    // When: se elige una oferta (el id de la tarea se codifica)
+    const r = await asignarTarea('tk', 't 1', 'o1');
+    // Then: llama a la ruta con el cuerpo, el token y timeout
+    expect(r.afiliadoId).toBe('a1');
+    expect(ultima?.url).toBe('http://api.test/api/tareas/t%201/asignar');
+    expect(ultima?.init?.method).toBe('POST');
+    expect(JSON.parse(String(ultima?.init?.body))).toEqual({ ofertaId: 'o1' });
+    expect(
+      (ultima?.init?.headers as Record<string, string>).Authorization
+    ).toBe('Bearer tk');
+    expect(ultima?.init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  test('asignarTarea: 409 es ya asignada, 401 sesión expirada, otros mantienen su mensaje', async () => {
+    // Given: un 409
+    simular(json({ message: 'x' }, 409));
+    // When / Then: ErrorTareaYaAsignada con el mensaje de la historia
+    await expect(asignarTarea('tk', 't1', 'o1')).rejects.toBeInstanceOf(
+      ErrorTareaYaAsignada
+    );
+    await expect(asignarTarea('tk', 't1', 'o1')).rejects.toThrow(
+      'Esta tarea ya cuenta con un afiliado asignado'
+    );
+    // Given / When / Then: un 401
+    simular(json({}, 401));
+    await expect(asignarTarea('tk', 't1', 'o1')).rejects.toBeInstanceOf(
+      ErrorSesionExpirada
+    );
+    // Given / When / Then: un 403 con mensaje
+    simular(json({ message: 'Solo el creador' }, 403));
+    await expect(asignarTarea('tk', 't1', 'o1')).rejects.toThrow(
+      'Solo el creador'
+    );
+  });
+
+  test('finalizarTarea hace POST /finalizar confirmando el pago', async () => {
+    // Given: un backend que finaliza
+    simular(
+      json({
+        tareaId: 't1',
+        estado: 'finalizada',
+        afiliadoId: 'a1',
+        finalizadaEn: '2026-03-01T00:00:00.000Z',
+      })
+    );
+    // When: se finaliza
+    const r = await finalizarTarea('tk', 't1');
+    // Then: llama a la ruta con pagoConfirmado y el token
+    expect(r.estado).toBe('finalizada');
+    expect(ultima?.url).toBe('http://api.test/api/tareas/t1/finalizar');
+    expect(JSON.parse(String(ultima?.init?.body))).toEqual({
+      pagoConfirmado: true,
+    });
+    expect(
+      (ultima?.init?.headers as Record<string, string>).Authorization
+    ).toBe('Bearer tk');
+  });
+
+  test('un fallo de red llega como ErrorSinConexion (distinguible de un rechazo del backend)', async () => {
+    // Given: un fallo de red
+    simular(new Error('offline'));
+    // When / Then: ErrorSinConexion con el mensaje de falta de conexión
+    await expect(finalizarTarea('tk', 't1')).rejects.toBeInstanceOf(
+      ErrorSinConexion
+    );
+    await expect(asignarTarea('tk', 't1', 'o1')).rejects.toThrow(SIN_RED);
+    // Given: un rechazo del backend
+    simular(json({ message: 'No asignada' }, 409));
+    // When / Then: error normal con su mensaje, no ErrorSinConexion
+    const error = await finalizarTarea('tk', 't1').catch((e) => e);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(ErrorSinConexion);
+    expect(error.message).toBe('No asignada');
   });
 });
 

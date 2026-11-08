@@ -1,6 +1,12 @@
 import { sql } from '../../../db/client';
 import type { Categoria } from '../categorias';
-import type { AutorTarea, NuevaTarea, Tarea } from '../entities/tarea.entity';
+import type {
+  NuevaTarea,
+  ResultadoAsignacion,
+  ResultadoFinalizacion,
+  Tarea,
+  TareaEncontrada,
+} from '../entities/tarea.entity';
 import type { OpcionesListado, TareasRepositorio } from '../ports';
 
 /**
@@ -39,6 +45,9 @@ function aTarea(fila: TareaRow): Tarea {
   };
 }
 
+/** Aborta la transacción de asignación cuando la oferta no es válida. */
+class OfertaInvalida extends Error {}
+
 export const tareasRepository = {
   /**
    * Detalle de una tarea (US-009) con los datos públicos de su autor, en
@@ -48,23 +57,27 @@ export const tareasRepository = {
   async buscarPorId(
     id: string,
     visitanteId: string
-  ): Promise<
-    { tarea: Tarea; autor: AutorTarea; yaPostulado: boolean } | undefined
-  > {
+  ): Promise<TareaEncontrada | undefined> {
     const filas = await sql<
       (TareaRow & {
         autor_nombre: string;
+        autor_email: string;
         autor_descripcion: string | null;
         autor_ubicacion: string | null;
         autor_foto_url: string | null;
         ya_postulado: boolean;
+        asignado_id: string | null;
+        asignado_nombre: string | null;
+        asignado_email: string | null;
       })[]
     >`
       SELECT t.id, t.usuario_id, t.titulo, t.descripcion, t.categoria, t.estado, t.ubicacion, t.latitud, t.longitud, t.creado_en, t.actualizado_en,
-             u.nombre AS autor_nombre, u.descripcion AS autor_descripcion, u.ubicacion AS autor_ubicacion, u.foto_url AS autor_foto_url,
-             EXISTS (SELECT 1 FROM ofertas o WHERE o.tarea_id = t.id AND o.afiliado_id = ${visitanteId}) AS ya_postulado
+             u.nombre AS autor_nombre, u.email AS autor_email, u.descripcion AS autor_descripcion, u.ubicacion AS autor_ubicacion, u.foto_url AS autor_foto_url,
+             EXISTS (SELECT 1 FROM ofertas o WHERE o.tarea_id = t.id AND o.afiliado_id = ${visitanteId}) AS ya_postulado,
+             a.id AS asignado_id, a.nombre AS asignado_nombre, a.email AS asignado_email
       FROM tareas t
       JOIN usuarios u ON u.id = t.usuario_id
+      LEFT JOIN usuarios a ON a.id = t.afiliado_asignado_id
       WHERE t.id = ${id}
       LIMIT 1
     `;
@@ -79,7 +92,91 @@ export const tareasRepository = {
         ubicacion: fila.autor_ubicacion,
         fotoUrl: fila.autor_foto_url,
       },
+      autorEmail: fila.autor_email,
       yaPostulado: fila.ya_postulado,
+      asignado:
+        fila.asignado_id && fila.asignado_nombre && fila.asignado_email
+          ? {
+              id: fila.asignado_id,
+              nombre: fila.asignado_nombre,
+              email: fila.asignado_email,
+            }
+          : null,
+    };
+  },
+
+  /**
+   * Asigna la tarea al afiliado de una oferta (US-013) en UNA transacción:
+   * 1) pasa la tarea de 'abierta' a 'asignada' (el UPDATE bloquea la fila,
+   *    así que una oferta nueva o una segunda asignación simultánea esperan
+   *    y ven el estado final: Esc 5);
+   * 2) acepta la oferta elegida (debe ser de esa tarea y seguir pendiente);
+   * 3) vincula al afiliado y rechaza el resto de ofertas pendientes (Esc 3).
+   * Si la oferta no es válida se revierte todo.
+   */
+  async asignar(datos: {
+    tareaId: string;
+    autorId: string;
+    ofertaId: string;
+  }): Promise<ResultadoAsignacion> {
+    try {
+      return await sql.begin(async (tx) => {
+        const tarea = await tx`
+          UPDATE tareas SET estado = 'asignada', actualizado_en = now()
+          WHERE id = ${datos.tareaId}::uuid AND usuario_id = ${datos.autorId}::uuid AND estado = 'abierta'
+          RETURNING id
+        `;
+        if (!tarea[0]) return { tipo: 'no-abierta' as const };
+
+        const oferta = await tx`
+          UPDATE ofertas SET estado = 'aceptada'
+          WHERE id = ${datos.ofertaId}::uuid AND tarea_id = ${datos.tareaId}::uuid AND estado = 'pendiente'
+          RETURNING afiliado_id
+        `;
+        const afiliadoId = (oferta[0] as { afiliado_id: string } | undefined)
+          ?.afiliado_id;
+        if (!afiliadoId) throw new OfertaInvalida();
+
+        await tx`
+          UPDATE tareas SET afiliado_asignado_id = ${afiliadoId}::uuid
+          WHERE id = ${datos.tareaId}::uuid
+        `;
+        await tx`
+          UPDATE ofertas SET estado = 'rechazada'
+          WHERE tarea_id = ${datos.tareaId}::uuid AND id <> ${datos.ofertaId}::uuid AND estado = 'pendiente'
+        `;
+        return { tipo: 'asignada' as const, afiliadoId };
+      });
+    } catch (error) {
+      if (error instanceof OfertaInvalida) {
+        return { tipo: 'oferta-invalida' };
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Cierra la tarea (US-014): 'asignada' -> 'finalizada' solo para su
+   * creador y con una sola sentencia atómica, así un doble clic o dos
+   * sesiones simultáneas la finalizan una única vez.
+   */
+  async finalizar(datos: {
+    tareaId: string;
+    autorId: string;
+  }): Promise<ResultadoFinalizacion> {
+    const filas = await sql<
+      { afiliado_asignado_id: string; finalizada_en: Date }[]
+    >`
+      UPDATE tareas SET estado = 'finalizada', finalizada_en = now(), actualizado_en = now()
+      WHERE id = ${datos.tareaId}::uuid AND usuario_id = ${datos.autorId}::uuid AND estado = 'asignada'
+      RETURNING afiliado_asignado_id, finalizada_en
+    `;
+    const fila = filas[0];
+    if (!fila) return { tipo: 'no-asignada' };
+    return {
+      tipo: 'finalizada',
+      afiliadoId: fila.afiliado_asignado_id,
+      finalizadaEn: fila.finalizada_en,
     };
   },
 

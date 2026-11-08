@@ -908,3 +908,11 @@ textarea.ch-field__input {
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+
+/* Servicio en curso de una tarea asignada (US-013 y US-014) */
+.ch-servicio {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--ch-border, rgba(127, 127, 127, 0.3));
+  border-radius: 12px;
+}

@@ -20,6 +20,18 @@ const MENSAJE_SIN_RED =
   'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.';
 
 /**
+ * No hubo respuesta del servidor: sin red, caída o tiempo de espera
+ * agotado. Permite distinguir un fallo de conexión (mensaje amigable) de un
+ * error de negocio que el backend sí explicó (US-013 y US-014).
+ */
+export class ErrorSinConexion extends Error {
+  constructor() {
+    super(MENSAJE_SIN_RED);
+    this.name = 'ErrorSinConexion';
+  }
+}
+
+/**
  * Sesión expirada o ausente (US-006, Escenario 7): el backend respondió
  * 401. El formulario la traduce a redirect a `/login?expirada=1`.
  */
@@ -75,6 +87,14 @@ export class ErrorSinPermisoOfertas extends Error {
   }
 }
 
+/** La tarea ya tenía un afiliado asignado (US-013, Escenario 5). */
+export class ErrorTareaYaAsignada extends Error {
+  constructor() {
+    super('Esta tarea ya cuenta con un afiliado asignado');
+    this.name = 'ErrorTareaYaAsignada';
+  }
+}
+
 type OpcionesPedir = {
   /** Convierte un fallo de `fetch` (sin red) en un mensaje amigable. */
   mensajeSinRed?: boolean;
@@ -118,7 +138,7 @@ async function pedir<T>(
         : init.headers,
     });
   } catch (err: unknown) {
-    throw mensajeSinRed ? new Error(MENSAJE_SIN_RED) : err;
+    throw mensajeSinRed ? new ErrorSinConexion() : err;
   }
 
   if (detectarSesionExpirada && respuesta.status === 401) {
@@ -385,6 +405,14 @@ export type DetalleTareaApi = TareaTablero & {
   puedeOfertar: boolean;
   /** El visitante ya envió una oferta a esta tarea (US-011). */
   yaPostulado: boolean;
+  /** El visitante es el afiliado elegido (US-013). */
+  esAsignado: boolean;
+  /** El creador puede cerrarla: está asignada y es suya (US-014). */
+  puedeFinalizar: boolean;
+  /** Contraparte de una tarea asignada (correo para coordinar). */
+  contacto: { nombre: string; email: string } | null;
+  /** Afiliado elegido, visible solo para el creador. */
+  afiliadoAsignado: { id: string; nombre: string } | null;
 };
 
 const tareaNoDisponible = () => new ErrorTareaNoDisponible();
@@ -486,6 +514,60 @@ export function listarOfertasRecibidas(
         404: tareaNoDisponible,
       },
     }
+  );
+}
+
+/** Resultado de elegir al afiliado (US-013). */
+export type AsignacionApi = {
+  tareaId: string;
+  estado: string;
+  afiliadoId: string;
+};
+
+/**
+ * El creador elige a un afiliado entre sus postulantes (US-013). Lanza
+ * `ErrorTareaYaAsignada` (409), `ErrorSesionExpirada` (401) y
+ * `ErrorSinConexion` ante un fallo de red; otros rechazos llegan con el
+ * mensaje del backend.
+ */
+export function asignarTarea(
+  token: string,
+  tareaId: string,
+  ofertaId: string
+): Promise<AsignacionApi> {
+  return pedir(
+    `/api/tareas/${encodeURIComponent(tareaId)}/asignar`,
+    token,
+    {
+      ...conJson('POST', { ofertaId }),
+      signal: AbortSignal.timeout(TIMEOUT_TABLERO_MS),
+    },
+    {
+      ...OPCIONES_TAREAS,
+      traducirEstados: { 409: () => new ErrorTareaYaAsignada() },
+    }
+  );
+}
+
+/** Resultado de cerrar la tarea (US-014). */
+export type FinalizacionApi = AsignacionApi & { finalizadaEn: string };
+
+/**
+ * El creador confirma el pago en efectivo y finaliza la tarea (US-014).
+ * `afiliadoId` sirve para llevarlo a calificar al afiliado.
+ */
+export function finalizarTarea(
+  token: string,
+  tareaId: string
+): Promise<FinalizacionApi> {
+  return pedir(
+    `/api/tareas/${encodeURIComponent(tareaId)}/finalizar`,
+    token,
+    {
+      ...conJson('POST', { pagoConfirmado: true }),
+      signal: AbortSignal.timeout(TIMEOUT_TABLERO_MS),
+    },
+    OPCIONES_TAREAS
   );
 }
 

@@ -7,6 +7,8 @@ import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 process.env.DATABASE_URL ??= 'postgres://test';
 
 import {
+  ConflictError,
+  ForbiddenError,
   GoneError,
   NotFoundError,
   UnauthorizedError,
@@ -204,6 +206,10 @@ describe('GET /api/tareas/:id (detalle, US-009)', () => {
     esPropia: false,
     puedeOfertar: true,
     yaPostulado: false,
+    esAsignado: false,
+    puedeFinalizar: false,
+    contacto: null,
+    afiliadoAsignado: null,
   };
 
   test('200 con el detalle; el visitante sale de la sesión', async () => {
@@ -290,5 +296,132 @@ describe('GET /api/tareas/mias (Mis solicitudes, US-012)', () => {
     const res = await pedido('/api/tareas/mias', 'GET');
     // Then: responde 401
     expect(res.status).toBe(401);
+  });
+});
+
+describe('POST /api/tareas/:id/asignar y /finalizar (US-013 y US-014)', () => {
+  const ID = '33333333-3333-4333-8333-333333333333';
+  const OFERTA = '44444444-4444-4444-8444-444444444444';
+
+  test('asignar: 200 con la tarea asignada; el creador sale de la sesión', async () => {
+    // Given: una sesión válida y un servicio que asigna
+    conSesion();
+    const asignar = spyOn(tareasService, 'asignar').mockResolvedValue({
+      tareaId: ID,
+      estado: 'asignada',
+      afiliadoId: 'a-1',
+    });
+    // When: se elige una oferta
+    const res = await pedido(`/api/tareas/${ID}/asignar`, 'POST', {
+      ofertaId: OFERTA,
+    });
+    // Then: responde 200 y el servicio recibe al visitante, la tarea y la oferta
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { estado: string }).estado).toBe('asignada');
+    expect(asignar).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'u-1' }),
+      ID,
+      OFERTA
+    );
+  });
+
+  test('asignar: traduce 403, 404 y 409 y valida el cuerpo', async () => {
+    conSesion();
+    const asignar = spyOn(tareasService, 'asignar');
+    // Given / When / Then: cada error de dominio llega con su código
+    const casos: Array<[Error, number]> = [
+      [new ForbiddenError(), 403],
+      [new NotFoundError(), 404],
+      [new ConflictError('Esta tarea ya cuenta con un afiliado asignado'), 409],
+    ];
+    for (const [error, estado] of casos) {
+      asignar.mockRejectedValue(error);
+      expect(
+        (
+          await pedido(`/api/tareas/${ID}/asignar`, 'POST', {
+            ofertaId: OFERTA,
+          })
+        ).status
+      ).toBe(estado);
+    }
+    // Given / When / Then: cuerpo e id inválidos responden 400
+    expect(
+      (await pedido(`/api/tareas/${ID}/asignar`, 'POST', { ofertaId: 'abc' }))
+        .status
+    ).toBe(400);
+    expect(
+      (await pedido(`/api/tareas/abc/asignar`, 'POST', { ofertaId: OFERTA }))
+        .status
+    ).toBe(400);
+  });
+
+  test('finalizar: 200 con la tarea finalizada y el afiliado a calificar', async () => {
+    // Given: una sesión válida y un servicio que finaliza
+    conSesion();
+    const finalizar = spyOn(tareasService, 'finalizar').mockResolvedValue({
+      tareaId: ID,
+      estado: 'finalizada',
+      afiliadoId: 'a-1',
+      finalizadaEn: new Date('2026-03-01T00:00:00.000Z'),
+    });
+    // When: se confirma el pago y se finaliza
+    const res = await pedido(`/api/tareas/${ID}/finalizar`, 'POST', {
+      pagoConfirmado: true,
+    });
+    // Then: responde 200 y el servicio recibe al visitante y el pago confirmado
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { afiliadoId: string }).afiliadoId).toBe(
+      'a-1'
+    );
+    expect(finalizar).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'u-1' }),
+      ID,
+      true
+    );
+  });
+
+  test('finalizar: traduce 400, 403 y 409; valida el cuerpo; 401 sin sesión', async () => {
+    conSesion();
+    const finalizar = spyOn(tareasService, 'finalizar');
+    // Given / When / Then: cada error de dominio llega con su código
+    const casos: Array<[Error, number]> = [
+      [new ValidationError(), 400],
+      [new ForbiddenError(), 403],
+      [new ConflictError(), 409],
+    ];
+    for (const [error, estado] of casos) {
+      finalizar.mockRejectedValue(error);
+      expect(
+        (
+          await pedido(`/api/tareas/${ID}/finalizar`, 'POST', {
+            pagoConfirmado: true,
+          })
+        ).status
+      ).toBe(estado);
+    }
+    // Given / When / Then: sin el campo o con otro tipo, 400
+    expect(
+      (await pedido(`/api/tareas/${ID}/finalizar`, 'POST', {})).status
+    ).toBe(400);
+    expect(
+      (
+        await pedido(`/api/tareas/${ID}/finalizar`, 'POST', {
+          pagoConfirmado: 'si',
+        })
+      ).status
+    ).toBe(400);
+    // Given: una sesión que no existe
+    mock.restore();
+    spyOn(authService, 'resolverUsuario').mockRejectedValue(
+      new UnauthorizedError('Sesión inválida o expirada.')
+    );
+    // When / Then: 401
+    expect(
+      (
+        await pedido(`/api/tareas/${ID}/finalizar`, 'POST', {
+          pagoConfirmado: true,
+        })
+      ).status
+    ).toBe(401);
   });
 });

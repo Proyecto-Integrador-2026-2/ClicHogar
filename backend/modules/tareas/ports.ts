@@ -1,4 +1,10 @@
-import type { AutorTarea, NuevaTarea, Tarea } from './entities/tarea.entity';
+import type {
+  NuevaTarea,
+  ResultadoAsignacion,
+  ResultadoFinalizacion,
+  Tarea,
+  TareaEncontrada,
+} from './entities/tarea.entity';
 
 /** Filtro por cercanía: centro (grados) y radio en kilómetros. */
 export type FiltroCercania = { lat: number; lng: number; radio: number };
@@ -19,9 +25,16 @@ export interface TareasRepositorio {
   buscarPorId(
     id: string,
     visitanteId: string
-  ): Promise<
-    { tarea: Tarea; autor: AutorTarea; yaPostulado: boolean } | undefined
-  >;
+  ): Promise<TareaEncontrada | undefined>;
+  asignar(datos: {
+    tareaId: string;
+    autorId: string;
+    ofertaId: string;
+  }): Promise<ResultadoAsignacion>;
+  finalizar(datos: {
+    tareaId: string;
+    autorId: string;
+  }): Promise<ResultadoFinalizacion>;
   listarPorAutor(
     usuarioId: string
   ): Promise<

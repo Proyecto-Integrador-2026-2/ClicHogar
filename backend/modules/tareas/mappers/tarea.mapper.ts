@@ -62,6 +62,17 @@ export type DetalleTarea = TareaPublica & {
   puedeOfertar: boolean;
   /** El visitante ya envió una oferta a esta tarea (US-011). */
   yaPostulado: boolean;
+  /** El visitante es el afiliado elegido para esta tarea (US-013). */
+  esAsignado: boolean;
+  /** El creador puede cerrarla: está asignada y es suya (US-014). */
+  puedeFinalizar: boolean;
+  /**
+   * Contraparte de una tarea asignada (US-013, Esc 2): el afiliado para el
+   * creador y el creador para el afiliado. null para cualquier otra persona.
+   */
+  contacto: { nombre: string; email: string } | null;
+  /** Afiliado elegido, visible solo para el creador. */
+  afiliadoAsignado: { id: string; nombre: string } | null;
 };
 
 /** Redondea a 2 decimales (~1 km): ubicación aproximada para terceros. */
@@ -72,11 +83,16 @@ function aproximar(valor: number | null): number | null {
 export function toDetalleTarea(
   tarea: Tarea,
   autor: AutorTarea,
-  banderas: {
-    esPropia: boolean;
-    puedeOfertar: boolean;
-    yaPostulado: boolean;
-  }
+  banderas: Pick<
+    DetalleTarea,
+    | 'esPropia'
+    | 'puedeOfertar'
+    | 'yaPostulado'
+    | 'esAsignado'
+    | 'puedeFinalizar'
+    | 'contacto'
+    | 'afiliadoAsignado'
+  >
 ): DetalleTarea {
   const publica = toTareaPublica(tarea, autor.nombre);
   return {

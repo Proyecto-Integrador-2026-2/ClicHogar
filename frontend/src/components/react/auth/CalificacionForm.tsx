@@ -3,9 +3,21 @@ import { obtenerToken } from '../../../lib/auth';
 import { crearCalificacion } from '../../../lib/usuarios-api';
 import './auth.css';
 
+/** Lee `?usuario=` y `?tarea=` (los pone la finalización de una tarea, US-014). */
+function parametroDeLaUrl(nombre: string): string {
+  try {
+    return new URLSearchParams(window.location.search).get(nombre) ?? '';
+  } catch {
+    return '';
+  }
+}
+
 export default function CalificacionForm() {
   const getToken = obtenerToken;
-  const [destinatarioId, setDestinatarioId] = useState('');
+  const [destinatarioId, setDestinatarioId] = useState(() =>
+    parametroDeLaUrl('usuario')
+  );
+  const [tareaId] = useState(() => parametroDeLaUrl('tarea'));
   const [puntuacion, setPuntuacion] = useState(5);
   const [comentario, setComentario] = useState('');
   const [msg, setMsg] = useState('');
@@ -18,6 +30,7 @@ export default function CalificacionForm() {
       await crearCalificacion({
         token,
         destinatarioId,
+        tareaId: tareaId || null,
         puntuacion,
         comentario,
       });

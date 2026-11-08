@@ -18,3 +18,9 @@ export type Categoria = (typeof CATEGORIAS)[number];
 
 /** Estado inicial de toda tarea recién publicada (#118). */
 export const ESTADO_INICIAL_TAREA = 'abierta' as const;
+
+/** Un afiliado fue elegido y el servicio está en curso (US-013). */
+export const ESTADO_ASIGNADA = 'asignada' as const;
+
+/** El creador confirmó el pago y cerró la tarea (US-014). */
+export const ESTADO_FINALIZADA = 'finalizada' as const;

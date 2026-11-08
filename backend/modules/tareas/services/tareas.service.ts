@@ -1,4 +1,6 @@
 import {
+  ConflictError,
+  ForbiddenError,
   GoneError,
   NotFoundError,
   ValidationError,
@@ -7,7 +9,11 @@ import type { Usuario } from '../../usuarios/entities/usuario.entity';
 import type { UsuariosRepositorio } from '../../usuarios/ports';
 import { usuariosRepository } from '../../usuarios/repositories/usuarios.repository';
 import { crearExigirUsuario } from '../../usuarios/services/usuario-actual';
-import { ESTADO_INICIAL_TAREA } from '../categorias';
+import {
+  ESTADO_ASIGNADA,
+  ESTADO_FINALIZADA,
+  ESTADO_INICIAL_TAREA,
+} from '../categorias';
 import {
   toDetalleTarea,
   toTareaPropia,
@@ -22,6 +28,17 @@ import {
   normalizarTarea,
   type DatosTareaCrudos,
 } from '../validators/tarea.validator';
+
+export const MENSAJE_YA_ASIGNADA =
+  'Esta tarea ya cuenta con un afiliado asignado';
+export const MENSAJE_SOLO_CREADOR_ASIGNA =
+  'Solo el creador de la tarea puede seleccionar a un afiliado.';
+export const MENSAJE_SOLO_CREADOR_FINALIZA =
+  'Solo el creador de la tarea puede marcarla como finalizada.';
+export const MENSAJE_NO_ASIGNADA =
+  'Solo se puede finalizar una tarea que ya tiene un afiliado asignado.';
+export const MENSAJE_PAGO_REQUERIDO =
+  'Debes confirmar que realizaste el pago en efectivo.';
 
 export const LIMITE_POR_DEFECTO = 12;
 export const LIMITE_MAXIMO = 50;
@@ -123,18 +140,113 @@ export function crearTareasService({ usuarios, tareas }: Dependencias) {
     ): Promise<DetalleTarea> {
       const encontrada = await tareas.buscarPorId(id, visitante.id);
       if (!encontrada) throw new NotFoundError('Tarea no encontrada.');
-      const { tarea, autor, yaPostulado } = encontrada;
+      const { tarea, autor, autorEmail, yaPostulado, asignado } = encontrada;
       const esPropia = tarea.usuarioId === visitante.id;
+      const esAsignado = asignado?.id === visitante.id;
       const abierta = tarea.estado === ESTADO_INICIAL_TAREA;
-      if (!abierta && !esPropia) {
+      const asignada = tarea.estado === ESTADO_ASIGNADA;
+      // Solo la ven los terceros mientras está abierta; el creador y el
+      // afiliado elegido la ven siempre (US-013).
+      if (!abierta && !esPropia && !esAsignado) {
         throw new GoneError('Esta tarea ya no se encuentra disponible.');
+      }
+      let contacto: DetalleTarea['contacto'] = null;
+      if (asignada && esAsignado) {
+        contacto = { nombre: autor.nombre, email: autorEmail };
+      } else if (asignada && esPropia && asignado) {
+        contacto = { nombre: asignado.nombre, email: asignado.email };
       }
       return toDetalleTarea(tarea, autor, {
         esPropia,
+        esAsignado,
         yaPostulado,
         puedeOfertar:
           abierta && !esPropia && !yaPostulado && visitante.rol === 'afiliado',
+        puedeFinalizar: esPropia && asignada,
+        contacto,
+        afiliadoAsignado:
+          esPropia && asignado
+            ? { id: asignado.id, nombre: asignado.nombre }
+            : null,
       });
+    },
+
+    /**
+     * Selección del prestador (US-013). Solo el creador, solo mientras la
+     * tarea esté abierta (Esc 5: si ya se asignó, 409 "ya cuenta con un
+     * afiliado asignado"), y la oferta debe ser de esa tarea. La escritura es
+     * atómica: la tarea queda asignada, la oferta aceptada y las demás
+     * rechazadas (Esc 3); desaparece del tablero y deja de aceptar ofertas
+     * (Esc 4) porque ambos consultan el estado 'abierta'.
+     */
+    async asignar(
+      visitante: Pick<Usuario, 'id'>,
+      tareaId: string,
+      ofertaId: string
+    ): Promise<{ tareaId: string; estado: string; afiliadoId: string }> {
+      const encontrada = await tareas.buscarPorId(tareaId, visitante.id);
+      if (!encontrada) throw new NotFoundError('Tarea no encontrada.');
+      if (encontrada.tarea.usuarioId !== visitante.id) {
+        throw new ForbiddenError(MENSAJE_SOLO_CREADOR_ASIGNA);
+      }
+      if (encontrada.tarea.estado !== ESTADO_INICIAL_TAREA) {
+        throw new ConflictError(MENSAJE_YA_ASIGNADA);
+      }
+      const resultado = await tareas.asignar({
+        tareaId,
+        autorId: visitante.id,
+        ofertaId,
+      });
+      if (resultado.tipo === 'no-abierta') {
+        throw new ConflictError(MENSAJE_YA_ASIGNADA);
+      }
+      if (resultado.tipo === 'oferta-invalida') {
+        throw new NotFoundError('Oferta no encontrada.');
+      }
+      return {
+        tareaId,
+        estado: ESTADO_ASIGNADA,
+        afiliadoId: resultado.afiliadoId,
+      };
+    },
+
+    /**
+     * Cierre de la tarea (US-014). Solo su creador (Esc 3: el afiliado
+     * asignado no puede), solo si ya está asignada (Esc 2) y con el pago en
+     * efectivo confirmado. Una sola vez, de forma atómica.
+     */
+    async finalizar(
+      visitante: Pick<Usuario, 'id'>,
+      tareaId: string,
+      pagoConfirmado: boolean
+    ): Promise<{
+      tareaId: string;
+      estado: string;
+      afiliadoId: string;
+      finalizadaEn: Date;
+    }> {
+      if (!pagoConfirmado) throw new ValidationError(MENSAJE_PAGO_REQUERIDO);
+      const encontrada = await tareas.buscarPorId(tareaId, visitante.id);
+      if (!encontrada) throw new NotFoundError('Tarea no encontrada.');
+      if (encontrada.tarea.usuarioId !== visitante.id) {
+        throw new ForbiddenError(MENSAJE_SOLO_CREADOR_FINALIZA);
+      }
+      if (encontrada.tarea.estado !== ESTADO_ASIGNADA) {
+        throw new ConflictError(MENSAJE_NO_ASIGNADA);
+      }
+      const resultado = await tareas.finalizar({
+        tareaId,
+        autorId: visitante.id,
+      });
+      if (resultado.tipo === 'no-asignada') {
+        throw new ConflictError(MENSAJE_NO_ASIGNADA);
+      }
+      return {
+        tareaId,
+        estado: ESTADO_FINALIZADA,
+        afiliadoId: resultado.afiliadoId,
+        finalizadaEn: resultado.finalizadaEn,
+      };
     },
 
     /**

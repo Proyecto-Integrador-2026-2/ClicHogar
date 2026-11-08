@@ -7,7 +7,10 @@
  * - Esc 3: si la tarea ya no está disponible no se muestra el detalle: se
  *   avisa y se vuelve solo al tablero.
  * - Esc 4: en una tarea propia se ve todo, pero no se ofrece ofertar; en
- *   su lugar aparecen las ofertas recibidas (US-012).
+ *   su lugar aparecen las ofertas recibidas (US-012) y, si está abierta, la
+ *   selección del prestador (US-013). Asignada: contacto mutuo (US-013),
+ *   cierre con confirmación de pago para el creador y aviso de espera para
+ *   el afiliado (US-014).
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { estaFirmado, obtenerToken } from '../../../lib/auth';
@@ -26,7 +29,8 @@ import {
 } from './carga-sesion';
 import MapaUbicacion from './MapaUbicacion';
 import OfertaForm from './OfertaForm';
-import OfertasRecibidas from './OfertasRecibidas';
+import FinalizarTarea from './FinalizarTarea';
+import OfertasRecibidas, { type ResultadoSeleccion } from './OfertasRecibidas';
 
 export const MENSAJE_NO_DISPONIBLE =
   'Lo sentimos, esta tarea ya no se encuentra disponible';
@@ -35,6 +39,12 @@ export const MENSAJE_ERROR_DETALLE =
 export const MENSAJE_OFERTA_ENVIADA =
   'Tu oferta ha sido enviada exitosamente al creador de la tarea';
 export const MENSAJE_YA_POSTULADO = 'Ya te has postulado a esta tarea';
+export const MENSAJE_AFILIADO_SELECCIONADO =
+  '¡Afiliado seleccionado! Ahora pueden coordinar los detalles del servicio.';
+export const MENSAJE_YA_ASIGNADA =
+  'Esta tarea ya cuenta con un afiliado asignado';
+export const MENSAJE_ESPERANDO_CIERRE =
+  'Esperando que el cliente confirme el pago y finalice la tarea';
 export const MENSAJE_NO_ACEPTA_OFERTAS =
   'Lo sentimos, esta tarea ya no acepta nuevas ofertas en este momento';
 
@@ -118,6 +128,36 @@ function ZonaOferta({ tarea, onNoAcepta }: Readonly<PropsOferta>) {
   );
 }
 
+/** Contacto, cierre y espera de una tarea asignada (US-013 y US-014). */
+function ZonaServicio({ tarea }: Readonly<{ tarea: DetalleTareaApi }>) {
+  if (tarea.estado !== 'asignada') return null;
+  return (
+    <section className="ch-servicio" aria-label="Servicio en curso">
+      <h3 className="ch-autor__nombre">Servicio en curso</h3>
+      {tarea.contacto && (
+        <p className="ch-tarea__meta">
+          Contacto: <strong>{tarea.contacto.nombre}</strong> ·{' '}
+          <a href={`mailto:${tarea.contacto.email}`}>{tarea.contacto.email}</a>
+        </p>
+      )}
+      <p className="ch-field__hint">
+        Coordinen la fecha, la hora y los detalles del servicio.
+      </p>
+      {tarea.puedeFinalizar && tarea.afiliadoAsignado && (
+        <FinalizarTarea
+          tareaId={tarea.id}
+          nombreAfiliado={tarea.afiliadoAsignado.nombre}
+        />
+      )}
+      {tarea.esAsignado && (
+        <p className="ch-alert" role="status">
+          {MENSAJE_ESPERANDO_CIERRE}
+        </p>
+      )}
+    </section>
+  );
+}
+
 function Autor({ autor }: Readonly<{ autor: DetalleTareaApi['autor'] }>) {
   return (
     <section className="ch-autor" aria-label="Quién publica">
@@ -141,6 +181,8 @@ function Autor({ autor }: Readonly<{ autor: DetalleTareaApi['autor'] }>) {
 
 export default function DetalleTarea() {
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
+  // Resultado de elegir al afiliado: sobrevive a la recarga del detalle.
+  const [aviso, setAviso] = useState<ResultadoSeleccion | null>(null);
 
   const cargar = useCallback(async () => {
     const id = idDeLaUrl();
@@ -256,8 +298,31 @@ export default function DetalleTarea() {
           />
         )}
 
+        {aviso && (
+          <p
+            className={
+              aviso === 'asignada' ? 'ch-alert' : 'ch-alert ch-alert--error'
+            }
+            role={aviso === 'asignada' ? 'status' : 'alert'}
+          >
+            {aviso === 'asignada'
+              ? MENSAJE_AFILIADO_SELECCIONADO
+              : MENSAJE_YA_ASIGNADA}
+          </p>
+        )}
+
+        <ZonaServicio tarea={tarea} />
         <Autor autor={tarea.autor} />
-        {tarea.esPropia && <OfertasRecibidas tareaId={tarea.id} />}
+        {tarea.esPropia && (
+          <OfertasRecibidas
+            tareaId={tarea.id}
+            tareaAbierta={tarea.estado === 'abierta'}
+            onResultado={(resultado) => {
+              setAviso(resultado);
+              void cargar();
+            }}
+          />
+        )}
         <ZonaOferta
           tarea={tarea}
           onNoAcepta={() =>

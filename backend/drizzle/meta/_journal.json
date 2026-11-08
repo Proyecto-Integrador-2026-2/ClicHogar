@@ -64,6 +64,13 @@
       "when": 1794142511627,
       "tag": "0008_wealthy_the_watchers",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794144998410,
+      "tag": "0009_pink_tarot",
+      "breakpoints": true
     }
   ]
 }

@@ -63,7 +63,9 @@ function tareaEncontrada(cambios: Partial<Tarea> = {}, yaPostulado = false) {
       ubicacion: null,
       fotoUrl: null,
     },
+    autorEmail: 'ana@ejemplo.com',
     yaPostulado,
+    asignado: null,
   });
 }
 
