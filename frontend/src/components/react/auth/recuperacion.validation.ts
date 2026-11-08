@@ -8,8 +8,8 @@ import { validarCampo } from './register.validation';
 
 export const IDS_RECUPERACION = {
   email: 'ch-recuperar-email',
-  password: 'ch-nueva-password',
-  confirmPassword: 'ch-nueva-confirm',
+  nueva: 'ch-nueva-clave',
+  confirmacion: 'ch-nueva-confirm',
 } as const;
 
 /** Error del correo (o undefined si es válido). */

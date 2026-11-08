@@ -27,7 +27,7 @@ export const env = {
     (process.env.NODE_ENV === 'production'
       ? 'https://clichogar.vercel.app'
       : 'http://localhost:4321')
-  ).replace(/\/+$/, ''),
+  ).replace(/\/$/, ''),
   // Envío de correo con Resend (https://resend.com). Sin RESEND_API_KEY el
   // correo no se envía: el mensaje queda en la consola del servidor.
   RESEND_API_KEY: process.env.RESEND_API_KEY ?? '',

@@ -111,7 +111,7 @@ export default function RestablecerContrasenaForm() {
             <fieldset disabled={enviando} className="ch-fieldset">
               <div className="ch-form">
                 <PasswordField
-                  id={IDS_RECUPERACION.password}
+                  id={IDS_RECUPERACION.nueva}
                   label="Contraseña nueva"
                   value={password}
                   onChange={setPassword}
@@ -119,7 +119,7 @@ export default function RestablecerContrasenaForm() {
                   error={visible('password')}
                 />
                 <PasswordField
-                  id={IDS_RECUPERACION.confirmPassword}
+                  id={IDS_RECUPERACION.confirmacion}
                   label="Confirmar contraseña nueva"
                   value={confirmPassword}
                   onChange={setConfirmPassword}

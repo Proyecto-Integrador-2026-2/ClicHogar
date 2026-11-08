@@ -26,7 +26,7 @@ export default function MapaUbicacion({
 
   useEffect(() => {
     let cancelado = false;
-    (async () => {
+    void (async () => {
       const L = (await import('leaflet')).default;
       await import('leaflet/dist/leaflet.css');
       if (cancelado || !contenedor.current) return;
