@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { listarTareas, type TareaTablero } from '../../../lib/usuarios-api';
 import './auth.css';
 import {
@@ -27,12 +27,14 @@ export default function TableroTareas() {
   const mapaRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
 
-  const cargarTablero = (token: string) =>
+  const cargarTablero = useCallback((token: string) =>
     listarTareas(token, aplicarFiltro ? {
       lat: filtroLat ? Number(filtroLat) : undefined,
       lng: filtroLng ? Number(filtroLng) : undefined,
       radio: filtroRadio ? Number(filtroRadio) : undefined,
-    } : undefined);
+    } : undefined),
+    [aplicarFiltro, filtroLat, filtroLng, filtroRadio]
+  );
 
   const {
     datos: tareas,
