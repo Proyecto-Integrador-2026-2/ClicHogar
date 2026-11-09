@@ -56,6 +56,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   nav.restaurar();
+  delete document.documentElement.dataset.rol;
   spyOn(api, 'obtenerPerfil').mockRestore();
   spyOn(api, 'listarTareas').mockRestore();
 });
@@ -98,6 +99,7 @@ describe('DashboardPanel', () => {
     expect(screen.getByText('Tareas abiertas').nextSibling?.textContent).toBe(
       '1Explorar tablero'
     );
+    expect(document.documentElement.dataset.rol).toBe('afiliado');
   });
 
   test('si hay más tareas abiertas que el bloque contado, añade "+"', async () => {
@@ -127,6 +129,22 @@ describe('DashboardPanel', () => {
     // Then: muestra 'Completo' y el rol
     expect(await screen.findByText('Completo')).toBeTruthy();
     expect(screen.getByText(/resumen como Cliente/)).toBeTruthy();
+  });
+
+  test('un cliente no pide tareas ni muestra el indicador de abiertas', async () => {
+    // Given: una sesión de cliente
+    spyOn(api, 'obtenerPerfil').mockResolvedValue({
+      ...PERFIL,
+      rol: 'cliente',
+    });
+    const listar = spyOn(api, 'listarTareas');
+    // When: se renderiza el panel
+    render(<DashboardPanel />);
+    // Then: no se consulta el tablero ni aparece "Tareas abiertas"
+    await screen.findByText('Hola, Ana Pérez');
+    expect(listar).not.toHaveBeenCalled();
+    expect(screen.queryByText('Tareas abiertas')).toBeNull();
+    expect(document.documentElement.dataset.rol).toBe('cliente');
   });
 
   test('error: alerta, saludo genérico y reintento que recarga', async () => {

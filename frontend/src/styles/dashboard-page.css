@@ -140,6 +140,17 @@
   border-radius: 999px;
 }
 
+/* Módulos exclusivos de afiliados: ocultos por defecto y visibles solo
+   cuando React publica `data-rol="afiliado"` con el perfil cargado. */
+.ch-dash-module--solo-afiliado,
+.ch-dash-module--soon {
+  display: none;
+}
+
+html[data-rol='afiliado'] .ch-dash-module--solo-afiliado {
+  display: block;
+}
+
 /* Módulos futuros: visibles pero no accionables (hoja de ruta honesta). */
 .ch-dash-module--soon {
   opacity: 0.75;

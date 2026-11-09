@@ -43,7 +43,14 @@ test('flujo completo: login, publicar tarea y ver en tablero', async ({
     timeout: 15000,
   });
 
-  // Ver en tablero
-  await page.goto('/tareas');
+  // El cliente ve su tarea en "Mis solicitudes".
+  await page.goto('/tareas/mias');
   await expect(page.getByText(titulo).first()).toBeVisible({ timeout: 15000 });
+
+  // El tablero general es exclusivo de afiliados: aviso de exclusividad.
+  await page.goto('/tareas');
+  await expect(
+    page.getByText(/exclusiva para perfiles de Afiliados/)
+  ).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText(titulo)).toHaveCount(0);
 });

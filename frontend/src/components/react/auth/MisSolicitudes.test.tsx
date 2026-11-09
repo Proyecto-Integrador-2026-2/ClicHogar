@@ -105,6 +105,32 @@ describe('MisSolicitudes', () => {
     ).toBe('/calificaciones?tarea=t-1');
   });
 
+  test('la lista usa la cuadrícula y la tarjeta navega al detalle', async () => {
+    // Given: una tarea propia
+    spyOn(api, 'listarMisTareas').mockResolvedValue([tarea('t-1', 2)]);
+    // When: se abre la página
+    const { container } = render(<MisSolicitudes />);
+    await screen.findByText('Tarea t-1');
+    // Then: usa la misma cuadrícula que el tablero
+    expect(container.querySelector('.ch-tareas--grid')).not.toBeNull();
+    // When: se hace clic en el cuerpo de la tarjeta
+    fireEvent.click(screen.getByText('Tarea t-1'));
+    // Then: navega al detalle
+    expect(nav.destino()).toBe('/tareas/detalle?id=t-1');
+  });
+
+  test('"Ver ofertas" no duplica la navegación de la tarjeta', async () => {
+    // Given: una tarea propia
+    spyOn(api, 'listarMisTareas').mockResolvedValue([tarea('t-1', 2)]);
+    render(<MisSolicitudes />);
+    const enlace = await screen.findByRole('link', { name: 'Ver ofertas' });
+    // When: se pulsa el enlace
+    fireEvent.click(enlace);
+    // Then: el manejador de la tarjeta lo ignora
+    expect(nav.destino()).toBe('');
+    expect(enlace.getAttribute('href')).toBe('/tareas/detalle?id=t-1');
+  });
+
   test('sin solicitudes invita a publicar la primera', async () => {
     // Given: un usuario sin tareas
     spyOn(api, 'listarMisTareas').mockResolvedValue([]);

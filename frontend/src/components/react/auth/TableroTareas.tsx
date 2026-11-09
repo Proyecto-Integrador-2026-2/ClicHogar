@@ -9,12 +9,16 @@
  * - Esc 5: carga progresiva por bloques (scroll infinito con respaldo
  *   manual "Cargar más").
  * - Esc 6: error de red/timeout con mensaje claro y reintento.
+ * - Acceso: exclusivo para afiliados, con el mismo aviso de
+ *   `/perfil/disponibilidad`. El detalle sigue abierto por enlace.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { estaFirmado, obtenerToken } from '../../../lib/auth';
 import {
   ErrorSesionExpirada,
   listarTareas,
+  obtenerPerfil,
+  type RolBackend,
   type TareaTablero,
 } from '../../../lib/usuarios-api';
 import './auth.css';
@@ -23,17 +27,26 @@ import {
   PantallaCargando,
   PantallaSinSesion,
 } from './carga-sesion';
+import ModalZona from './ModalZona';
+import {
+  distanciaKm,
+  formatearDistancia,
+  leerFiltroZona,
+  queryZona,
+  type FiltroZona,
+} from '../../../lib/zona';
 
 export const MENSAJE_TABLERO_VACIO =
   'En este momento no hay nuevas tareas publicadas. Vuelve más tarde.';
 export const MENSAJE_ERROR_TABLERO =
   'No pudimos cargar las tareas disponibles. Por favor, verifica tu conexión e intenta nuevamente';
-const MENSAJE_FILTRO_INVALIDO = 'Ingresa latitud, longitud y radio válidos.';
+export const MENSAJE_ERROR_PERFIL =
+  'No pudimos verificar tu perfil. Por favor, verifica tu conexión e intenta nuevamente';
+export const MENSAJE_SOLO_AFILIADOS =
+  'Esta sección es exclusiva para perfiles de Afiliados.';
 
 /** Tareas por bloque: el backend limita el máximo a 50. */
 const TAMANO_BLOQUE = 12;
-
-type Cercania = { lat: number; lng: number; radio: number };
 
 function fechaCorta(iso: string): string {
   const fecha = new Date(iso);
@@ -44,36 +57,51 @@ function fechaCorta(iso: string): string {
   });
 }
 
-/** Lee los campos de cercanía; `null` si alguno no es un número válido. */
-function leerCercania(
-  lat: string,
-  lng: string,
-  radio: string
-): Cercania | null {
-  const valores = [lat, lng, radio].map((v) =>
-    v.trim() === '' ? Number.NaN : Number(v)
-  );
-  const [la, lo, ra] = valores as [number, number, number];
-  if (!valores.every(Number.isFinite) || ra <= 0) return null;
-  if (Math.abs(la) > 90 || Math.abs(lo) > 180) return null;
-  return { lat: la, lng: lo, radio: ra };
+/** Escribe el filtro en la URL sin añadir entradas al historial. */
+function sincronizarUrl(filtro: FiltroZona | null): void {
+  try {
+    const ruta = window.location.pathname || '/tareas';
+    const query = queryZona(filtro);
+    window.history.replaceState(null, '', query ? `${ruta}?${query}` : ruta);
+  } catch {
+    // Entornos de prueba sin history completo: el filtro sigue en memoria.
+  }
+}
+
+/** Lee el filtro inicial y limpia parámetros inválidos de la URL. */
+function leerFiltroInicial(): FiltroZona | null {
+  try {
+    const search = window.location.search;
+    const filtro = leerFiltroZona(search);
+    if (!filtro && search) {
+      const ruta = window.location.pathname || '/tareas';
+      window.history.replaceState(null, '', ruta);
+    }
+    return filtro;
+  } catch {
+    return null;
+  }
 }
 
 export default function TableroTareas() {
+  const [rol, setRol] = useState<RolBackend | null>(null);
+  const [cargandoPerfil, setCargandoPerfil] = useState(true);
+  const [errorPerfil, setErrorPerfil] = useState('');
+
   const [tareas, setTareas] = useState<TareaTablero[]>([]);
   const [pagina, setPagina] = useState(0);
   const [hayMas, setHayMas] = useState(false);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [cargandoMas, setCargandoMas] = useState(false);
   const [error, setError] = useState(false);
-  const [cercania, setCercania] = useState<Cercania | null>(null);
-
-  const [filtroLat, setFiltroLat] = useState('');
-  const [filtroLng, setFiltroLng] = useState('');
-  const [filtroRadio, setFiltroRadio] = useState('10');
-  const [errorFiltro, setErrorFiltro] = useState('');
+  const [filtro, setFiltro] = useState<FiltroZona | null>(() =>
+    leerFiltroInicial()
+  );
+  const [modalAbierto, setModalAbierto] = useState(false);
 
   const centinelaRef = useRef<HTMLLIElement>(null);
+  const botonBuscarRef = useRef<HTMLButtonElement>(null);
+  const iniciadoRef = useRef(false);
 
   // Descarta respuestas de peticiones antiguas (cambio de filtro o
   // reintento mientras otra seguía en vuelo).
@@ -84,7 +112,7 @@ export default function TableroTareas() {
    * filtro nuevo); si no, la añade al final. Un 401 va a /login.
    */
   const cargarPagina = useCallback(
-    async (siguiente: number, filtro: Cercania | null, reemplazar: boolean) => {
+    async (siguiente: number, filtroActual: FiltroZona | null, reemplazar: boolean) => {
       const id = ++peticionRef.current;
       setError(false);
       if (reemplazar) setCargandoInicial(true);
@@ -95,7 +123,7 @@ export default function TableroTareas() {
         const resultado = await listarTareas(token, {
           pagina: siguiente,
           limite: TAMANO_BLOQUE,
-          ...filtro,
+          ...filtroActual,
         });
         if (id !== peticionRef.current) return;
         setTareas((previas) =>
@@ -120,24 +148,65 @@ export default function TableroTareas() {
     []
   );
 
+  /** Verifica el rol y, solo si es afiliado, carga la primera página. */
+  const cargarPerfil = useCallback(
+    async (filtroActual: FiltroZona | null) => {
+      setCargandoPerfil(true);
+      setErrorPerfil('');
+      try {
+        const token = obtenerToken();
+        if (!token) throw new ErrorSesionExpirada();
+        const perfil = await obtenerPerfil(token);
+        setRol(perfil.rol);
+        if (perfil.rol === 'afiliado') {
+          await cargarPagina(1, filtroActual, true);
+        }
+      } catch (err: unknown) {
+        if (err instanceof ErrorSesionExpirada) {
+          window.location.href = '/login?expirada=1';
+          return;
+        }
+        setErrorPerfil(MENSAJE_ERROR_PERFIL);
+      } finally {
+        setCargandoPerfil(false);
+      }
+    },
+    [cargarPagina]
+  );
+
   useEffect(() => {
+    if (iniciadoRef.current) return;
+    iniciadoRef.current = true;
     if (!estaFirmado()) {
+      setCargandoPerfil(false);
       setCargandoInicial(false);
       return;
     }
-    void cargarPagina(1, null, true);
-  }, [cargarPagina]);
+    void cargarPerfil(filtro);
+  }, [cargarPerfil, filtro]);
+
+  // Atrás/adelante del navegador: vuelve a leer la URL.
+  useEffect(() => {
+    const alVolver = () => {
+      if (rol !== 'afiliado') return;
+      const leido = leerFiltroZona(window.location.search);
+      setFiltro(leido);
+      void cargarPagina(1, leido, true);
+    };
+    window.addEventListener('popstate', alVolver);
+    return () => window.removeEventListener('popstate', alVolver);
+  }, [rol, cargarPagina]);
 
   const cargarSiguiente = useCallback(() => {
     if (cargandoInicial || cargandoMas || !hayMas || error) return;
-    void cargarPagina(pagina + 1, cercania, false);
+    void cargarPagina(pagina + 1, filtro, false);
   }, [
     cargandoInicial,
     cargandoMas,
     hayMas,
     error,
     pagina,
-    cercania,
+    filtro,
     cargarPagina,
   ]);
 
@@ -154,37 +223,49 @@ export default function TableroTareas() {
   }, [cargarSiguiente, tareas.length, hayMas]);
 
   const reintentar = () => {
+    if (errorPerfil) {
+      void cargarPerfil(filtro);
+      return;
+    }
     // Si falló el primer bloque se repite desde la página 1; si falló uno
     // posterior se reintenta solo ese (la lista ya cargada se conserva).
     const fallo1 = tareas.length === 0;
-    void cargarPagina(fallo1 ? 1 : pagina + 1, cercania, fallo1);
+    void cargarPagina(fallo1 ? 1 : pagina + 1, filtro, fallo1);
   };
 
-  const aplicarFiltro = () => {
-    const nueva = leerCercania(filtroLat, filtroLng, filtroRadio);
-    if (!nueva) {
-      setErrorFiltro(MENSAJE_FILTRO_INVALIDO);
-      return;
-    }
-    setErrorFiltro('');
-    setCercania(nueva);
-    void cargarPagina(1, nueva, true);
+  const cerrarModal = () => {
+    setModalAbierto(false);
+    setTimeout(() => botonBuscarRef.current?.focus(), 0);
+  };
+
+  const aplicarFiltro = (nuevo: FiltroZona) => {
+    setFiltro(nuevo);
+    sincronizarUrl(nuevo);
+    setModalAbierto(false);
+    void cargarPagina(1, nuevo, true);
+    setTimeout(() => botonBuscarRef.current?.focus(), 0);
   };
 
   const limpiarFiltro = () => {
-    setErrorFiltro('');
-    setFiltroLat('');
-    setFiltroLng('');
-    setFiltroRadio('10');
-    setCercania(null);
+    setFiltro(null);
+    sincronizarUrl(null);
     void cargarPagina(1, null, true);
   };
 
-  const firmado = estaFirmado();
+  const irAlDetalle = (id: string) => {
+    window.location.href = `/tareas/detalle?id=${encodeURIComponent(id)}`;
+  };
 
-  if (cargandoInicial && tareas.length === 0 && !cercania) {
-    return <PantallaCargando texto="Cargando tareas disponibles…" />;
-  }
+  const alClicTarjeta = (
+    evento: React.MouseEvent<HTMLLIElement>,
+    id: string
+  ) => {
+    const objetivo = evento.target as HTMLElement;
+    if (objetivo.closest('a, button')) return;
+    irAlDetalle(id);
+  };
+
+  const firmado = estaFirmado();
 
   if (!firmado) {
     return (
@@ -195,59 +276,80 @@ export default function TableroTareas() {
     );
   }
 
+  if (cargandoPerfil) {
+    return <PantallaCargando texto="Cargando tareas disponibles…" />;
+  }
+
+  if (errorPerfil) {
+    return (
+      <div className="ch-auth">
+        <div className="ch-card">
+          <AlertaConReintento
+            mensaje={errorPerfil}
+            onReintentar={reintentar}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Guardia de rol: mismo aviso que `/perfil/disponibilidad`.
+  if (rol !== 'afiliado') {
+    return (
+      <div className="ch-auth">
+        <div className="ch-card">
+          <h2 className="ch-card__title">Tareas disponibles</h2>
+          <div className="ch-alert ch-alert--error" role="alert">
+            {MENSAJE_SOLO_AFILIADOS} <a href="/">Volver al inicio</a>.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (cargandoInicial && tareas.length === 0 && !filtro) {
+    return <PantallaCargando texto="Cargando tareas disponibles…" />;
+  }
+
   const sinResultados =
     !cargandoInicial && !error && tareas.length === 0 && pagina > 0;
 
   return (
     <div className="ch-auth">
-      <div className="ch-card">
-        <h2 className="ch-card__title">Tareas disponibles</h2>
-        <p className="ch-card__subtitle">
-          {tareas.length > 0
-            ? `${tareas.length}${hayMas ? '+' : ''} ${tareas.length === 1 && !hayMas ? 'solicitud activa' : 'solicitudes activas'}`
-            : ''}
-        </p>
-
-        <div className="ch-filtro">
-          <input
-            className="ch-input"
-            placeholder="Lat"
-            aria-label="Latitud"
-            value={filtroLat}
-            onChange={(e) => setFiltroLat(e.target.value)}
-          />
-          <input
-            className="ch-input"
-            placeholder="Lng"
-            aria-label="Longitud"
-            value={filtroLng}
-            onChange={(e) => setFiltroLng(e.target.value)}
-          />
-          <input
-            className="ch-input"
-            placeholder="Radio km"
-            aria-label="Radio en kilómetros"
-            value={filtroRadio}
-            onChange={(e) => setFiltroRadio(e.target.value)}
-          />
-          <button
-            type="button"
-            className="ch-btn ch-btn--ghost"
-            onClick={aplicarFiltro}
-          >
-            Filtrar por cercanía
-          </button>
-          <button
-            type="button"
-            className="ch-btn ch-btn--ghost"
-            onClick={limpiarFiltro}
-          >
-            Limpiar
-          </button>
+      <div className="ch-card ch-card--wide ch-tablero">
+        <div className="ch-tablero__head">
+          <div>
+            <h2 className="ch-card__title">Tareas disponibles</h2>
+            <p className="ch-card__subtitle">
+              {tareas.length > 0
+                ? `${tareas.length}${hayMas ? '+' : ''} ${tareas.length === 1 && !hayMas ? 'solicitud activa' : 'solicitudes activas'}`
+                : ''}
+            </p>
+          </div>
+          <div className="ch-tablero__acciones">
+            <button
+              ref={botonBuscarRef}
+              type="button"
+              className="ch-btn ch-btn--primary"
+              onClick={() => setModalAbierto(true)}
+            >
+              Buscar por zona
+            </button>
+            <button
+              type="button"
+              className="ch-btn ch-btn--ghost"
+              onClick={limpiarFiltro}
+              disabled={!filtro}
+            >
+              Ver todas
+            </button>
+          </div>
         </div>
-        {errorFiltro && (
-          <p className="ch-field__error" role="alert">
-            {errorFiltro}
+
+        {filtro && (
+          <p className="ch-filtro-activo">
+            <span className="ch-filtro-activo__punto" aria-hidden="true" />
+            Buscando en un radio de {filtro.radio} km
           </p>
         )}
 
@@ -265,17 +367,32 @@ export default function TableroTareas() {
         )}
 
         {sinResultados && (
-          <p className="ch-field__hint">
-            {cercania
-              ? 'No hay tareas abiertas dentro de ese radio.'
-              : MENSAJE_TABLERO_VACIO}
-          </p>
+          <>
+            <p className="ch-field__hint">
+              {filtro
+                ? 'No hay tareas abiertas dentro de ese radio.'
+                : MENSAJE_TABLERO_VACIO}
+            </p>
+            {filtro && (
+              <button
+                type="button"
+                className="ch-btn ch-btn--ghost"
+                onClick={limpiarFiltro}
+              >
+                Ver todas
+              </button>
+            )}
+          </>
         )}
 
         {tareas.length > 0 && (
-          <ul className="ch-tareas">
+          <ul className="ch-tareas ch-tareas--grid">
             {tareas.map((tarea) => (
-              <li className="ch-tarea" key={tarea.id}>
+              <li
+                className="ch-tarea ch-tarea--clicable"
+                key={tarea.id}
+                onClick={(evento) => alClicTarjeta(evento, tarea.id)}
+              >
                 <div className="ch-tarea__head">
                   <h3 className="ch-tarea__titulo">{tarea.titulo}</h3>
                   <span className="ch-chip">{tarea.categoria}</span>
@@ -289,6 +406,18 @@ export default function TableroTareas() {
                 <p className="ch-tarea__descripcion">{tarea.descripcion}</p>
                 <div className="ch-tarea__actions">
                   <span className="ch-badge">Abierta</span>
+                  {filtro &&
+                    tarea.latitud !== null &&
+                    tarea.longitud !== null && (
+                      <span className="ch-tarea__distancia">
+                        {formatearDistancia(
+                          distanciaKm(filtro, {
+                            lat: tarea.latitud,
+                            lng: tarea.longitud,
+                          })
+                        )}
+                      </span>
+                    )}
                   <a
                     className="ch-btn ch-btn--ghost"
                     href={`/tareas/detalle?id=${encodeURIComponent(tarea.id)}`}
@@ -311,6 +440,14 @@ export default function TableroTareas() {
           >
             {cargandoMas ? 'Cargando…' : 'Cargar más tareas'}
           </button>
+        )}
+
+        {modalAbierto && (
+          <ModalZona
+            filtroInicial={filtro}
+            onBuscar={aplicarFiltro}
+            onCerrar={cerrarModal}
+          />
         )}
       </div>
     </div>

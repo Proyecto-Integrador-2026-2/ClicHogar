@@ -28,9 +28,12 @@ describe('MapaUbicacion', () => {
     const mapa = screen.getByRole('img', {
       name: 'Mapa con la zona aproximada',
     });
-    // Then: aparece el mapa sin marcador exacto
+    // Then: aparece el mapa sin marcador exacto y con la zona dibujada
     await waitFor(() =>
       expect(mapa.classList.contains('leaflet-container')).toBe(true)
+    );
+    await waitFor(() =>
+      expect(mapa.querySelector('.leaflet-overlay-pane path')).not.toBeNull()
     );
     expect(mapa.querySelector('.leaflet-marker-icon')).toBeNull();
   });

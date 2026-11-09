@@ -1,8 +1,16 @@
 /**
- * Pruebas del tablero de tareas (US-008). `fetch` se simula: sin red ni
- * backend. Cada prueba mapea a un escenario de aceptación.
+ * Pruebas del tablero de tareas (US-008). `fetch` se simula para las tareas
+ * y `obtenerPerfil` con `spyOn`: sin red ni backend.
  */
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  spyOn,
+  test,
+} from 'bun:test';
 import {
   act,
   cleanup,
@@ -12,14 +20,20 @@ import {
   waitFor,
 } from '@testing-library/react';
 import React from 'react';
-import { simularNavegacion } from '../../../../test-setup';
+import { resetSesion, simularNavegacion } from '../../../../test-setup';
+import * as api from '../../../lib/usuarios-api';
 import TableroTareas, {
+  MENSAJE_ERROR_PERFIL,
   MENSAJE_ERROR_TABLERO,
+  MENSAJE_SOLO_AFILIADOS,
   MENSAJE_TABLERO_VACIO,
 } from './TableroTareas';
 
 const fetchOriginal = globalThis.fetch;
 const apiOriginal = process.env.PUBLIC_API_URL;
+
+const AFILIADO = { rol: 'afiliado' } as api.UsuarioPublico;
+const CLIENTE = { rol: 'cliente' } as api.UsuarioPublico;
 
 const tarea = (n: number, extra: Record<string, unknown> = {}) => ({
   id: `t-${n}`,
@@ -48,10 +62,13 @@ const json = (cuerpo: unknown, status = 200) =>
 
 let urls: string[] = [];
 let respuestas: Array<Response | Error> = [];
+let nav: ReturnType<typeof simularNavegacion>;
 
 beforeEach(() => {
+  resetSesion();
   process.env.PUBLIC_API_URL = 'http://api.test';
-  localStorage.setItem('ch-token', 'token-falso');
+  nav = simularNavegacion();
+  spyOn(api, 'obtenerPerfil').mockResolvedValue(AFILIADO);
   urls = [];
   respuestas = [];
   globalThis.fetch = mock(async (url: string) => {
@@ -65,9 +82,10 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  nav.restaurar();
+  spyOn(api, 'obtenerPerfil').mockRestore();
   globalThis.fetch = fetchOriginal;
   process.env.PUBLIC_API_URL = apiOriginal;
-  localStorage.setItem('ch-token', 'token-falso');
 });
 
 describe('TableroTareas (US-008)', () => {
@@ -86,6 +104,11 @@ describe('TableroTareas (US-008)', () => {
     expect(screen.getByText(/Barrio 2/)).toBeTruthy();
     expect(screen.getAllByText(/mar|15/i).length).toBeGreaterThan(0);
     expect(urls[0]).toContain('/api/tareas?pagina=1&limite=12');
+    expect(screen.getByRole('button', { name: 'Buscar por zona' })).toBeTruthy();
+    expect(
+      (screen.getByRole('button', { name: 'Ver todas' }) as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
   });
 
   test('Esc 4: sin tareas muestra el mensaje de tablero vacío', async () => {
@@ -155,16 +178,11 @@ describe('TableroTareas (US-008)', () => {
 
   test('un 401 redirige al login con aviso de sesión expirada', async () => {
     // Given: el backend responde 401
-    const nav = simularNavegacion();
     respuestas = [json({ message: 'Sesión inválida o expirada.' }, 401)];
-    try {
-      // When: se abre el tablero
-      render(<TableroTareas />);
-      // Then: redirige a /login?expirada=1
-      await waitFor(() => expect(nav.destino()).toBe('/login?expirada=1'));
-    } finally {
-      nav.restaurar();
-    }
+    // When: se abre el tablero
+    render(<TableroTareas />);
+    // Then: redirige a /login?expirada=1
+    await waitFor(() => expect(nav.destino()).toBe('/login?expirada=1'));
   });
 
   test('sin sesión invita a iniciar sesión y no llama al backend', async () => {
@@ -177,70 +195,112 @@ describe('TableroTareas (US-008)', () => {
     expect(urls).toHaveLength(0);
   });
 
-  test('filtro por cercanía: valida, aplica desde la página 1 y se limpia', async () => {
-    // Given: el tablero cargado
+  test('un cliente ve el aviso de exclusividad y no se piden tareas', async () => {
+    // Given: una sesión de cliente
+    (
+      api.obtenerPerfil as unknown as ReturnType<typeof spyOn>
+    ).mockResolvedValue(CLIENTE);
+    // When: abre el tablero
+    render(<TableroTareas />);
+    // Then: aviso de exclusividad, sin filtro ni peticiones de tareas
+    expect(await screen.findByText(new RegExp(MENSAJE_SOLO_AFILIADOS))).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Volver al inicio' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Buscar por zona' })).toBeNull();
+    expect(urls).toHaveLength(0);
+  });
+
+  test('si falla el perfil muestra el error y permite reintentar', async () => {
+    // Given: el perfil no se puede cargar
+    (
+      api.obtenerPerfil as unknown as ReturnType<typeof spyOn>
+    ).mockRejectedValueOnce(new Error('offline'));
+    respuestas = [json(pagina([tarea(1)]))];
+    render(<TableroTareas />);
+    // Then: alerta con reintento
+    const alerta = await screen.findByRole('alert');
+    expect(alerta.textContent).toContain(MENSAJE_ERROR_PERFIL);
+    // When: el backend se recupera y se reintenta
+    fireEvent.click(screen.getByRole('button', { name: /Reintentar/i }));
+    // Then: se carga el tablero
+    await screen.findByText('Tarea 1');
+  });
+
+  test('un 401 al cargar el perfil redirige al login', async () => {
+    // Given: la sesión ya expiró
+    (
+      api.obtenerPerfil as unknown as ReturnType<typeof spyOn>
+    ).mockRejectedValue(new api.ErrorSesionExpirada());
+    render(<TableroTareas />);
+    // Then: redirige a /login?expirada=1
+    await waitFor(() => expect(nav.destino()).toBe('/login?expirada=1'));
+  });
+
+  test('la URL con filtro se lee al montar y muestra la banda y la distancia', async () => {
+    // Given: una URL con filtro válido
+    nav.restaurar();
+    nav = simularNavegacion('?lat=6.2&lng=-75.5&radio=5');
     respuestas = [
-      json(pagina([tarea(1)])),
-      json(pagina([tarea(3)])),
-      json(pagina([tarea(1)])),
+      json(pagina([tarea(1, { latitud: 6.21, longitud: -75.5 })])),
+    ];
+    // When: se abre el tablero
+    render(<TableroTareas />);
+    // Then: la primera petición lleva el filtro y se muestra la banda
+    await screen.findByText('Tarea 1');
+    expect(urls[0]).toContain('lat=6.2');
+    expect(urls[0]).toContain('lng=-75.5');
+    expect(urls[0]).toContain('radio=5');
+    expect(screen.getByText(/Buscando en un radio de 5 km/)).toBeTruthy();
+    expect(screen.getByText(/^a /)).toBeTruthy();
+  });
+
+  test('una URL inválida se limpia y carga sin filtro', async () => {
+    // Given: una URL con parámetros incompletos
+    nav.restaurar();
+    nav = simularNavegacion('?lat=6.2');
+    respuestas = [json(pagina([tarea(1)]))];
+    // When: se abre el tablero
+    render(<TableroTareas />);
+    // Then: no se envía el filtro ni aparece la banda
+    await screen.findByText('Tarea 1');
+    expect(urls[0]).not.toContain('lat=');
+    expect(screen.queryByText(/Buscando en un radio/)).toBeNull();
+  });
+
+  test('"Ver todas" limpia el filtro y recarga sin parámetros', async () => {
+    // Given: un tablero filtrado
+    nav.restaurar();
+    nav = simularNavegacion('?lat=6.2&lng=-75.5&radio=5');
+    respuestas = [
+      json(pagina([tarea(1, { latitud: 6.2, longitud: -75.5 })])),
+      json(pagina([tarea(2)])),
     ];
     render(<TableroTareas />);
     await screen.findByText('Tarea 1');
-    // When: filtra con coordenadas vacías
-    fireEvent.change(screen.getByLabelText('Radio en kilómetros'), {
-      target: { value: '' },
-    });
-    fireEvent.click(
-      screen.getByRole('button', { name: /Filtrar por cercanía/i })
-    );
-    // Then: avisa y no pide nada
-    expect((await screen.findByRole('alert')).textContent).toContain('válidos');
-    expect(urls).toHaveLength(1);
-    // When: filtra con datos válidos
-    fireEvent.change(screen.getByLabelText('Latitud'), {
-      target: { value: '6.2' },
-    });
-    fireEvent.change(screen.getByLabelText('Longitud'), {
-      target: { value: '-75.5' },
-    });
-    fireEvent.change(screen.getByLabelText('Radio en kilómetros'), {
-      target: { value: '5' },
-    });
-    fireEvent.click(
-      screen.getByRole('button', { name: /Filtrar por cercanía/i })
-    );
-    // Then: pide la página 1 con el filtro y muestra solo el resultado
-    await screen.findByText('Tarea 3');
-    expect(urls[1]).toContain('pagina=1');
-    expect(urls[1]).toContain('lat=6.2');
-    expect(urls[1]).toContain('lng=-75.5');
-    expect(urls[1]).toContain('radio=5');
-    expect(screen.queryByText('Tarea 1')).toBeNull();
-    // When: limpia el filtro
-    fireEvent.click(screen.getByRole('button', { name: /Limpiar/i }));
-    // Then: vuelve al tablero sin filtro
-    await screen.findByText('Tarea 1');
-    expect(urls[2]).not.toContain('lat=');
+    // When: pulsa "Ver todas"
+    fireEvent.click(screen.getByRole('button', { name: 'Ver todas' }));
+    // Then: recarga sin filtro
+    await screen.findByText('Tarea 2');
+    expect(urls[1]).not.toContain('lat=');
+    expect(screen.queryByText(/Buscando en un radio/)).toBeNull();
   });
 
-  test('el filtro sin resultados explica que no hay tareas en ese radio', async () => {
-    // Given: un tablero cargado y un filtro que no devuelve nada
-    respuestas = [json(pagina([tarea(1)])), json(pagina([]))];
+  test('"Buscar por zona" abre el diálogo y "Cancelar" lo cierra', async () => {
+    // Given: un tablero cargado
+    respuestas = [json(pagina([tarea(1)]))];
     render(<TableroTareas />);
     await screen.findByText('Tarea 1');
-    fireEvent.change(screen.getByLabelText('Latitud'), {
-      target: { value: '1' },
-    });
-    fireEvent.change(screen.getByLabelText('Longitud'), {
-      target: { value: '1' },
-    });
-    // When: se aplica el filtro
-    fireEvent.click(
-      screen.getByRole('button', { name: /Filtrar por cercanía/i })
+    // When: abre el buscador
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar por zona' }));
+    // Then: aparece el diálogo
+    expect(
+      await screen.findByRole('dialog', { name: 'Buscar por zona' })
+    ).toBeTruthy();
+    // When: cancela
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    // Then: se cierra sin tocar el filtro
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Buscar por zona' })).toBeNull()
     );
-    // Then: se explica en vez de mostrar el mensaje de tablero vacío
-    expect(await screen.findByText(/dentro de ese radio/i)).toBeTruthy();
-    expect(screen.queryByText(MENSAJE_TABLERO_VACIO)).toBeNull();
   });
 
   test('US-009 Esc 1: "Ver detalle" lleva a la página de detalle de esa tarea', async () => {
@@ -255,6 +315,17 @@ describe('TableroTareas (US-008)', () => {
       '/tareas/detalle?id=t-1',
       '/tareas/detalle?id=t-2',
     ]);
+  });
+
+  test('clic en la tarjeta navega al detalle', async () => {
+    // Given: una tarjeta
+    respuestas = [json(pagina([tarea(1)]))];
+    render(<TableroTareas />);
+    const titulo = await screen.findByText('Tarea 1');
+    // When: se hace clic en el cuerpo de la tarjeta
+    fireEvent.click(titulo);
+    // Then: navega al detalle de esa tarea
+    expect(nav.destino()).toBe('/tareas/detalle?id=t-1');
   });
 });
 
