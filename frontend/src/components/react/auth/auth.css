@@ -903,6 +903,41 @@ a.ch-btn {
   margin: 6px 0;
   font-style: italic;
 }
+/* "Mis ofertas" (`/dashboard/ofertas/mias`): dos bloques verticales. */
+.ch-mis-ofertas__bloque + .ch-mis-ofertas__bloque {
+  margin-top: 28px;
+}
+.ch-mis-ofertas__subtitulo {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.ch-mis-ofertas__tareas {
+  display: grid;
+  gap: 16px;
+}
+.ch-mis-ofertas__tarea {
+  padding: 14px;
+  border: 1px solid var(--ch-border, rgba(127, 127, 127, 0.3));
+  border-radius: 14px;
+  background: var(--ch-color-surface);
+}
+.ch-mis-ofertas__tarea-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ch-mis-ofertas__tarea-head .ch-tarea__meta {
+  margin-top: 2px;
+}
+.ch-mis-ofertas__tarea-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .ch-autor__foto--vacia {
   display: inline-flex;
   align-items: center;

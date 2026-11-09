@@ -422,7 +422,7 @@ export default function TableroTareas() {
                     className="ch-btn ch-btn--ghost"
                     href={`/tareas/detalle?id=${encodeURIComponent(tarea.id)}`}
                   >
-                    Ver detalle
+                    Ver
                   </a>
                 </div>
               </li>

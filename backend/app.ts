@@ -5,7 +5,7 @@ import { archivosController } from './modules/usuarios/controllers/archivos.cont
 import { authController } from './modules/auth/controllers/auth.controller';
 import { calificacionesController } from './modules/calificaciones/controllers/calificaciones.controller';
 import { chatController } from './modules/chat/controllers/chat.controller';
-import { ofertasController } from './modules/ofertas/controllers/ofertas.controller';
+import { ofertasController, misOfertasController } from './modules/ofertas/controllers/ofertas.controller';
 import { tareasController } from './modules/tareas/controllers/tareas.controller';
 import { usuariosController } from './modules/usuarios/controllers/usuarios.controller';
 import { registerErrorHandler } from './shared/errors/error-handler';
@@ -48,6 +48,7 @@ export function buildApp() {
     .use(usuariosController)
     .use(tareasController)
     .use(ofertasController)
+    .use(misOfertasController)
     .use(calificacionesController)
     .use(chatController);
 

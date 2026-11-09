@@ -141,11 +141,11 @@ export default function TareaForm() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => iniciar(pos.coords.latitude, pos.coords.longitude),
-        () => iniciar(4.6097, -74.0817),
+        () => iniciar(6.2442, -75.5812),
         { enableHighAccuracy: true, timeout: 8000 }
       );
     } else {
-      iniciar(4.6097, -74.0817);
+      iniciar(6.2442, -75.5812);
     }
 
     return () => {

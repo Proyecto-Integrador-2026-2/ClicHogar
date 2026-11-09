@@ -58,16 +58,16 @@ describe('TareaForm: mapa y coordenadas', () => {
     expect(longitud()).toBe('-75.5');
   });
 
-  test('si la geolocalización falla usa Bogotá', () => {
+  test('si la geolocalización falla usa Medellín', () => {
     // Given: un navegador que rechaza el permiso de ubicación
     simularGeolocalizacion({
       getCurrentPosition: (_ok, error) => error(),
     });
     // When: se renderiza el formulario
     render(<TareaForm />);
-    // Then: arranca en Bogotá
-    expect(latitud()).toBe('4.6097');
-    expect(longitud()).toBe('-74.0817');
+    // Then: arranca en Medellín
+    expect(latitud()).toBe('6.2442');
+    expect(longitud()).toBe('-75.5817');
   });
 
   test('arrastrar el marcador actualiza latitud y longitud', () => {

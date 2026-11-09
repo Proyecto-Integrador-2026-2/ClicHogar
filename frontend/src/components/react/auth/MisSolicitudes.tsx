@@ -129,7 +129,7 @@ export default function MisSolicitudes() {
                     className="ch-btn ch-btn--ghost"
                     href={`/tareas/detalle?id=${encodeURIComponent(tarea.id)}`}
                   >
-                    Ver ofertas
+                    Ver
                   </a>
                 </div>
               </li>

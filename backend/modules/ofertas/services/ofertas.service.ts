@@ -8,7 +8,7 @@ import { ESTADO_INICIAL_TAREA } from '../../tareas/categorias';
 import { tareasRepository } from '../../tareas/repositories/tareas.repository';
 import type { Usuario } from '../../usuarios/entities/usuario.entity';
 import { redondearPromedio } from '../../calificaciones/redondeo';
-import type { Oferta, OfertaRecibida } from '../entities/oferta.entity';
+import type { Oferta, OfertaRecibida, MisOfertas } from '../entities/oferta.entity';
 import { ofertasRepository } from '../repositories/ofertas.repository';
 
 export const MENSAJE_YA_POSTULADO = 'Ya te has postulado a esta tarea.';
@@ -82,5 +82,31 @@ export const ofertasService = {
       throw new GoneError(MENSAJE_NO_ACEPTA_OFERTAS);
     }
     return resultado.oferta;
+  },
+
+  /**
+   * "Mis ofertas" (página `/dashboard/ofertas/mias`): agrupa las tareas que
+   * el usuario tiene aceptadas (solo activas) y las que ha publicado con
+   * todas sus ofertas. El promedio de cada afiliado se redondea a 1 decimal,
+   * igual que en el detalle de una tarea.
+   */
+  async listarMias(usuario: Pick<Usuario, 'id'>): Promise<MisOfertas> {
+    const [aceptadas, creadas] = await Promise.all([
+      ofertasRepository.listarAceptadas(usuario.id),
+      ofertasRepository.listarCreadas(usuario.id),
+    ]);
+    return {
+      aceptadas,
+      creadas: creadas.map(({ tarea, ofertas }) => ({
+        tarea,
+        ofertas: ofertas.map((oferta) => ({
+          ...oferta,
+          afiliado: {
+            ...oferta.afiliado,
+            promedio: redondearPromedio(oferta.afiliado.promedio),
+          },
+        })),
+      })),
+    };
   },
 };

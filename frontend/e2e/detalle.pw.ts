@@ -77,7 +77,7 @@ test('Esc 1-2: desde el tablero se abre el detalle completo y se puede ofertar',
   await entrar(page, afiliado);
   await page.goto('/tareas');
   const tarjeta = page.locator('.ch-tarea', { hasText: titulo });
-  await tarjeta.getByRole('link', { name: 'Ver detalle' }).click();
+  await tarjeta.getByRole('link', { name: 'Ver' }).click();
   await page.waitForURL(new RegExp(`/tareas/detalle\\?id=${tareaId}`));
 
   await expect(page.getByRole('heading', { name: titulo })).toBeVisible();
@@ -96,6 +96,10 @@ test('Esc 1-2: desde el tablero se abre el detalle completo y se puede ofertar',
     page.getByRole('img', { name: 'Mapa con la zona aproximada' })
   ).toBeVisible();
   await expect(page.getByText(/radio de 200 m/)).toBeVisible();
+  // Tarea ajena: se vuelve al tablero general.
+  await expect(
+    page.getByRole('link', { name: '← Volver al tablero' })
+  ).toHaveAttribute('href', '/tareas');
 });
 
 test('un cliente ve la tarea pero no puede ofertar', async ({ page }) => {
@@ -123,6 +127,10 @@ test('Esc 4: el autor ve su tarea completa y sin botón de oferta', async ({
   await expect(
     page.getByRole('img', { name: 'Mapa con la ubicación' })
   ).toBeVisible();
+  // Tarea propia: se vuelve a "Mis solicitudes".
+  await expect(
+    page.getByRole('link', { name: '← Volver a mis solicitudes' })
+  ).toHaveAttribute('href', '/tareas/mias');
 });
 
 test('sin coordenadas no hay mapa y la descripción ocupa el espacio', async ({

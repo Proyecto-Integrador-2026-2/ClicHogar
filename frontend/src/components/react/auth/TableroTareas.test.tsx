@@ -303,13 +303,13 @@ describe('TableroTareas (US-008)', () => {
     );
   });
 
-  test('US-009 Esc 1: "Ver detalle" lleva a la página de detalle de esa tarea', async () => {
+  test('US-009 Esc 1: "Ver" lleva a la página de detalle de esa tarea', async () => {
     // Given: un tablero con dos tareas
     respuestas = [json(pagina([tarea(1), tarea(2)]))];
     render(<TableroTareas />);
     await screen.findByText('Tarea 1');
     // When: se miran los enlaces de detalle
-    const enlaces = screen.getAllByRole('link', { name: /Ver detalle/i });
+    const enlaces = screen.getAllByRole('link', { name: 'Ver' });
     // Then: cada tarjeta enlaza a su propia página de detalle
     expect(enlaces.map((e) => e.getAttribute('href'))).toEqual([
       '/tareas/detalle?id=t-1',

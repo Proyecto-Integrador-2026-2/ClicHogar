@@ -269,15 +269,21 @@ export default function DetalleTarea() {
   const { tarea } = estado;
   const fecha = fechaLarga(tarea.creadoEn);
   const conMapa = tarea.latitud !== null && tarea.longitud !== null;
+  // Una tarea propia se gestiona desde "Mis solicitudes"; las ajenas se
+  // abren desde el tablero general.
+  const volverA = tarea.esPropia ? '/tareas/mias' : '/tareas';
+  const textoVolver = tarea.esPropia
+    ? '← Volver a mis solicitudes'
+    : '← Volver al tablero';
 
   return (
     <div className="ch-auth">
       <div className="ch-detalle">
         <a
           className="ch-btn ch-btn--ghost ch-detalle__volver"
-          href="/tareas"
+          href={volverA}
         >
-          ← Volver al tablero
+          {textoVolver}
         </a>
 
         <div className="ch-detalle__hero">

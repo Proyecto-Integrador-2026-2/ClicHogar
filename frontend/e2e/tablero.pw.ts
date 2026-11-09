@@ -139,10 +139,12 @@ test('búsqueda por zona: el punto, el radio y "Ver todas" filtran el tablero', 
   const buscar = dialogo.getByRole('button', { name: 'Buscar en esta zona' });
   await expect(buscar).toBeDisabled();
 
-  // Enter sobre el mapa coloca el punto en el centro (Medellín).
+  // Enter sobre el mapa coloca el punto en el centro (Medellín). Se espera a
+  // que Leaflet termine de montar para que el atajo tenga efecto.
   const mapa = dialogo.getByRole('region', {
     name: 'Mapa para elegir la zona de búsqueda',
   });
+  await expect(dialogo.locator('.ch-modal__mapa.leaflet-container')).toBeVisible();
   await mapa.focus();
   await mapa.press('Enter');
   await expect(dialogo.getByText(/Punto:/)).toBeVisible();

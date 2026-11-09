@@ -106,6 +106,11 @@ describe('DetalleTarea', () => {
       (screen.getByAltText('Foto de Ana Pérez') as HTMLImageElement).src
     ).toBe('http://api.test/uploads/perfiles/ana.jpg');
     expect(obtener).toHaveBeenCalledWith('token-falso', ID);
+    expect(
+      screen
+        .getByRole('link', { name: '← Volver al tablero' })
+        .getAttribute('href')
+    ).toBe('/tareas');
   });
 
   test('Esc 2: una tarea abierta ajena ofrece "Enviar oferta"', async () => {
@@ -254,7 +259,9 @@ describe('DetalleTarea', () => {
     expect(
       await screen.findByRole('region', { name: 'Ofertas recibidas' })
     ).toBeTruthy();
-    expect(api.listarOfertasRecibidas).toHaveBeenCalledWith('token-falso', ID);
+    await waitFor(() =>
+      expect(api.listarOfertasRecibidas).toHaveBeenCalledWith('token-falso', ID)
+    );
     unmount();
     // Given: una tarea ajena
     spyOn(api, 'obtenerTarea').mockResolvedValue(detalle());
@@ -334,6 +341,12 @@ describe('DetalleTarea', () => {
       await screen.findByRole('img', { name: 'Mapa con la ubicación' })
     ).toBeTruthy();
     expect(screen.queryByText(/radio de 200 m/)).toBeNull();
+    // Then: volver lleva a las tareas propias, no al tablero general.
+    expect(
+      screen
+        .getByRole('link', { name: '← Volver a mis solicitudes' })
+        .getAttribute('href')
+    ).toBe('/tareas/mias');
   });
 
   test('el detalle usa la cuadrícula y la descripción completa', async () => {

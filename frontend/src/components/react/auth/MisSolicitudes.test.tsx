@@ -82,7 +82,7 @@ describe('MisSolicitudes', () => {
     // Then: cada una enlaza a su detalle, donde están las ofertas
     expect(
       screen
-        .getAllByRole('link', { name: 'Ver ofertas' })
+        .getAllByRole('link', { name: 'Ver' })
         .map((a) => a.getAttribute('href'))
     ).toEqual(['/tareas/detalle?id=t-1', '/tareas/detalle?id=t-2']);
   });
@@ -119,11 +119,11 @@ describe('MisSolicitudes', () => {
     expect(nav.destino()).toBe('/tareas/detalle?id=t-1');
   });
 
-  test('"Ver ofertas" no duplica la navegación de la tarjeta', async () => {
+  test('"Ver" no duplica la navegación de la tarjeta', async () => {
     // Given: una tarea propia
     spyOn(api, 'listarMisTareas').mockResolvedValue([tarea('t-1', 2)]);
     render(<MisSolicitudes />);
-    const enlace = await screen.findByRole('link', { name: 'Ver ofertas' });
+    const enlace = await screen.findByRole('link', { name: 'Ver' });
     // When: se pulsa el enlace
     fireEvent.click(enlace);
     // Then: el manejador de la tarjeta lo ignora
