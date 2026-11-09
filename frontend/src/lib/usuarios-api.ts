@@ -591,6 +591,33 @@ export type OfertaRecibidaApi = {
   };
 };
 
+/** Tarea resumida que acompaña a una oferta en "Mis ofertas". */
+export type TareaResumenOfertaApi = Omit<
+  TareaTablero,
+  'latitud' | 'longitud'
+>;
+
+/** Tarea que el afiliado tiene aceptada, con la oferta aceptada. */
+export type OfertaAceptadaApi = {
+  tarea: TareaResumenOfertaApi;
+  oferta: OfertaApi;
+};
+
+/** Tarea publicada por el usuario con todas sus ofertas recibidas. */
+export type TareaConOfertasApi = {
+  tarea: TareaResumenOfertaApi;
+  ofertas: OfertaRecibidaApi[];
+};
+
+/**
+ * Respuesta de `GET /api/ofertas/mias`: tareas aceptadas activas y tareas
+ * publicadas con sus ofertas, agrupadas para `/dashboard/ofertas/mias`.
+ */
+export type MisOfertasApi = {
+  aceptadas: OfertaAceptadaApi[];
+  creadas: TareaConOfertasApi[];
+};
+
 /**
  * Ofertas que recibió una tarea, ordenadas por reputación y recencia (solo
  * su creador). Lanza `ErrorSinPermisoOfertas` (403) o
@@ -611,6 +638,19 @@ export function listarOfertasRecibidas(
         404: tareaNoDisponible,
       },
     }
+  );
+}
+
+/**
+ * "Mis ofertas" del usuario: tareas aceptadas activas y tareas publicadas
+ * con sus ofertas, ya agrupadas por el backend. Requiere sesión.
+ */
+export function listarMisOfertas(token: string): Promise<MisOfertasApi> {
+  return pedir(
+    '/api/ofertas/mias',
+    token,
+    { signal: AbortSignal.timeout(TIMEOUT_TABLERO_MS) },
+    OPCIONES_TAREAS
   );
 }
 

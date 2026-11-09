@@ -159,7 +159,7 @@ test('Esc 1 y 5: desde Mis solicitudes se ven las ofertas, la mejor reputación 
   await page.goto('/tareas/mias');
   const tarjeta = page.locator('.ch-tarea', { hasText: tituloConOfertas });
   await expect(tarjeta).toContainText('2 ofertas');
-  await tarjeta.getByRole('link', { name: 'Ver ofertas' }).click();
+  await tarjeta.getByRole('link', { name: 'Ver' }).click();
   await page.waitForURL(new RegExp(`/tareas/detalle\\?id=${tareaConOfertas}`));
 
   const seccion = page.getByRole('region', { name: 'Ofertas recibidas' });

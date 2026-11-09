@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -32,8 +32,28 @@ async function login(
 test('login de usuario (rol Usuario) y afiliado', async ({ page }) => {
   const s = leerSecretos();
   await login(page, s.USUARIO_EMAIL, s.USUARIO_PASSWORD, /\/dashboard/);
+  // Cliente: no ve el tablero ni la disponibilidad, y tampoco los módulos
+  // futuros (chat y calificaciones).
+  await expect(page.locator('html')).toHaveAttribute('data-rol', 'cliente');
+  await expect(
+    page.getByRole('link', { name: /Explorar tareas/ })
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: /Mi disponibilidad/ })
+  ).toHaveCount(0);
+  await expect(page.locator('.ch-dash-module--soon').first()).toBeHidden();
+
   const ctx = await page.context().browser()!.newContext();
   const page2 = await ctx.newPage();
   await login(page2, s.AFILIADO_EMAIL, s.AFILIADO_PASSWORD, /\/dashboard/);
+  // Afiliado: ve tablero y disponibilidad; los módulos futuros siguen ocultos.
+  await expect(page2.locator('html')).toHaveAttribute('data-rol', 'afiliado');
+  await expect(
+    page2.getByRole('link', { name: /Explorar tareas/ })
+  ).toBeVisible();
+  await expect(
+    page2.getByRole('link', { name: /Mi disponibilidad/ })
+  ).toBeVisible();
+  await expect(page2.locator('.ch-dash-module--soon').first()).toBeHidden();
   await ctx.close();
 });

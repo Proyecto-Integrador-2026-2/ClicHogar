@@ -268,35 +268,41 @@ export default function DetalleTarea() {
 
   const { tarea } = estado;
   const fecha = fechaLarga(tarea.creadoEn);
+  const conMapa = tarea.latitud !== null && tarea.longitud !== null;
+  // Una tarea propia se gestiona desde "Mis solicitudes"; las ajenas se
+  // abren desde el tablero general.
+  const volverA = tarea.esPropia ? '/tareas/mias' : '/tareas';
+  const textoVolver = tarea.esPropia
+    ? '← Volver a mis solicitudes'
+    : '← Volver al tablero';
 
   return (
     <div className="ch-auth">
-      <div className="ch-card ch-card--wide">
-        <a className="ch-btn ch-btn--ghost" href="/tareas">
-          ← Volver al tablero
+      <div className="ch-detalle">
+        <a
+          className="ch-btn ch-btn--ghost ch-detalle__volver"
+          href={volverA}
+        >
+          {textoVolver}
         </a>
-        <div className="ch-tarea__head">
-          <h2 className="ch-card__title">{tarea.titulo}</h2>
-          <span className="ch-chip">{tarea.categoria}</span>
+
+        <div className="ch-detalle__hero">
+          <div>
+            <div className="ch-detalle__chips">
+              <span className="ch-chip">{tarea.categoria}</span>
+              <span className="ch-badge">
+                {tarea.estado === 'abierta' ? 'Abierta' : tarea.estado}
+              </span>
+            </div>
+            <h2 className="ch-card__title ch-detalle__titulo">
+              {tarea.titulo}
+            </h2>
+            <p className="ch-tarea__meta">
+              {tarea.ubicacion}
+              {fecha ? ` · Publicada el ${fecha}` : ''}
+            </p>
+          </div>
         </div>
-        <p className="ch-tarea__meta">
-          {tarea.ubicacion}
-          {fecha ? ` · Publicada el ${fecha}` : ''}
-        </p>
-        <span className="ch-badge">
-          {tarea.estado === 'abierta' ? 'Abierta' : tarea.estado}
-        </span>
-
-        <h3 className="ch-autor__nombre">Descripción</h3>
-        <p className="ch-tarea__descripcion">{tarea.descripcion}</p>
-
-        {tarea.latitud !== null && tarea.longitud !== null && (
-          <MapaUbicacion
-            latitud={tarea.latitud}
-            longitud={tarea.longitud}
-            aproximada={!tarea.esPropia}
-          />
-        )}
 
         {aviso && (
           <p
@@ -311,8 +317,53 @@ export default function DetalleTarea() {
           </p>
         )}
 
-        <ZonaServicio tarea={tarea} />
-        <Autor autor={tarea.autor} />
+        <div
+          className={`ch-detalle__grid${conMapa ? '' : ' ch-detalle__grid--sin-mapa'}`}
+        >
+          <div className="ch-detalle__principal">
+            <section className="ch-card ch-detalle__panel">
+              <h3 className="ch-autor__nombre">Descripción</h3>
+              <p className="ch-detalle__descripcion">{tarea.descripcion}</p>
+            </section>
+
+            {conMapa && (
+              <section
+                className="ch-card ch-detalle__panel ch-detalle__mapa"
+                aria-label="Ubicación"
+              >
+                <h3 className="ch-autor__nombre">Ubicación</h3>
+                {!tarea.esPropia && (
+                  <p className="ch-detalle__zona">
+                    La ubicación es aproximada: se muestra un radio de 200 m
+                    alrededor del punto.
+                  </p>
+                )}
+                <MapaUbicacion
+                  latitud={tarea.latitud as number}
+                  longitud={tarea.longitud as number}
+                  aproximada={!tarea.esPropia}
+                />
+              </section>
+            )}
+          </div>
+
+          <aside className="ch-detalle__lateral">
+            <section className="ch-card ch-detalle__panel">
+              <Autor autor={tarea.autor} />
+              <ZonaServicio tarea={tarea} />
+              <ZonaOferta
+                tarea={tarea}
+                onNoAcepta={() =>
+                  setEstado({
+                    tipo: 'no-disponible',
+                    mensaje: MENSAJE_NO_ACEPTA_OFERTAS,
+                  })
+                }
+              />
+            </section>
+          </aside>
+        </div>
+
         {tarea.esPropia && (
           <OfertasRecibidas
             tareaId={tarea.id}
@@ -323,15 +374,6 @@ export default function DetalleTarea() {
             }}
           />
         )}
-        <ZonaOferta
-          tarea={tarea}
-          onNoAcepta={() =>
-            setEstado({
-              tipo: 'no-disponible',
-              mensaje: MENSAJE_NO_ACEPTA_OFERTAS,
-            })
-          }
-        />
       </div>
     </div>
   );

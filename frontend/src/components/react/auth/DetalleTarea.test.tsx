@@ -106,6 +106,11 @@ describe('DetalleTarea', () => {
       (screen.getByAltText('Foto de Ana Pérez') as HTMLImageElement).src
     ).toBe('http://api.test/uploads/perfiles/ana.jpg');
     expect(obtener).toHaveBeenCalledWith('token-falso', ID);
+    expect(
+      screen
+        .getByRole('link', { name: '← Volver al tablero' })
+        .getAttribute('href')
+    ).toBe('/tareas');
   });
 
   test('Esc 2: una tarea abierta ajena ofrece "Enviar oferta"', async () => {
@@ -254,7 +259,9 @@ describe('DetalleTarea', () => {
     expect(
       await screen.findByRole('region', { name: 'Ofertas recibidas' })
     ).toBeTruthy();
-    expect(api.listarOfertasRecibidas).toHaveBeenCalledWith('token-falso', ID);
+    await waitFor(() =>
+      expect(api.listarOfertasRecibidas).toHaveBeenCalledWith('token-falso', ID)
+    );
     unmount();
     // Given: una tarea ajena
     spyOn(api, 'obtenerTarea').mockResolvedValue(detalle());
@@ -312,16 +319,17 @@ describe('DetalleTarea', () => {
     );
     // When: se abre el detalle
     render(<DetalleTarea />);
-    // Then: aparece el mapa de la zona aproximada
+    // Then: aparece el mapa de la zona aproximada y la nota de 200 m
     const mapa = await screen.findByRole('img', {
       name: 'Mapa con la zona aproximada',
     });
     await waitFor(() =>
       expect(mapa.classList.contains('leaflet-container')).toBe(true)
     );
+    expect(screen.getByText(/radio de 200 m/)).toBeTruthy();
   });
 
-  test('en su propia tarea el mapa es exacto', async () => {
+  test('en su propia tarea el mapa es exacto y sin nota de aproximación', async () => {
     // Given: una tarea propia con coordenadas
     spyOn(api, 'obtenerTarea').mockResolvedValue(
       detalle({ latitud: 6.244203, longitud: -75.581211, esPropia: true })
@@ -332,6 +340,43 @@ describe('DetalleTarea', () => {
     expect(
       await screen.findByRole('img', { name: 'Mapa con la ubicación' })
     ).toBeTruthy();
+    expect(screen.queryByText(/radio de 200 m/)).toBeNull();
+    // Then: volver lleva a las tareas propias, no al tablero general.
+    expect(
+      screen
+        .getByRole('link', { name: '← Volver a mis solicitudes' })
+        .getAttribute('href')
+    ).toBe('/tareas/mias');
+  });
+
+  test('el detalle usa la cuadrícula y la descripción completa', async () => {
+    // Given: una tarea con coordenadas
+    spyOn(api, 'obtenerTarea').mockResolvedValue(detalle());
+    // When: se abre el detalle
+    const { container } = render(<DetalleTarea />);
+    await screen.findByRole('heading', { name: 'Arreglar grifo' });
+    // Then: hay hero + cuadrícula y la descripción no usa el truncado de tarjeta
+    expect(container.querySelector('.ch-detalle__grid')).not.toBeNull();
+    expect(container.querySelector('.ch-detalle__descripcion')).not.toBeNull();
+    expect(container.querySelector('.ch-tarea__descripcion')).toBeNull();
+    expect(container.querySelector('.ch-detalle__hero')).not.toBeNull();
+  });
+
+  test('sin coordenadas no hay mapa ni panel de ubicación', async () => {
+    // Given: una tarea sin latitud ni longitud
+    spyOn(api, 'obtenerTarea').mockResolvedValue(detalle());
+    // When: se abre el detalle
+    const { container } = render(<DetalleTarea />);
+    await screen.findByRole('heading', { name: 'Arreglar grifo' });
+    // Then: la información ocupa el ancho y no se inventa un mapa
+    expect(
+      screen.queryByRole('region', { name: 'Ubicación' })
+    ).toBeNull();
+    expect(container.querySelector('.ch-map__canvas')).toBeNull();
+    expect(
+      container.querySelector('.ch-detalle__grid--sin-mapa')
+    ).not.toBeNull();
+    expect(screen.getByText(/Incluye cambiar el empaque\./)).toBeTruthy();
   });
 });
 
@@ -389,6 +434,10 @@ describe('DetalleTarea: tarea no disponible (Esc 3)', () => {
   test('si no se puede leer la URL también cuenta como no disponible', async () => {
     // Given: una página cuya URL no se puede leer
     nav.restaurar();
+    const descriptorOriginal = Object.getOwnPropertyDescriptor(
+      window,
+      'location'
+    );
     Object.defineProperty(window, 'location', {
       configurable: true,
       get() {
@@ -401,6 +450,11 @@ describe('DetalleTarea: tarea no disponible (Esc 3)', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(
       MENSAJE_NO_DISPONIBLE
     );
+    // Restaura el descriptor real antes de volver a simular la navegación;
+    // si no, el `restaurar` del simulador devolvería el getter que lanza.
+    if (descriptorOriginal) {
+      Object.defineProperty(window, 'location', descriptorOriginal);
+    }
     nav = simularNavegacion();
   });
 });

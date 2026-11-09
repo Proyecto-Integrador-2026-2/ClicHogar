@@ -156,6 +156,16 @@ body {
   width: min(100%, 28rem);
 }
 
+/* Tablero, mis solicitudes y detalle: 100% en móvil/tablet; 80vw desde
+   ~1200px y nunca más de 1500px. */
+.ch-page--wide astro-island {
+  width: min(100%, max(80vw, 60rem), 1500px);
+}
+
+.ch-page--wide .ch-page__head {
+  max-width: 40rem;
+}
+
 @media (max-width: 640px) {
   .ch-bg__tool--extra {
     display: none;

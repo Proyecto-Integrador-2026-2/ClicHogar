@@ -15,6 +15,7 @@ const autor = `e2e.autor.${marca}@example.test`;
 const afiliado = `e2e.afiliado9.${marca}@example.test`;
 const cliente = `e2e.cliente9.${marca}@example.test`;
 let tareaId = '';
+let tareaSinUbicacionId = '';
 
 async function registrar(
   request: import('@playwright/test').APIRequestContext,
@@ -55,6 +56,19 @@ test.beforeAll(async ({ request }) => {
   });
   expect(r.status()).toBe(201);
   tareaId = ((await r.json()) as { id: string }).id;
+
+  // Segunda tarea sin coordenadas para el caso "sin ubicación".
+  const sinUbicacion = await request.post(`${API}/api/tareas`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      titulo: `US009 ${marca} sin ubicación`,
+      descripcion: 'Tarea sin latitud ni longitud para el detalle.',
+      categoria: 'Limpieza',
+      ubicacion: 'Sin coordenadas',
+    },
+  });
+  expect(sinUbicacion.status()).toBe(201);
+  tareaSinUbicacionId = ((await sinUbicacion.json()) as { id: string }).id;
 });
 
 test('Esc 1-2: desde el tablero se abre el detalle completo y se puede ofertar', async ({
@@ -63,13 +77,14 @@ test('Esc 1-2: desde el tablero se abre el detalle completo y se puede ofertar',
   await entrar(page, afiliado);
   await page.goto('/tareas');
   const tarjeta = page.locator('.ch-tarea', { hasText: titulo });
-  await tarjeta.getByRole('link', { name: 'Ver detalle' }).click();
+  await tarjeta.getByRole('link', { name: 'Ver' }).click();
   await page.waitForURL(new RegExp(`/tareas/detalle\\?id=${tareaId}`));
 
   await expect(page.getByRole('heading', { name: titulo })).toBeVisible();
   await expect(page.getByText(descripcion)).toBeVisible();
   await expect(page.locator('.ch-chip')).toHaveText('Plomería');
   await expect(page.getByText(/Laureles, Medellín/)).toBeVisible();
+  await expect(page.locator('.ch-detalle__grid')).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Usuario afiliado' })
   ).toHaveCount(1);
@@ -80,6 +95,11 @@ test('Esc 1-2: desde el tablero se abre el detalle completo y se puede ofertar',
   await expect(
     page.getByRole('img', { name: 'Mapa con la zona aproximada' })
   ).toBeVisible();
+  await expect(page.getByText(/radio de 200 m/)).toBeVisible();
+  // Tarea ajena: se vuelve al tablero general.
+  await expect(
+    page.getByRole('link', { name: '← Volver al tablero' })
+  ).toHaveAttribute('href', '/tareas');
 });
 
 test('un cliente ve la tarea pero no puede ofertar', async ({ page }) => {
@@ -107,6 +127,24 @@ test('Esc 4: el autor ve su tarea completa y sin botón de oferta', async ({
   await expect(
     page.getByRole('img', { name: 'Mapa con la ubicación' })
   ).toBeVisible();
+  // Tarea propia: se vuelve a "Mis solicitudes".
+  await expect(
+    page.getByRole('link', { name: '← Volver a mis solicitudes' })
+  ).toHaveAttribute('href', '/tareas/mias');
+});
+
+test('sin coordenadas no hay mapa y la descripción ocupa el espacio', async ({
+  page,
+}) => {
+  await entrar(page, afiliado);
+  await page.goto(`/tareas/detalle?id=${tareaSinUbicacionId}`);
+  await expect(
+    page.getByRole('heading', { name: `US009 ${marca} sin ubicación` })
+  ).toBeVisible();
+  await expect(page.getByText('Tarea sin latitud ni longitud para el detalle.')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Ubicación' })).toHaveCount(0);
+  await expect(page.locator('.ch-map__canvas')).toHaveCount(0);
+  await expect(page.locator('.ch-detalle__grid--sin-mapa')).toBeVisible();
 });
 
 test('Esc 3: si la tarea ya no está disponible avisa y vuelve al tablero', async ({

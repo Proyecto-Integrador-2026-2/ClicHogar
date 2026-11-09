@@ -4,7 +4,7 @@
  * cada módulo. Sin sesión invita a entrar; sin red: alerta + reintento.
  * La navegación a los módulos vive en `pages/dashboard` (Astro puro).
  */
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   listarTareas,
   obtenerPerfil,
@@ -19,10 +19,13 @@ import {
 } from './carga-sesion';
 import { contarAbiertas, etiquetaRol, resumenPerfil } from './dashboard.stats';
 
-/** `hayMas`: hay más tareas abiertas de las que cuenta el primer bloque. */
+/**
+ * `abiertas`: solo se cuenta para afiliados (`null` en clientes).
+ * `hayMas`: hay más tareas abiertas de las que cuenta el primer bloque.
+ */
 type DatosPanel = {
   perfil: UsuarioPublico;
-  abiertas: number;
+  abiertas: number | null;
   hayMas: boolean;
 };
 
@@ -30,10 +33,12 @@ type DatosPanel = {
 const LIMITE_CONTEO = 50;
 
 async function cargarPanel(token: string): Promise<DatosPanel> {
-  const [perfil, pagina] = await Promise.all([
-    obtenerPerfil(token),
-    listarTareas(token, { limite: LIMITE_CONTEO }),
-  ]);
+  const perfil = await obtenerPerfil(token);
+  // El tablero es exclusivo de afiliados: a los clientes no se les pide.
+  if (perfil.rol !== 'afiliado') {
+    return { perfil, abiertas: null, hayMas: false };
+  }
+  const pagina = await listarTareas(token, { limite: LIMITE_CONTEO });
   return {
     perfil,
     abiertas: contarAbiertas(pagina.tareas),
@@ -48,7 +53,7 @@ function Indicadores({
   hayMas,
 }: {
   perfil: UsuarioPublico;
-  abiertas: number;
+  abiertas: number | null;
   hayMas: boolean;
 }) {
   const resumen = resumenPerfil(perfil);
@@ -73,16 +78,18 @@ function Indicadores({
           </span>
         </dd>
       </div>
-      <div className="ch-dash-stat">
-        <dt>Tareas abiertas</dt>
-        <dd>
-          {abiertas}
-          {hayMas ? '+' : ''}
-          <span className="ch-dash-stat__hint">
-            <a href="/tareas">Explorar tablero</a>
-          </span>
-        </dd>
-      </div>
+      {abiertas !== null && (
+        <div className="ch-dash-stat">
+          <dt>Tareas abiertas</dt>
+          <dd>
+            {abiertas}
+            {hayMas ? '+' : ''}
+            <span className="ch-dash-stat__hint">
+              <a href="/tareas">Explorar tablero</a>
+            </span>
+          </dd>
+        </div>
+      )}
     </dl>
   );
 }
@@ -92,6 +99,13 @@ export default function DashboardPanel() {
     cargarPanel,
     'No se pudo cargar tu panel.'
   );
+  const perfil = datos?.perfil ?? null;
+
+  // Publica el rol para que el CSS del dashboard muestre u oculte módulos.
+  useEffect(() => {
+    if (!perfil) return;
+    document.documentElement.dataset.rol = perfil.rol;
+  }, [perfil]);
 
   if (cargando) return <PantallaCargando texto="Cargando tu panel…" />;
 
@@ -104,8 +118,7 @@ export default function DashboardPanel() {
     );
   }
 
-  const perfil = datos?.perfil ?? null;
-  const abiertas = datos?.abiertas ?? 0;
+  const abiertas = datos?.abiertas ?? null;
   const hayMas = datos?.hayMas ?? false;
   const nombre = perfil?.nombre ?? 'miembro';
 

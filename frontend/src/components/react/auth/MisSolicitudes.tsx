@@ -68,6 +68,15 @@ export default function MisSolicitudes() {
     return <PantallaCargando texto="Cargando tus solicitudes…" />;
   }
 
+  const alClicTarjeta = (
+    evento: React.MouseEvent<HTMLLIElement>,
+    id: string
+  ) => {
+    const objetivo = evento.target as HTMLElement;
+    if (objetivo.closest('a, button')) return;
+    window.location.href = `/tareas/detalle?id=${encodeURIComponent(id)}`;
+  };
+
   return (
     <div className="ch-auth">
       <div className="ch-card ch-card--wide">
@@ -87,9 +96,13 @@ export default function MisSolicitudes() {
           </>
         )}
         {estado.tipo === 'listo' && estado.tareas.length > 0 && (
-          <ul className="ch-tareas">
+          <ul className="ch-tareas ch-tareas--grid">
             {estado.tareas.map((tarea) => (
-              <li className="ch-tarea" key={tarea.id}>
+              <li
+                className="ch-tarea ch-tarea--clicable"
+                key={tarea.id}
+                onClick={(evento) => alClicTarjeta(evento, tarea.id)}
+              >
                 <div className="ch-tarea__head">
                   <h3 className="ch-tarea__titulo">{tarea.titulo}</h3>
                   <span className="ch-chip">{tarea.categoria}</span>
@@ -116,7 +129,7 @@ export default function MisSolicitudes() {
                     className="ch-btn ch-btn--ghost"
                     href={`/tareas/detalle?id=${encodeURIComponent(tarea.id)}`}
                   >
-                    Ver ofertas
+                    Ver
                   </a>
                 </div>
               </li>

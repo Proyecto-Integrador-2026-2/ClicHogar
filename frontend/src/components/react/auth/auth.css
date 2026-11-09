@@ -37,6 +37,7 @@
   --ch-color-focus: #0088d5;
   --ch-color-disabled-bg: #e2e8f0;
   --ch-color-disabled-text: #94a3b8;
+  --ch-color-star-filled: #f5a623;
 
   --ch-card-bg:
     linear-gradient(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0) 32%),
@@ -89,6 +90,7 @@ html[data-theme='dark'] .ch-auth {
   --ch-color-focus: #3ce5ff;
   --ch-color-disabled-bg: rgb(255 255 255 / 0.06);
   --ch-color-disabled-text: #64748b;
+  --ch-color-star-filled: #fbbf24;
 
   --ch-card-bg:
     linear-gradient(rgb(255 255 255 / 0.09), rgb(255 255 255 / 0) 30%),
@@ -667,12 +669,43 @@ textarea.ch-field__input {
   cursor: not-allowed;
 }
 
+/* Botón secundario (mismo tamaño, sin peso visual). También se usa en
+   enlaces: sin subrayado para que se lean como acciones. */
+a.ch-btn {
+  text-decoration: none;
+}
+
+.ch-btn--ghost {
+  color: var(--ch-color-text);
+  background: var(--ch-field-bg);
+  border-color: transparent;
+}
+
+.ch-btn--ghost:hover {
+  background: var(--ch-field-bg-hover);
+}
+
+.ch-btn--ghost:active {
+  background: var(--ch-field-bg-focus);
+}
+
+.ch-btn--ghost:focus-visible {
+  outline: 3px solid var(--ch-color-focus);
+  outline-offset: 2px;
+}
+
+.ch-btn--ghost:disabled {
+  color: var(--ch-color-disabled-text);
+  background: var(--ch-color-disabled-bg);
+  cursor: not-allowed;
+}
+
 .ch-spinner {
   width: 18px;
   height: 18px;
   flex: none;
   border-radius: 50%;
-  border: 3px solid rgb(255 255 255 / 0.4);
+  border: 3px solid var(--ch-color-text-soft, rgb(255 255 255 / 0.4));
   border-top-color: currentcolor;
   animation: ch-spin 0.8s linear infinite;
 }
@@ -704,7 +737,7 @@ textarea.ch-field__input {
 
 /* ---------- Panel principal (dashboard) ---------- */
 .ch-card--wide {
-  width: min(100%, 40rem);
+  width: 100%;
 }
 
 .ch-dash-stats {
@@ -808,7 +841,7 @@ textarea.ch-field__input {
   z-index: 50;
 }
 .ch-modal__card {
-  background: var(--ch-card, #fff);
+  background: var(--ch-card-bg);
   padding: 20px;
   border-radius: 12px;
   max-width: 520px;
@@ -872,6 +905,41 @@ textarea.ch-field__input {
   margin: 6px 0;
   font-style: italic;
 }
+/* "Mis ofertas" (`/dashboard/ofertas/mias`): dos bloques verticales. */
+.ch-mis-ofertas__bloque + .ch-mis-ofertas__bloque {
+  margin-top: 28px;
+}
+.ch-mis-ofertas__subtitulo {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.ch-mis-ofertas__tareas {
+  display: grid;
+  gap: 16px;
+}
+.ch-mis-ofertas__tarea {
+  padding: 14px;
+  border: 1px solid var(--ch-border, rgba(127, 127, 127, 0.3));
+  border-radius: 14px;
+  background: var(--ch-color-surface);
+}
+.ch-mis-ofertas__tarea-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ch-mis-ofertas__tarea-head .ch-tarea__meta {
+  margin-top: 2px;
+}
+.ch-mis-ofertas__tarea-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .ch-autor__foto--vacia {
   display: inline-flex;
   align-items: center;
@@ -880,7 +948,7 @@ textarea.ch-field__input {
   font-weight: 700;
 }
 .ch-estrellas {
-  color: #f5a623;
+  color: var(--ch-color-star-filled);
   font-weight: 600;
 }
 .ch-estrellas--vacio {
@@ -926,8 +994,8 @@ textarea.ch-field__input {
   border-radius: 12px;
 }
 .ch-estrellas-input--error {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.08);
+  border-color: var(--ch-color-error);
+  background: var(--ch-color-error-bg);
 }
 .ch-estrella {
   background: none;
@@ -935,11 +1003,11 @@ textarea.ch-field__input {
   padding: 0 2px;
   font-size: 2rem;
   line-height: 1;
-  color: #9ca3af;
+  color: var(--ch-color-text-soft);
   cursor: pointer;
 }
 .ch-estrella--llena {
-  color: #f5a623;
+  color: var(--ch-color-star-filled);
 }
 .ch-estrella:disabled {
   cursor: not-allowed;
@@ -949,4 +1017,255 @@ textarea.ch-field__input {
 /* Reputación en la cabecera del perfil público (US-017) */
 .ch-reputacion {
   margin: 4px 0;
+}
+
+/* ---------- Tablero rediseñado (US-008) ---------- */
+.ch-tablero {
+  width: 100%;
+}
+
+.ch-tablero__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ch-space-3);
+}
+
+.ch-tablero__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ch-space-2);
+}
+
+.ch-tablero__acciones .ch-btn {
+  width: auto;
+  flex: 0 1 auto;
+}
+
+.ch-filtro-activo {
+  display: flex;
+  align-items: center;
+  gap: var(--ch-space-2);
+  margin: var(--ch-space-3) 0;
+  padding: var(--ch-space-2) var(--ch-space-3);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ch-color-text-soft);
+  background: var(--ch-color-surface);
+  border-radius: 999px;
+}
+
+.ch-filtro-activo__punto {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+  background: #dc2626;
+  box-shadow: 0 0 0 3px rgb(220 38 38 / 0.18);
+}
+
+.ch-tareas--grid {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .ch-tareas--grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .ch-tareas--grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ch-tareas--grid .ch-tarea {
+  height: 100%;
+}
+
+.ch-tareas--grid .ch-tarea__actions {
+  margin-top: auto;
+}
+
+/* En la cuadrícula las acciones no ocupan todo el ancho: el enlace de
+   detalle queda a la derecha y la distancia a su izquierda. */
+.ch-tareas--grid .ch-tarea__actions .ch-btn {
+  width: auto;
+  margin-left: auto;
+}
+
+.ch-tareas--grid .ch-tarea__actions .ch-tarea__distancia {
+  margin-left: 0;
+}
+
+.ch-tarea--clicable {
+  cursor: pointer;
+  transition:
+    background-color var(--ch-motion-fast) ease,
+    border-color var(--ch-motion-fast) ease,
+    transform var(--ch-motion-fast) ease;
+}
+
+.ch-tarea--clicable:hover {
+  background: var(--ch-field-bg-hover);
+  border-color: var(--ch-card-border);
+  transform: translateY(-2px);
+}
+
+.ch-tarea--clicable:focus-within {
+  outline: 3px solid var(--ch-color-focus);
+  outline-offset: 2px;
+}
+
+.ch-tarea__distancia {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ch-color-text-soft);
+  background: var(--ch-color-surface);
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+/* ---------- Modal de búsqueda por zona ---------- */
+.ch-modal--zona .ch-modal__card {
+  width: min(920px, 94vw);
+  max-width: 920px;
+  max-height: 92vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.ch-modal__mapa {
+  height: min(52vh, 420px);
+  width: 100%;
+  border-radius: var(--ch-radius-md);
+  overflow: hidden;
+  margin-block: var(--ch-space-3);
+}
+
+.ch-modal__mapa:focus-visible {
+  outline: 3px solid var(--ch-color-focus);
+  outline-offset: 2px;
+}
+
+.ch-modal__punto {
+  font-variant-numeric: tabular-nums;
+}
+
+.ch-modal__radio {
+  display: grid;
+  gap: var(--ch-space-2);
+  max-width: 20rem;
+}
+
+.ch-modal__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ch-space-2);
+  margin-top: var(--ch-space-4);
+}
+
+.ch-modal__acciones .ch-btn {
+  width: auto;
+}
+
+@media (max-width: 640px) {
+  .ch-modal__mapa {
+    height: 40vh;
+  }
+
+  .ch-modal__acciones .ch-btn {
+    flex: 1 1 100%;
+  }
+}
+
+/* ---------- Detalle rediseñado (US-009) ---------- */
+.ch-detalle {
+  width: 100%;
+  display: grid;
+  gap: var(--ch-space-4);
+}
+
+.ch-detalle__volver {
+  width: auto;
+  justify-self: start;
+}
+
+.ch-detalle__hero {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ch-space-4);
+}
+
+.ch-detalle__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ch-space-2);
+  margin-bottom: var(--ch-space-2);
+}
+
+.ch-detalle__titulo {
+  margin: 0 0 var(--ch-space-2);
+  text-align: left;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.ch-detalle__grid {
+  display: grid;
+  gap: var(--ch-space-4);
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+@media (min-width: 960px) {
+  .ch-detalle__grid {
+    grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+  }
+}
+
+.ch-detalle__principal,
+.ch-detalle__lateral {
+  display: grid;
+  gap: var(--ch-space-4);
+  min-width: 0;
+}
+
+.ch-detalle__panel {
+  width: 100%;
+}
+
+.ch-detalle__descripcion {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 75ch;
+}
+
+.ch-detalle__zona {
+  margin: 0 0 var(--ch-space-2);
+  font-size: 0.8125rem;
+  color: var(--ch-color-text-soft);
+}
+
+.ch-detalle__mapa .ch-map__canvas {
+  height: 320px;
+}
+
+.ch-detalle__grid--sin-mapa {
+  grid-template-columns: 1fr;
+}
+
+.ch-detalle__grid--sin-mapa .ch-detalle__lateral {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }

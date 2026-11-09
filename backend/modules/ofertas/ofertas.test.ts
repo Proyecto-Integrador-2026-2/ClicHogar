@@ -10,7 +10,13 @@ import { authService } from '../auth/services/auth.service';
 import type { Tarea } from '../tareas/entities/tarea.entity';
 import { tareasRepository } from '../tareas/repositories/tareas.repository';
 import type { Usuario } from '../usuarios/entities/usuario.entity';
-import type { Oferta, OfertaRecibida } from './entities/oferta.entity';
+import type {
+  MisOfertas,
+  Oferta,
+  OfertaRecibida,
+  TareaConOfertas,
+  TareaResumenOferta,
+} from './entities/oferta.entity';
 import { ofertasRepository } from './repositories/ofertas.repository';
 import {
   MENSAJE_NO_ACEPTA_OFERTAS,
@@ -412,5 +418,98 @@ describe('GET /api/tareas/:id/ofertas', () => {
       new Request(`http://localhost/api/tareas/${TAREA_ID}/ofertas`)
     );
     expect(sin.status).toBe(401);
+  });
+});
+
+/** Tarea resumida para "Mis ofertas". */
+function tareaResumen(
+  cambios: Partial<TareaResumenOferta> = {}
+): TareaResumenOferta {
+  return {
+    id: TAREA_ID,
+    titulo: 'Arreglar grifo',
+    descripcion: 'El grifo gotea día y noche, hay que repararlo pronto.',
+    categoria: 'Plomería',
+    estado: 'asignada',
+    ubicacion: 'Belén',
+    creadoEn: FECHA,
+    autorId: 'u-autor',
+    autorNombre: 'Ana',
+    ...cambios,
+  };
+}
+
+describe('ofertasService.listarMias', () => {
+  test('agrupa las tareas aceptadas y las creadas con el promedio redondeado', async () => {
+    // Given: una tarea aceptada y una publicada con dos ofertas
+    const aceptadas: MisOfertas['aceptadas'] = [
+      { tarea: tareaResumen(), oferta: OFERTA },
+    ];
+    const creadas: TareaConOfertas[] = [
+      {
+        tarea: tareaResumen({ id: 't-2', titulo: 'Pintar sala' }),
+        ofertas: [recibida('o-1', 4.6666), recibida('o-2', null)],
+      },
+    ];
+    const listarAceptadas = spyOn(
+      ofertasRepository,
+      'listarAceptadas'
+    ).mockResolvedValue(aceptadas);
+    const listarCreadas = spyOn(
+      ofertasRepository,
+      'listarCreadas'
+    ).mockResolvedValue(creadas);
+    // When: se piden las ofertas agrupadas
+    const resultado = await ofertasService.listarMias(CLIENTE);
+    // Then: conserva los dos bloques y redondea el promedio a 1 decimal
+    expect(resultado.aceptadas).toEqual(aceptadas);
+    expect(resultado.creadas[0]?.tarea.titulo).toBe('Pintar sala');
+    expect(resultado.creadas[0]?.ofertas[0]?.afiliado.promedio).toBe(4.7);
+    expect(resultado.creadas[0]?.ofertas[1]?.afiliado.promedio).toBeNull();
+    expect(listarAceptadas).toHaveBeenCalledWith(CLIENTE.id);
+    expect(listarCreadas).toHaveBeenCalledWith(CLIENTE.id);
+  });
+
+  test('sin tareas devuelve los dos bloques vacíos', async () => {
+    // Given: un usuario sin tareas aceptadas ni publicadas
+    spyOn(ofertasRepository, 'listarAceptadas').mockResolvedValue([]);
+    spyOn(ofertasRepository, 'listarCreadas').mockResolvedValue([]);
+    // When / Then: ambos bloques vacíos
+    expect(await ofertasService.listarMias(CLIENTE)).toEqual({
+      aceptadas: [],
+      creadas: [],
+    });
+  });
+});
+
+describe('GET /api/ofertas/mias', () => {
+  test('200 con los dos bloques; el usuario sale de la sesión', async () => {
+    // Given: una sesión válida y un servicio con la respuesta agrupada
+    spyOn(authService, 'resolverUsuario').mockResolvedValue(CLIENTE as Usuario);
+    const listar = spyOn(ofertasService, 'listarMias').mockResolvedValue({
+      aceptadas: [],
+      creadas: [],
+    });
+    // When: se piden las ofertas del usuario
+    const res = await buildApp().handle(
+      new Request('http://localhost/api/ofertas/mias', {
+        headers: { authorization: 'Bearer tok' },
+      })
+    );
+    // Then: responde 200 y el servicio recibe al usuario de la sesión
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ aceptadas: [], creadas: [] });
+    expect(listar).toHaveBeenCalledWith(
+      expect.objectContaining({ id: CLIENTE.id })
+    );
+  });
+
+  test('401 sin sesión', async () => {
+    // Given / When: una petición sin token
+    const res = await buildApp().handle(
+      new Request('http://localhost/api/ofertas/mias')
+    );
+    // Then: responde 401
+    expect(res.status).toBe(401);
   });
 });
