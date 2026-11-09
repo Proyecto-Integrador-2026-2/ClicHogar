@@ -37,6 +37,7 @@
   --ch-color-focus: #0088d5;
   --ch-color-disabled-bg: #e2e8f0;
   --ch-color-disabled-text: #94a3b8;
+  --ch-color-star-filled: #f5a623;
 
   --ch-card-bg:
     linear-gradient(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0) 32%),
@@ -89,6 +90,7 @@ html[data-theme='dark'] .ch-auth {
   --ch-color-focus: #3ce5ff;
   --ch-color-disabled-bg: rgb(255 255 255 / 0.06);
   --ch-color-disabled-text: #64748b;
+  --ch-color-star-filled: #fbbf24;
 
   --ch-card-bg:
     linear-gradient(rgb(255 255 255 / 0.09), rgb(255 255 255 / 0) 30%),
@@ -703,7 +705,7 @@ a.ch-btn {
   height: 18px;
   flex: none;
   border-radius: 50%;
-  border: 3px solid rgb(255 255 255 / 0.4);
+  border: 3px solid var(--ch-color-text-soft, rgb(255 255 255 / 0.4));
   border-top-color: currentcolor;
   animation: ch-spin 0.8s linear infinite;
 }
@@ -839,7 +841,7 @@ a.ch-btn {
   z-index: 50;
 }
 .ch-modal__card {
-  background: var(--ch-card, #fff);
+  background: var(--ch-card-bg);
   padding: 20px;
   border-radius: 12px;
   max-width: 520px;
@@ -946,7 +948,7 @@ a.ch-btn {
   font-weight: 700;
 }
 .ch-estrellas {
-  color: #f5a623;
+  color: var(--ch-color-star-filled);
   font-weight: 600;
 }
 .ch-estrellas--vacio {
@@ -992,8 +994,8 @@ a.ch-btn {
   border-radius: 12px;
 }
 .ch-estrellas-input--error {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.08);
+  border-color: var(--ch-color-error);
+  background: var(--ch-color-error-bg);
 }
 .ch-estrella {
   background: none;
@@ -1001,11 +1003,11 @@ a.ch-btn {
   padding: 0 2px;
   font-size: 2rem;
   line-height: 1;
-  color: #9ca3af;
+  color: var(--ch-color-text-soft);
   cursor: pointer;
 }
 .ch-estrella--llena {
-  color: #f5a623;
+  color: var(--ch-color-star-filled);
 }
 .ch-estrella:disabled {
   cursor: not-allowed;

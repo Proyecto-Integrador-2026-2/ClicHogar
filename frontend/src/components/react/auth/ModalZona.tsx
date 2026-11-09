@@ -157,8 +157,8 @@ export default function ModalZona({
     temporizadorRef.current = setTimeout(() => {
       const circulo = L.circle([punto.lat, punto.lng], {
         radius: radioKm * 1000,
-        color: '#dc2626',
-        fillColor: '#dc2626',
+        color: 'var(--ch-color-error)',
+        fillColor: 'var(--ch-color-error)',
         fillOpacity: 0.16,
         weight: 2,
         interactive: false,
