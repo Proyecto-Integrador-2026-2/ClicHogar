@@ -60,6 +60,14 @@
   gap: 12px;
 }
 
+/* Grupos de sesión: uno para autenticados y otro para visitantes. El
+   script `nav-auth` alterna el atributo `hidden` de cada grupo. */
+.ch-nav__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
 /* El toggle vive dentro de la barra: pierde su posición fija propia. */
 .ch-site-nav .ch-theme-toggle {
   position: static;
@@ -133,6 +141,14 @@
   text-decoration: underline;
 }
 
+/* Enlace de la sección actual. */
+.ch-nav__link[aria-current='page'] {
+  color: #0f172a;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
 /* CTA principal de la landing: píldora con degradado de marca. */
 .ch-nav__link--cta {
   color: #ffffff;
@@ -181,6 +197,10 @@ html[data-theme='dark'] .ch-nav__link:hover {
   color: #f1f5f9;
 }
 
+html[data-theme='dark'] .ch-nav__link[aria-current='page'] {
+  color: #f1f5f9;
+}
+
 html[data-theme='dark'] .ch-nav__link--ghost {
   color: #f1f5f9;
   background: rgb(13 20 36 / 0.55);
@@ -190,6 +210,23 @@ html[data-theme='dark'] .ch-nav__link--ghost {
 html[data-theme='dark'] .ch-nav__link--ghost:hover {
   color: #ffffff;
   border-color: #3ce5ff;
+}
+
+/* En móvil la barra lleva más acciones: se compactan antes de 480px. */
+@media (max-width: 560px) {
+  .ch-nav__group {
+    gap: 6px;
+  }
+
+  .ch-nav__link {
+    font-size: 0.8rem;
+    padding: 10px 2px;
+  }
+
+  .ch-nav__logout {
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
 }
 
 @media (max-width: 480px) {

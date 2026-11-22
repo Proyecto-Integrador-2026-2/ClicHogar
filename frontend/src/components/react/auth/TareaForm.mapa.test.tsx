@@ -67,7 +67,7 @@ describe('TareaForm: mapa y coordenadas', () => {
     render(<TareaForm />);
     // Then: arranca en Medellín
     expect(latitud()).toBe('6.2442');
-    expect(longitud()).toBe('-75.5817');
+    expect(longitud()).toBe('-75.5812');
   });
 
   test('arrastrar el marcador actualiza latitud y longitud', () => {

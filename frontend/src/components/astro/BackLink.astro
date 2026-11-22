@@ -1,0 +1,14 @@
+---
+// Enlace "Volver" para páginas internas. Reutiliza el aspecto ghost de
+// los enlaces de detalle, pero con estilos propios para no depender de
+// `auth.css` (las páginas Astro solo cargan `register-page.css`).
+type Props = {
+  href: string;
+  label?: string;
+};
+
+const { href, label = 'Volver' } = Astro.props;
+---
+<div class="ch-page__volver-row">
+  <a class="ch-page__volver" href={href}>← {label}</a>
+</div>

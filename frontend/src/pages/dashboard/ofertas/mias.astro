@@ -2,6 +2,7 @@
 import MisOfertasIsla from '../../../components/react/auth/MisOfertasIsla';
 import Background from '../../../components/astro/Background.astro';
 import SiteNav from '../../../components/astro/SiteNav.astro';
+import BackLink from '../../../components/astro/BackLink.astro';
 import '../../../styles/register-page.css';
 
 // "Mis ofertas": tareas aceptadas activas y tareas publicadas con sus
@@ -31,10 +32,11 @@ import '../../../styles/register-page.css';
     </script>
   </head>
   <body>
-    <SiteNav current="dashboard" />
+    <SiteNav current="ofertas" />
     <Background />
 
     <main class="ch-page ch-page--wide">
+      <BackLink href="/dashboard" label="Volver al panel" />
       <div class="ch-page__head">
         <h1>Mis ofertas</h1>
         <p>Tus tareas aceptadas y las ofertas que han recibido tus tareas</p>

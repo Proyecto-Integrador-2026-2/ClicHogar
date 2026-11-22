@@ -126,55 +126,14 @@
   color: #475569;
 }
 
-.ch-dash-module__tag {
-  display: inline-block;
-  margin-top: 8px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #0369a1;
-  background: rgb(0 136 213 / 0.1);
-  border: 1px solid rgb(0 136 213 / 0.22);
-  padding: 4px 10px;
-  border-radius: 999px;
-}
-
 /* Módulos exclusivos de afiliados: ocultos por defecto y visibles solo
    cuando React publica `data-rol="afiliado"` con el perfil cargado. */
-.ch-dash-module--solo-afiliado,
-.ch-dash-module--soon {
+.ch-dash-module--solo-afiliado {
   display: none;
 }
 
 html[data-rol='afiliado'] .ch-dash-module--solo-afiliado {
   display: block;
-}
-
-/* Módulos futuros: visibles pero no accionables (hoja de ruta honesta). */
-.ch-dash-module--soon {
-  opacity: 0.75;
-}
-
-.ch-dash-module--soon:hover {
-  transform: none;
-  box-shadow:
-    0 24px 64px rgb(15 40 80 / 0.16),
-    inset 0 1px 0 rgb(255 255 255 / 0.6);
-}
-
-.ch-dash-module--soon > div {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  padding: 22px;
-  cursor: not-allowed;
-}
-
-.ch-dash-module--soon .ch-dash-module__icon {
-  background: rgb(100 116 139 / 0.35);
-  box-shadow: none;
-  color: #475569;
 }
 
 /* ---------- Tema oscuro ---------- */
@@ -200,11 +159,6 @@ html[data-theme='dark'] .ch-dash-module p {
 
 html[data-theme='dark'] .ch-dash-module a:focus-visible {
   outline-color: #3ce5ff;
-}
-
-html[data-theme='dark'] .ch-dash-module--soon .ch-dash-module__icon {
-  background: rgb(255 255 255 / 0.08);
-  color: #94a3b8;
 }
 
 @media (max-width: 640px) {

@@ -41,7 +41,28 @@ test('login de usuario (rol Usuario) y afiliado', async ({ page }) => {
   await expect(
     page.getByRole('link', { name: /Mi disponibilidad/ })
   ).toHaveCount(0);
-  await expect(page.locator('.ch-dash-module--soon').first()).toBeHidden();
+  await expect(page.locator('.ch-dash-module--soon')).toHaveCount(0);
+  await expect(page.locator('.ch-dash-module__tag')).toHaveCount(0);
+
+  // El navbar unificado ofrece siempre Panel, Explorar y Publicar con sesión.
+  await expect(
+    page.getByRole('link', { name: 'Panel', exact: true })
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Explorar', exact: true })
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Publicar', exact: true })
+  ).toBeVisible();
+
+  // Las páginas internas permiten volver al panel.
+  await page.goto('/tareas/mias');
+  await expect(
+    page.getByRole('link', { name: /Volver al panel/i })
+  ).toHaveAttribute('href', '/dashboard');
+  await expect(
+    page.getByRole('link', { name: 'Panel', exact: true })
+  ).toBeVisible();
 
   const ctx = await page.context().browser()!.newContext();
   const page2 = await ctx.newPage();
@@ -54,6 +75,6 @@ test('login de usuario (rol Usuario) y afiliado', async ({ page }) => {
   await expect(
     page2.getByRole('link', { name: /Mi disponibilidad/ })
   ).toBeVisible();
-  await expect(page2.locator('.ch-dash-module--soon').first()).toBeHidden();
+  await expect(page2.locator('.ch-dash-module--soon')).toHaveCount(0);
   await ctx.close();
 });

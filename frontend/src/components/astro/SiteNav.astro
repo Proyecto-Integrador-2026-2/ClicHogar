@@ -2,21 +2,58 @@
 import ThemeToggle from './ThemeToggle.astro';
 import '../../styles/nav.css';
 
-// Barra superior del sitio (US-003, #127): marca + acción contextual +
-// tema. En páginas auth se ofrece la contraria; en `perfil` solo el
-// botón de cierre (visible con sesión, ver `scripts/nav-auth.ts`).
-// En `home` (landing pública) siempre se muestran Iniciar sesión +
-// Registrarse, sin ranuras de sesión ni botón de cierre.
-// En `dashboard` hay enlaces a los módulos + botón de cierre.
+// Barra superior única del sitio. Su contenido se decide por sesión:
+// - con sesión: Panel · Explorar · Publicar · Cerrar sesión
+// - sin sesión: Iniciar sesión / Registrarse (CTA contextual)
+// `current` solo marca el enlace activo y elige el CTA público; la
+// visibilidad real la ajusta `scripts/nav-auth.ts` en el cliente.
+type Current =
+  | 'home'
+  | 'login'
+  | 'register'
+  | 'dashboard'
+  | 'explorar'
+  | 'publicar'
+  | 'perfil'
+  | 'mias'
+  | 'detalle'
+  | 'calificaciones'
+  | 'chat'
+  | 'ofertas';
+
 type Props = {
-  current: 'login' | 'register' | 'perfil' | 'home' | 'dashboard';
+  current?: Current;
 };
 
-const { current } = Astro.props;
-const cta =
-  current === 'login'
-    ? { href: '/register', label: 'Crear cuenta' }
-    : { href: '/login', label: 'Iniciar sesión' };
+const { current = 'home' } = Astro.props;
+
+/** Páginas que asumen sesión al pintar (evita el parpadeo del CTA). */
+const privada =
+  current !== 'home' && current !== 'login' && current !== 'register';
+
+/** `aria-current="page"` solo en los enlaces que existen en la barra. */
+const activo = (clave: 'dashboard' | 'explorar' | 'publicar') =>
+  current === clave ? 'page' : undefined;
+
+type Cta = { href: string; label: string; clase?: string };
+
+const cta: Cta[] =
+  current === 'home'
+    ? [
+        {
+          href: '/login',
+          label: 'Iniciar sesión',
+          clase: 'ch-nav__link--ghost',
+        },
+        {
+          href: '/register',
+          label: 'Registrarse',
+          clase: 'ch-nav__link--cta',
+        },
+      ]
+    : current === 'login'
+      ? [{ href: '/register', label: 'Crear cuenta' }]
+      : [{ href: '/login', label: 'Iniciar sesión' }];
 ---
 <header class="ch-site-nav">
   <div class="ch-site-nav__inner">
@@ -25,51 +62,44 @@ const cta =
       <span>ClicHogar</span>
     </a>
     <div class="ch-nav__actions">
-      {current === 'perfil' ? (
-        <button
-          type="button"
-          class="ch-nav__logout"
-          data-nav-auth="in"
-          data-logout
-          hidden
+      <div class="ch-nav__group" data-nav-auth="in" hidden={!privada}>
+        <a
+          class="ch-nav__link"
+          href="/dashboard"
+          aria-current={activo('dashboard')}
         >
+          Panel
+        </a>
+        <a
+          class="ch-nav__link"
+          href="/tareas"
+          aria-current={activo('explorar')}
+        >
+          Explorar
+        </a>
+        <a
+          class="ch-nav__link"
+          href="/tareas/nueva"
+          aria-current={activo('publicar')}
+        >
+          Publicar
+        </a>
+        <button type="button" class="ch-nav__logout" data-logout>
           Cerrar sesión
         </button>
-      ) : current === 'home' ? (
-        <>
-          <a class="ch-nav__link ch-nav__link--ghost" href="/login">
-            Iniciar sesión
-          </a>
-          <a class="ch-nav__link ch-nav__link--cta" href="/register">
-            Registrarse
-          </a>
-        </>
-      ) : current === 'dashboard' ? (
-        <>
-          <a class="ch-nav__link" href="/dashboard" aria-current="page">
-            Panel
-          </a>
-          <a class="ch-nav__link" href="/tareas">
-            Explorar
-          </a>
-          <a class="ch-nav__link" href="/tareas/nueva">
-            Publicar
-          </a>
-          <button
-            type="button"
-            class="ch-nav__logout"
-            data-nav-auth="in"
-            data-logout
-            hidden
-          >
-            Cerrar sesión
-          </button>
-        </>
-      ) : (
-        <a class="ch-nav__link" href={cta.href}>
-          {cta.label}
-        </a>
-      )}
+      </div>
+      <div class="ch-nav__group" data-nav-auth="out" hidden={privada}>
+        {
+          cta.map((c) => (
+            <a
+              class={`ch-nav__link${c.clase ? ` ${c.clase}` : ''}`}
+              href={c.href}
+            >
+              {c.label}
+            </a>
+          ))
+        }
+      </div>
       <ThemeToggle />
     </div>
   </div>

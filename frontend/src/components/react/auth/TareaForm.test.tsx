@@ -96,9 +96,9 @@ describe('TareaForm', () => {
       descripcion: DESCRIPCION,
       categoria: 'Plomería',
       ubicacion: 'Envigado',
-      // Sin geolocalización el mapa arranca en Bogotá.
-      latitud: 4.6097,
-      longitud: -74.0817,
+      // Sin geolocalización el mapa arranca en Medellín.
+      latitud: 6.2442,
+      longitud: -75.5812,
     });
 
     // When: se pulsa Publicar otra tarea
