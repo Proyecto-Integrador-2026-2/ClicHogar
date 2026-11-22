@@ -2,6 +2,7 @@
 import TareaIsla from '../../components/react/auth/TareaIsla';
 import Background from '../../components/astro/Background.astro';
 import SiteNav from '../../components/astro/SiteNav.astro';
+import BackLink from '../../components/astro/BackLink.astro';
 import '../../styles/register-page.css';
 
 // Página de publicación de tarea (US-006): misma composición y sistema
@@ -33,14 +34,11 @@ import '../../styles/register-page.css';
     </script>
   </head>
   <body>
-    {/*
-      current="register": si la sesión expiró, la ranura ofrece
-      "Iniciar sesión", que es lo correcto en esta página privada.
-    */}
-    <SiteNav current="register" />
+    <SiteNav current="publicar" />
     <Background />
 
     <main class="ch-page">
+      <BackLink href="/dashboard" label="Volver al panel" />
       <div class="ch-page__head">
         <h1>Publica tu tarea</h1>
         <p>Los afiliados disponibles podrán ofertar</p>

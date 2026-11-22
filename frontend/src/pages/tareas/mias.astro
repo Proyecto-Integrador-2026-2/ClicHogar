@@ -2,6 +2,7 @@
 import MisSolicitudesIsla from '../../components/react/auth/MisSolicitudesIsla';
 import Background from '../../components/astro/Background.astro';
 import SiteNav from '../../components/astro/SiteNav.astro';
+import BackLink from '../../components/astro/BackLink.astro';
 import '../../styles/register-page.css';
 
 // Mis solicitudes (US-012). Ruta abierta a propósito (ver `src/lib/routes.ts`):
@@ -31,14 +32,11 @@ import '../../styles/register-page.css';
     </script>
   </head>
   <body>
-    {/*
-      current="register": visitante sin sesión ve "Iniciar sesión",
-      que es lo correcto en esta página pública.
-    */}
-    <SiteNav current="register" />
+    <SiteNav current="mias" />
     <Background />
 
     <main class="ch-page ch-page--wide">
+      <BackLink href="/dashboard" label="Volver al panel" />
       <div class="ch-page__head">
         <h1>Mis solicitudes</h1>
         <p>Tus tareas publicadas y las ofertas que han recibido</p>

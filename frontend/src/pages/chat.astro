@@ -2,6 +2,7 @@
 import ChatIsla from '../components/react/auth/ChatIsla';
 import Background from '../components/astro/Background.astro';
 import SiteNav from '../components/astro/SiteNav.astro';
+import BackLink from '../components/astro/BackLink.astro';
 import '../styles/register-page.css';
 
 ---
@@ -14,9 +15,10 @@ import '../styles/register-page.css';
     <link rel="icon" href="/favicon.ico?v=6" sizes="any" />
   </head>
   <body>
-    <SiteNav current="dashboard" />
+    <SiteNav current="chat" />
     <Background />
     <main class="ch-page">
+      <BackLink href="/dashboard" label="Volver al panel" />
       <div class="ch-page__head">
         <h1>Chat</h1>
         <p>Mensajería con otros miembros</p>

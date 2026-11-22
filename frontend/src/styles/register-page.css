@@ -166,6 +166,59 @@ body {
   max-width: 40rem;
 }
 
+/* Botón "Volver" de las páginas internas: mismo tono ghost que los
+   enlaces de detalle, pero autónomo (no depende de `auth.css`). */
+.ch-page__volver-row {
+  width: min(100%, 28rem);
+  display: flex;
+  justify-content: flex-start;
+}
+
+.ch-page--wide .ch-page__volver-row {
+  width: min(100%, max(80vw, 60rem), 1500px);
+}
+
+.ch-page__volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  background: rgb(241 245 249 / 0.65);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  text-decoration: none;
+  transition:
+    background-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.ch-page__volver:hover {
+  background: rgb(226 232 240 / 0.85);
+}
+
+.ch-page__volver:focus-visible {
+  outline: 3px solid #0088d5;
+  outline-offset: 2px;
+}
+
+html[data-theme='dark'] .ch-page__volver {
+  color: #f1f5f9;
+  background: rgb(255 255 255 / 0.08);
+}
+
+html[data-theme='dark'] .ch-page__volver:hover {
+  background: rgb(255 255 255 / 0.13);
+}
+
+html[data-theme='dark'] .ch-page__volver:focus-visible {
+  outline-color: #3ce5ff;
+}
+
 @media (max-width: 640px) {
   .ch-bg__tool--extra {
     display: none;

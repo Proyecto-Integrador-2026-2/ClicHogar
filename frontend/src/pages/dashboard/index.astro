@@ -6,17 +6,14 @@ import '../../styles/register-page.css';
 import '../../styles/dashboard-page.css';
 
 // Panel principal post-login (dashboard): saludo + resumen (isla React)
-// y accesos a todos los módulos implementados hasta ahora:
-// perfil (US-004), disponibilidad (US-005), publicar (US-006) y
-// tablero (US-008). Ruta PROTEGIDA por `src/lib/routes.ts` + middleware:
-// sin sesión redirige a `/login` (ver `src/middleware.ts`).
-// Chat y calificaciones aún no existen: se anuncian como próximos.
+// y accesos a los módulos disponibles. Ruta PROTEGIDA por
+// `src/lib/routes.ts` + middleware: sin sesión redirige a `/login`
+// (ver `src/middleware.ts`).
 
 type Modulo = {
   href: string;
   titulo: string;
   texto: string;
-  etiqueta: string;
   icono: string;
   clase?: string;
 };
@@ -26,7 +23,6 @@ const modulos: Modulo[] = [
     href: '/tareas/nueva',
     titulo: 'Publicar tarea',
     texto: 'Describe lo que necesitas y recibe oferta cercana a ti.',
-    etiqueta: 'US-006 · Clientes',
     icono:
       '<circle cx="12" cy="12" r="10" /><path d="M12 8v8" /><path d="M8 12h8" />',
   },
@@ -34,7 +30,6 @@ const modulos: Modulo[] = [
     href: '/tareas/mias',
     titulo: 'Mis solicitudes',
     texto: 'Revisa las ofertas que han recibido tus tareas publicadas.',
-    etiqueta: 'US-012 · Clientes',
     icono:
       '<path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />',
   },
@@ -43,7 +38,6 @@ const modulos: Modulo[] = [
     titulo: 'Ver todas mis ofertas',
     texto:
       'Tus tareas aceptadas y todas las ofertas que han recibido tus tareas.',
-    etiqueta: 'Ofertas · Afiliado',
     clase: 'ch-dash-module--solo-afiliado',
     icono:
       '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M8 13h8" /><path d="M8 17h5" />',
@@ -52,7 +46,6 @@ const modulos: Modulo[] = [
     href: '/tareas',
     titulo: 'Explorar tareas',
     texto: 'Compara solicitudes activas y oferta en las que se ajusten a ti.',
-    etiqueta: 'US-008 · Clic-Workers',
     clase: 'ch-dash-module--solo-afiliado',
     icono:
       '<circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />',
@@ -61,7 +54,6 @@ const modulos: Modulo[] = [
     href: '/perfil/configurar',
     titulo: 'Mi perfil público',
     texto: 'Foto, descripción y ubicación: lo que ve la comunidad.',
-    etiqueta: 'US-004 · Ambos roles',
     icono:
       '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />',
   },
@@ -69,21 +61,9 @@ const modulos: Modulo[] = [
     href: '/perfil/disponibilidad',
     titulo: 'Mi disponibilidad',
     texto: 'Configura tu horario semanal como afiliado.',
-    etiqueta: 'US-005 · Clic-Workers',
     clase: 'ch-dash-module--solo-afiliado',
     icono:
       '<rect width="18" height="18" x="3" y="4" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" />',
-  },
-];
-
-const proximos = [
-  {
-    titulo: 'Chat integrado',
-    texto: 'Mensajería segura para negociar antes de confirmar.',
-  },
-  {
-    titulo: 'Calificaciones',
-    texto: 'Reseñas bidireccionales que construyen confianza.',
   },
 ];
 ---
@@ -144,39 +124,8 @@ const proximos = [
                 <span>
                   <h2>{m.titulo}</h2>
                   <p>{m.texto}</p>
-                  <span class="ch-dash-module__tag">{m.etiqueta}</span>
                 </span>
               </a>
-            </li>
-          ))
-        }
-        {
-          proximos.map((m) => (
-            <li
-              class="ch-dash-module ch-dash-module--soon"
-              aria-disabled="true"
-              title="Funcionalidad en camino"
-            >
-              <div>
-                <span class="ch-dash-module__icon" aria-hidden="true">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v6l4 2" />
-                  </svg>
-                </span>
-                <span>
-                  <h2>{m.titulo}</h2>
-                  <p>{m.texto}</p>
-                  <span class="ch-dash-module__tag">Próximamente</span>
-                </span>
-              </div>
             </li>
           ))
         }

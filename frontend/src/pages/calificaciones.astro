@@ -2,6 +2,7 @@
 import CalificacionIsla from '../components/react/auth/CalificacionIsla';
 import Background from '../components/astro/Background.astro';
 import SiteNav from '../components/astro/SiteNav.astro';
+import BackLink from '../components/astro/BackLink.astro';
 import '../styles/register-page.css';
 ---
 <!doctype html>
@@ -13,9 +14,10 @@ import '../styles/register-page.css';
     <link rel="icon" href="/favicon.ico?v=6" sizes="any" />
   </head>
   <body>
-    <SiteNav current="dashboard" />
+    <SiteNav current="calificaciones" />
     <Background />
     <main class="ch-page">
+      <BackLink href="/tareas/mias" label="Volver a mis solicitudes" />
       <div class="ch-page__head">
         <h1>Calificaciones</h1>
         <p>Valora a otros miembros</p>

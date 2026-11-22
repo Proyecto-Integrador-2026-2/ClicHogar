@@ -247,7 +247,12 @@ export default function PerfilForm() {
 
         {exito && (
           <div className="ch-alert ch-alert--exito" role="status">
-            {exito}
+            <p style={{ margin: 0 }}>{exito}</p>
+            <p style={{ margin: '8px 0 0' }}>
+              <a className="ch-btn ch-btn--primary" href="/dashboard">
+                Ir al panel
+              </a>
+            </p>
           </div>
         )}
 
